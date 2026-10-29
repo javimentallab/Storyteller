@@ -31,15 +31,24 @@ def cmd_generate(a):
         E.load_pron(a.pron)
     os.makedirs(a.out, exist_ok=True)
     chaps = E.chapters_from_epub(a.epub)
-    try:
-        from ebooklib import epub
-        _t = epub.read_epub(a.epub).get_metadata("DC", "title")
-        if _t and _t[0][0].strip():
-            E.write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
-    except Exception: pass
+    # Modo paralelo: este proceso narra SOLO [chap_start, chap_end] (1-based, 0=sin
+    # tope), escribe su propio manifest (--manifest-name) y no toca gen_state
+    # (--no-state); la app fusiona los tramos al terminar.
+    cs = getattr(a, "chap_start", 0) or 0
+    ce = getattr(a, "chap_end", 0) or 0
+    mani_name = getattr(a, "manifest_name", None) or "manifest.json"
+    no_state = getattr(a, "no_state", False)
+    if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
+        try:
+            from ebooklib import epub
+            _t = epub.read_epub(a.epub).get_metadata("DC", "title")
+            if _t and _t[0][0].strip():
+                E.write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
+        except Exception: pass
     print(f"capitulos: {len(chaps)}", flush=True)
-    prev = E.load_prev_manifest(a.out) if a.resume else {}
-    E.write_state(a.out, len(chaps), False)
+    prev = E.load_prev_manifest(a.out, mani_name) if a.resume else {}
+    if not no_state:
+        E.write_state(a.out, len(chaps), False)
 
     dev = a.device
     if dev == "auto":
@@ -57,7 +66,7 @@ def cmd_generate(a):
 
     manifest = []
     def save_manifest():
-        E.write_atomic(os.path.join(a.out, "manifest.json"),
+        E.write_atomic(os.path.join(a.out, mani_name),
                        json.dumps(manifest, ensure_ascii=False, indent=2))
 
     def infer(gen_text):
@@ -65,6 +74,8 @@ def cmd_generate(a):
         return np.asarray(w, dtype="float32"), 24000
 
     for ci, ch in enumerate(chaps, 1):
+        if (cs and ci < cs) or (ce and ci > ce):          # fuera de mi tramo
+            continue
         base = f"cap{ci:02d}"
         wav_path = os.path.join(a.out, base + ".wav")
         mp3_path = os.path.join(a.out, base + ".mp3")
@@ -132,7 +143,28 @@ def cmd_generate(a):
 
         for si in range(start_si, len(sents)):
             gen_text = E.normalize_text(sents[si])
-            wav, sr = infer(gen_text)
+            # QC de alucinaciones: transcribe la frase con Whisper (voz-server) y, si el
+            # recall baja del umbral, regenera (XTTS al re-inferir da otra muestra) y se
+            # queda con la mejor. Igual que el motor F5; reutiliza utilidades de cc_engine.
+            best_wav = None; best_score = -1e9; sr = 24000
+            attempts = (a.qc_retries + 1) if a.qc_url else 1
+            for att in range(attempts):
+                wav, sr = infer(gen_text)
+                if not a.qc_url:
+                    best_wav = wav; break
+                hyp = E.qc_transcribe(wav, sr, a.qc_url)
+                if hyp is None:
+                    if best_wav is None: best_wav = wav
+                    print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
+                    break
+                rec, ok, score, motivo = E._qc_eval(gen_text, hyp, a.qc_threshold)
+                if score > best_score: best_score, best_wav = score, wav
+                if ok:
+                    if att > 0: print(f"  QC frase {si+1}: OK recall={rec:.2f} (intento {att+1})", flush=True)
+                    break
+                det = f"recall={rec:.2f}" + (f", alucina ({motivo})" if motivo else f" < {a.qc_threshold:.2f}")
+                print(f"  QC frase {si+1}: {det}, regenerando ({att+1}/{attempts})", flush=True)
+            wav = best_wav
             dur = len(wav) / sr
             cues.append({"i": si, "start": round(t, 3), "end": round(t + dur, 3), "text": sents[si]})
             pending.append(wav); pending.append(np.zeros(int(a.gap * sr), dtype="float32"))
@@ -151,7 +183,8 @@ def cmd_generate(a):
         gc.collect()
         try: torch.cuda.empty_cache()
         except Exception: pass
-    E.write_state(a.out, len(chaps), True)
+    if not no_state:
+        E.write_state(a.out, len(chaps), True)
     print("EPUB-DONE", len(manifest), flush=True)
 
 def main():
@@ -165,7 +198,17 @@ def main():
     g.add_argument("--gap", type=float, default=0.28)
     g.add_argument("--device", default="auto")
     g.add_argument("--resume", action="store_true")
+    g.add_argument("--chap-start", type=int, default=0)      # tramo paralelo: 1er cap (1-based, 0=sin tope)
+    g.add_argument("--chap-end", type=int, default=0)        # tramo paralelo: ultimo cap (0=sin tope)
+    g.add_argument("--manifest-name", default="manifest.json")
+    g.add_argument("--no-state", action="store_true")
+    g.add_argument("--qc-url", default="")                   # endpoint Whisper; vacío = QC off
+    g.add_argument("--qc-threshold", type=float, default=0.85)
+    g.add_argument("--qc-retries", type=int, default=2)
     g.set_defaults(func=cmd_generate)
+    c = sub.add_parser("count")                              # nº de capitulos (reparto de tramos)
+    c.add_argument("--epub", required=True)
+    c.set_defaults(func=lambda a: print("CHAPTERS", len(E.chapters_from_epub(a.epub)), flush=True))
     a = ap.parse_args(); a.func(a)
 
 if __name__ == "__main__":
