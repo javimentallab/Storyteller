@@ -164,6 +164,28 @@ def _recall(ref_text, hyp_text):
     hyp = set(_words(hyp_text))
     return sum(1 for w in ref if w in hyp) / len(ref)
 
+def _qc_eval(ref_text, hyp_text, threshold=0.85):
+    """Evalúa una frase contra su transcripción Whisper. Además del recall (palabras
+    del texto presentes), detecta las ALUCINACIONES típicas de XTTS/F5, que el recall
+    por conjuntos NO ve: inserciones (transcripción mucho más larga que el texto) y
+    bucles de repetición (una palabra dicha muchas más veces de las debidas, p. ej.
+    «volumen volumen volumen…»). Devuelve (recall, ok, score, motivo)."""
+    from collections import Counter
+    rf = _words(ref_text); rh = _words(hyp_text)
+    if not rf:
+        return 1.0, True, 1.0, ""
+    recall = sum(1 for w in set(rf) if w in set(rh)) / len(set(rf))
+    cr, ch = Counter(rf), Counter(rh)
+    extra_rep = max((ch[w] - cr.get(w, 0) for w in ch), default=0)   # palabra repetida de más
+    too_long = len(rh) > len(rf) * 1.5 + 5                           # parrafada / cola alucinada
+    halluc = (extra_rep >= 4) or too_long
+    ok = (recall >= threshold) and not halluc
+    # score para quedarse con el mejor intento cuando ninguno pasa: recall, castigando alucinar
+    score = recall - (0.6 if halluc else 0.0) - 0.02 * max(0, extra_rep - 1)
+    motivo = (f"repite x{extra_rep}" if extra_rep >= 4
+              else (f"texto x{len(rh)/len(rf):.1f}" if too_long else ""))
+    return recall, ok, score, motivo
+
 def qc_transcribe(wav, sr, url, timeout=60):
     """Sube un fragmento WAV al voz-server (Whisper) y devuelve el texto, o None."""
     import numpy as np, soundfile as sf
@@ -308,11 +330,11 @@ def write_cues(outdir, base, title, cues, dur):
                  json.dumps({"title": title, "duration": round(dur, 3), "cues": cues},
                             ensure_ascii=False, indent=1))
 
-def load_prev_manifest(outdir):
+def load_prev_manifest(outdir, name="manifest.json"):
     """Capitulos ya escritos en una tirada anterior, indexados por id (para reanudar)."""
     prev = {}
     try:
-        with open(os.path.join(outdir, "manifest.json"), encoding="utf-8") as f:
+        with open(os.path.join(outdir, name), encoding="utf-8") as f:
             for e in json.load(f):
                 if isinstance(e, dict) and "id" in e: prev[e["id"]] = e
     except Exception:
@@ -324,6 +346,10 @@ def write_state(outdir, total, complete):
     write_atomic(os.path.join(outdir, "gen_state.json"),
                  json.dumps({"total": total, "complete": bool(complete)}, ensure_ascii=False))
 
+def cmd_count(a):
+    """Imprime el nº de capitulos del EPUB (sin cargar el modelo), para repartir tramos."""
+    print("CHAPTERS", len(chapters_from_epub(a.epub)), flush=True)
+
 def cmd_generate(a):
     import numpy as np
     from f5_tts.api import F5TTS
@@ -333,14 +359,23 @@ def cmd_generate(a):
         load_pron(a.pron)                            # diccionario de pronunciación del usuario
     os.makedirs(a.out, exist_ok=True)
     chaps = chapters_from_epub(a.epub)
-    try:
-        from ebooklib import epub
-        _t = epub.read_epub(a.epub).get_metadata("DC", "title")
-        if _t and _t[0][0].strip(): write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
-    except Exception: pass
+    # Modo paralelo: este proceso narra SOLO los capitulos [chap_start, chap_end]
+    # (1-based, 0 = sin limite) y escribe en su propio manifest (--manifest-name)
+    # sin tocar gen_state (--no-state); la app fusiona todo al terminar.
+    cs = getattr(a, "chap_start", 0) or 0
+    ce = getattr(a, "chap_end", 0) or 0
+    mani_name = getattr(a, "manifest_name", None) or "manifest.json"
+    no_state = getattr(a, "no_state", False)
+    if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
+        try:
+            from ebooklib import epub
+            _t = epub.read_epub(a.epub).get_metadata("DC", "title")
+            if _t and _t[0][0].strip(): write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
+        except Exception: pass
     print(f"capitulos: {len(chaps)}", flush=True)
-    prev = load_prev_manifest(a.out) if a.resume else {}
-    write_state(a.out, len(chaps), False)
+    prev = load_prev_manifest(a.out, mani_name) if a.resume else {}
+    if not no_state:
+        write_state(a.out, len(chaps), False)
     ref_text = open(a.voice_text, encoding="utf-8").read().strip()
     import torch
     dev = a.device
@@ -358,10 +393,12 @@ def cmd_generate(a):
     print(f"modelo cargado ({dev})", flush=True)
     manifest = []
     def save_manifest():
-        write_atomic(os.path.join(a.out, "manifest.json"),
+        write_atomic(os.path.join(a.out, mani_name),
                      json.dumps(manifest, ensure_ascii=False, indent=2))
     import gc, soundfile as sf
     for ci, ch in enumerate(chaps, 1):
+        if (cs and ci < cs) or (ce and ci > ce):          # fuera de mi tramo
+            continue
         base = f"cap{ci:02d}"
         wav_path = os.path.join(a.out, base + ".wav")
         mp3_path = os.path.join(a.out, base + ".mp3")
@@ -438,7 +475,7 @@ def cmd_generate(a):
         for si in range(start_si, len(sents)):
             s = sents[si]
             gen_text = normalize_text(s)
-            best_wav = None; best_rec = -1.0
+            best_wav = None; best_score = -1e9
             attempts = (a.qc_retries + 1) if a.qc_url else 1
             for att in range(attempts):
                 if att > 0:
@@ -453,16 +490,17 @@ def cmd_generate(a):
                 if not a.qc_url:
                     best_wav = wav; break
                 hyp = qc_transcribe(wav, sr, a.qc_url)
-                rec = _recall(gen_text, hyp) if hyp is not None else -1.0
-                if rec > best_rec: best_rec, best_wav = rec, wav
-                if rec < 0:
+                if hyp is None:
+                    if best_wav is None: best_wav = wav
                     print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
                     break
-                if rec >= a.qc_threshold:
+                rec, ok, score, motivo = _qc_eval(gen_text, hyp, a.qc_threshold)
+                if score > best_score: best_score, best_wav = score, wav
+                if ok:
                     if att > 0: print(f"  QC frase {si+1}: OK recall={rec:.2f} (intento {att+1})", flush=True)
                     break
-                print(f"  QC frase {si+1}: recall={rec:.2f} < {a.qc_threshold:.2f}, regenerando "
-                      f"({att+1}/{attempts})", flush=True)
+                det = f"recall={rec:.2f}" + (f", alucina ({motivo})" if motivo else f" < {a.qc_threshold:.2f}")
+                print(f"  QC frase {si+1}: {det}, regenerando ({att+1}/{attempts})", flush=True)
             wav = best_wav; dur = len(wav) / sr
             cues.append({"i": si, "start": round(t, 3), "end": round(t + dur, 3), "text": s})
             pending.append(wav); pending.append(np.zeros(int(a.gap * sr), dtype="float32"))
@@ -483,7 +521,8 @@ def cmd_generate(a):
         try:
             import torch; torch.cuda.empty_cache()
         except Exception: pass
-    write_state(a.out, len(chaps), True)
+    if not no_state:
+        write_state(a.out, len(chaps), True)
     print("EPUB-DONE", len(manifest), flush=True)
 
 def main():
@@ -508,7 +547,14 @@ def main():
     g.add_argument("--resume", action="store_true")         # continuar un libro a medias
     g.add_argument("--lang", default="es")                   # idioma para leer los números
     g.add_argument("--pron", default="")                     # JSON diccionario de pronunciación
+    g.add_argument("--chap-start", type=int, default=0)      # tramo paralelo: 1er cap (1-based, 0=sin tope)
+    g.add_argument("--chap-end", type=int, default=0)        # tramo paralelo: ultimo cap (0=sin tope)
+    g.add_argument("--manifest-name", default="manifest.json")  # manifest propio del tramo
+    g.add_argument("--no-state", action="store_true")        # no escribir gen_state (lo hace la app)
     g.set_defaults(func=cmd_generate)
+    c = sub.add_parser("count")                              # nº de capitulos del EPUB (para repartir tramos)
+    c.add_argument("--epub", required=True)
+    c.set_defaults(func=cmd_count)
     wd = sub.add_parser("whisper-download")
     wd.add_argument("--repo", required=True); wd.add_argument("--dest", required=True)
     wd.set_defaults(func=cmd_whisper_download)
