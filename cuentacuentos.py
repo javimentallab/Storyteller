@@ -141,6 +141,19 @@ def active_whisper_id(cfg=None):
     cfg = cfg or load_config(); return cfg.get("whisper_model", WHISPER_MODELS[0]["id"])
 def whisper_installed(w):
     return (model_dir(w["id"]) / "model.bin").exists()
+def qc_args_local(cfg=None):
+    """Args de QC para los motores LOCALES (4070): usan el Whisper descargado en
+    «Modelos» (en CPU, sin red), NUNCA el voz-server del Mint. El remoto (Mint) hace
+    su QC en el propio Mint. Devuelve (args, aviso-o-None)."""
+    cfg = cfg or load_config()
+    if not cfg.get("qc_auto"):
+        return [], None
+    w = whisper_by_id(active_whisper_id(cfg))
+    if not whisper_installed(w):
+        return [], ("QC activado pero no hay modelo Whisper descargado. Descárgalo en "
+                    "«Modelos» para que revise la calidad. Narro sin QC.")
+    return (["--qc-whisper-dir", str(model_dir(w["id"])),
+             "--qc-threshold", "0.85", "--qc-retries", "2"], None)
 def active_language(cfg=None):
     cfg = cfg or load_config(); return cfg.get("language", "es")
 def lang_name(code):
@@ -379,9 +392,9 @@ class LocalGenWorker(QThread):
                     cmd += ["--resume"]
                 if pron.exists():
                     cmd += ["--pron", str(pron)]
-                if load_config().get("qc_auto"):             # QC también en XTTS (voz-server Whisper)
-                    cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
-                            "--qc-threshold", "0.85", "--qc-retries", "2"]
+                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el Mint)
+                if _note: self.progress.emit(_note, -1)
+                cmd += _qa
             else:
                 md = model_dir(self.model["id"])
                 cmd = [str(VPY), "-I", str(CC_ENGINE), "generate",
@@ -395,9 +408,9 @@ class LocalGenWorker(QThread):
                     cmd += ["--pron", str(pron)]                  # diccionario de pronunciación
                 if self.voice:
                     cmd += ["--voice", str(self.voice["wav"]), "--voice-text", str(self.voice["txt"])]
-                if load_config().get("qc_auto"):
-                    cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
-                            "--qc-threshold", "0.85", "--qc-retries", "2"]
+                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el Mint)
+                if _note: self.progress.emit(_note, -1)
+                cmd += _qa
             # Nº de tramos en paralelo: reparte los capítulos entre N procesos en la
             # misma GPU (XTTS no la satura → varios a la vez suman). 1 = camino clásico.
             streams = int(load_config().get("parallel_streams", 1) or 1)
@@ -1093,8 +1106,10 @@ class ModelsScreen(QWidget):
         self.col.addWidget(self.serverRow)
 
         self.qcChk = QCheckBox("Revisar y regenerar frases que suenen mal (QC Whisper)")
-        self.qcChk.setToolTip("Tras narrar cada frase, la transcribe con Whisper (voz-server) y, si no "
-                              "coincide con el texto, la regenera. Más lento pero caza alucinaciones.")
+        self.qcChk.setToolTip("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
+                              "texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del "
+                              "sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el Mint, "
+                              "el del Mint. (En local hace falta un modelo Whisper descargado.)")
         self.qcChk.setCursor(Qt.PointingHandCursor)
         self.qcChk.toggled.connect(self._qc_changed)
         self.col.addWidget(self.qcChk)
