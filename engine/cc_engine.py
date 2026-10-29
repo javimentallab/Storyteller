@@ -51,6 +51,103 @@ def normalize_numbers(text):
     return re.sub(r"\d+(?:,\d+)?", _n2w, text)
 
 
+# ======================================================================
+# Normalización del texto para F5 (solo afecta al audio; el subtítulo se
+# queda con el original). Arregla: palabras en MAYÚSCULAS/siglas, puntuación
+# rara y pronunciación de términos extranjeros (diccionario del usuario).
+# ======================================================================
+_LETTER_ES = {"a": "a", "b": "be", "c": "ce", "d": "de", "e": "e", "f": "efe",
+              "g": "ge", "h": "hache", "i": "i", "j": "jota", "k": "ka", "l": "ele",
+              "m": "eme", "n": "ene", "ñ": "eñe", "o": "o", "p": "pe", "q": "cu",
+              "r": "erre", "s": "ese", "t": "te", "u": "u", "v": "uve",
+              "w": "uve doble", "x": "equis", "y": "i griega", "z": "zeta"}
+# Siglas que se leen como PALABRA (no deletreadas) en español.
+_SAY_WORD = {"OTAN", "ONU", "OVNI", "OPEP", "UNESCO", "UNICEF", "FIFA", "OMS",
+             "RAE", "UVI", "UCI", "PIB", "IVA", "AVE", "RENFE", "PYME", "MIR",
+             "ESO", "LOGSE", "SIDA", "LASER", "RADAR", "OTI", "NASA", "FMI"}
+PRON = {}          # diccionario del usuario: palabra(min) -> pronunciación
+SAY_WORD = set()   # siglas extra a leer como palabra
+SAY_LETTERS = set()  # siglas extra a deletrear
+
+def load_pron(path):
+    """Carga el diccionario de pronunciación del usuario (JSON)."""
+    global PRON, SAY_WORD, SAY_LETTERS
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+        PRON = {str(k).lower(): str(v) for k, v in (d.get("pron") or {}).items()}
+        SAY_WORD = {str(s).upper() for s in (d.get("say_word") or [])}
+        SAY_LETTERS = {str(s).upper() for s in (d.get("say_letters") or [])}
+    except Exception:
+        PRON, SAY_WORD, SAY_LETTERS = {}, set(), set()
+
+def _spell_letters(w):
+    return " ".join(_LETTER_ES.get(c, c) for c in w.lower())
+
+def _pronounceable(w):
+    """Heurística: ¿parece una palabra leíble (no una sigla deletreada)?"""
+    low = w.lower()
+    vowels = sum(c in "aeiouáéíóúü" for c in low)
+    if vowels == 0:
+        return False
+    # sin vocales seguidas imposibles y con proporción de vocales razonable
+    return vowels >= max(1, len(low) // 4) and len(low) >= 4
+
+def _fix_caps(token):
+    """Convierte una palabra TODO-MAYÚSCULAS a algo que F5 lea bien."""
+    core = re.sub(r"[^\wÁÉÍÓÚÜÑ]", "", token, flags=re.UNICODE)
+    if len(core) < 2 or not core.isupper() or not core.isalpha():
+        return token
+    up = core.upper()
+    if up in SAY_LETTERS:
+        rep = _spell_letters(core)
+    elif up in SAY_WORD or up in _SAY_WORD:
+        rep = core.capitalize()
+    elif _pronounceable(core):
+        rep = core.capitalize()                 # p. ej. PREFACIO -> Prefacio
+    else:
+        rep = _spell_letters(core)              # p. ej. CPU -> ce pe u
+    return token.replace(core, rep)
+
+def normalize_punct(text):
+    """Puntuación rara -> estándar, para que las pausas (comas) se respeten."""
+    text = text.replace("—", ", ").replace("–", ", ").replace("―", ", ")
+    text = text.replace("…", ". ")
+    text = re.sub(r"[“”«»\"]", "", text)
+    text = text.replace("；", ";").replace("，", ",")
+    text = re.sub(r"\s*;\s*", ", ", text)        # ; como pausa de coma
+    text = re.sub(r"\s*,\s*", ", ", text)        # espacio tras coma
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+def _apply_pron(text):
+    """Sustituye términos del diccionario del usuario (palabra completa)."""
+    if not PRON:
+        return text
+    def rep(m):
+        return PRON.get(m.group(0).lower(), m.group(0))
+    return re.sub(r"[A-Za-zÀ-ÿ]+", rep, text)
+
+def _lower_initial(text):
+    """Baja a minúscula la 1ª letra del trozo (inicio de frase): F5 a veces lee
+    raro la mayúscula inicial y fonéticamente es idéntico en minúscula."""
+    for i, ch in enumerate(text):
+        if ch.isalpha():
+            return text[:i] + ch.lower() + text[i+1:]
+        if ch.isdigit():
+            break
+    return text
+
+def normalize_text(text):
+    """Pipeline completo para el audio (no toca el subtítulo)."""
+    text = normalize_punct(text)
+    text = " ".join(_fix_caps(t) for t in text.split(" "))
+    text = _lower_initial(text)
+    text = _apply_pron(text)
+    text = normalize_numbers(text)
+    return text
+
+
 # ---- QC de alucinaciones: transcribe la frase generada y mide el recall de
 # palabras contra el texto que debería decir. Si baja del umbral, se regenera.
 def _words(s):
@@ -154,24 +251,34 @@ def chapters_from_epub(path, min_chars=25):
             out.append({"title": title or f"Capitulo {len(out)+1}", "text": text})
     return out
 
-def split_sentences(text, target=180, hard=240):
+def split_sentences(text, target=180, hard=240, soft=170):
+    """Una frase por trozo (mejor prosodia/sincronía). Las frases LARGAS se
+    parten en las comas/; y los trozos se reagrupan hasta ~target, de modo que
+    cada corte cae en una pausa real (lo que ayuda a "respetar las comas")."""
     raw = re.split(r"(?<=[\.\!\?…])\s+", text.replace("\n", " "))
-    chunks = []; buf = ""
-    def flush():
-        nonlocal buf
-        if buf.strip(): chunks.append(buf.strip())
-        buf = ""
+    out = []
     for s in raw:
         s = s.strip()
         if not s: continue
-        while len(s) > hard:
-            cut = max(s.rfind(", ", 0, hard), s.rfind("; ", 0, hard))
-            if cut < 60: cut = hard
-            chunks.append(s[:cut+1].strip()); s = s[cut+1:].strip()
-        if len(buf) + len(s) + 1 <= target: buf = (buf + " " + s).strip()
-        else: flush(); buf = s
-    flush()
-    return [c for c in chunks if re.search(r"[A-Za-zÀ-ɏ0-9]", c)]
+        if len(s) <= soft:
+            out.append(s); continue
+        parts = re.split(r"(?<=[,;:])\s+", s)        # trocear por comas/;/:
+        buf = ""
+        for p in parts:
+            p = p.strip()
+            if not p: continue
+            while len(p) > hard:                      # cláusula monstruosa: corte duro
+                cut = max(p.rfind(", ", 0, hard), p.rfind("; ", 0, hard))
+                if cut < 60: cut = hard
+                if buf: out.append(buf.strip()); buf = ""
+                out.append(p[:cut+1].strip()); p = p[cut+1:].strip()
+            if len(buf) + len(p) + 1 <= target:
+                buf = (buf + " " + p).strip()
+            else:
+                if buf: out.append(buf.strip())
+                buf = p
+        if buf.strip(): out.append(buf.strip())
+    return [c for c in out if re.search(r"[A-Za-zÀ-ɏ0-9]", c)]
 
 def write_atomic(path, text):
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
@@ -219,6 +326,8 @@ def cmd_generate(a):
     from f5_tts.api import F5TTS
     global NUM_LANG
     NUM_LANG = getattr(a, "lang", None) or "es"      # idioma para leer los números
+    if getattr(a, "pron", ""):
+        load_pron(a.pron)                            # diccionario de pronunciación del usuario
     os.makedirs(a.out, exist_ok=True)
     chaps = chapters_from_epub(a.epub)
     try:
@@ -325,7 +434,7 @@ def cmd_generate(a):
 
         for si in range(start_si, len(sents)):
             s = sents[si]
-            gen_text = normalize_numbers(s)
+            gen_text = normalize_text(s)
             best_wav = None; best_rec = -1.0
             attempts = (a.qc_retries + 1) if a.qc_url else 1
             for att in range(attempts):
@@ -395,6 +504,7 @@ def main():
     g.add_argument("--qc-retries", type=int, default=2)
     g.add_argument("--resume", action="store_true")         # continuar un libro a medias
     g.add_argument("--lang", default="es")                   # idioma para leer los números
+    g.add_argument("--pron", default="")                     # JSON diccionario de pronunciación
     g.set_defaults(func=cmd_generate)
     wd = sub.add_parser("whisper-download")
     wd.add_argument("--repo", required=True); wd.add_argument("--dest", required=True)

@@ -28,6 +28,29 @@ VPY        = _VENV / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 CC_ENGINE  = HOME_CC / "engine" / "cc_engine.py"
 MODELS_DIR = HOME_CC / "models"
 CONFIG     = HOME_CC / "config.json"
+PRON_FILE  = HOME_CC / "pron.json"   # diccionario de pronunciación (para el motor)
+
+# Semilla: siglas que se deletrean y algunos términos extranjeros frecuentes.
+DEFAULT_PRON = {
+    "pron": {
+        "software": "sófwer", "hardware": "járgüer", "email": "ímeil",
+        "online": "onláin", "streaming": "estrímin", "podcast": "pódcast",
+        "marketing": "márketin", "feedback": "fídbak", "meeting": "mítin",
+    },
+    "say_letters": ["SQL", "HTML", "CSS", "PDF", "URL", "USB", "CPU", "GPU",
+                    "HTTP", "API", "FBI", "CIA", "DVD", "USA"],
+    "say_word": [],
+}
+
+def ensure_pron():
+    """Crea pron.json con la semilla si no existe; devuelve su ruta."""
+    try:
+        if not PRON_FILE.exists():
+            PRON_FILE.parent.mkdir(parents=True, exist_ok=True)
+            PRON_FILE.write_text(json.dumps(DEFAULT_PRON, ensure_ascii=False, indent=2), "utf-8")
+    except Exception:
+        pass
+    return PRON_FILE
 SSH = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"]
 SCP = ["scp", "-q", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"]
 NOWIN = 0x08000000 if os.name == "nt" else 0
@@ -326,6 +349,9 @@ class LocalGenWorker(QThread):
             if self.resume:
                 cmd += ["--resume"]
             cmd += ["--lang", self.model.get("lang", "es")]   # idioma para leer los números
+            pron = ensure_pron()
+            if pron.exists():
+                cmd += ["--pron", str(pron)]                  # diccionario de pronunciación
             if self.voice:
                 cmd += ["--voice", str(self.voice["wav"]), "--voice-text", str(self.voice["txt"])]
             if load_config().get("qc_auto"):
@@ -929,6 +955,14 @@ class ModelsScreen(QWidget):
         hv = QLabel("Voces descargables"); hv.setObjectName("sec"); self.col.addWidget(hv)
         self.presetRows = QVBoxLayout(); self.presetRows.setSpacing(10); self.col.addLayout(self.presetRows)
 
+        hp = QLabel("Pronunciación"); hp.setObjectName("sec"); self.col.addWidget(hp)
+        phint = QLabel("Cómo lee la voz ciertas palabras: términos extranjeros, siglas y "
+                       "palabras concretas que suenen mal. No cambia los subtítulos.")
+        phint.setObjectName("booksub"); phint.setWordWrap(True); self.col.addWidget(phint)
+        self.editPronBtn = QPushButton("Editar diccionario de pronunciación…"); self.editPronBtn.setObjectName("tb")
+        self.editPronBtn.setCursor(Qt.PointingHandCursor); self.editPronBtn.clicked.connect(self._edit_pron)
+        prow = QHBoxLayout(); prow.addStretch(1); prow.addWidget(self.editPronBtn); self.col.addLayout(prow)
+
         self.progLabel = QLabel(""); self.progLabel.setObjectName("proglabel"); self.progLabel.setWordWrap(True)
         self.col.addWidget(self.progLabel)
         self.col.addStretch(1)
@@ -1069,6 +1103,23 @@ class ModelsScreen(QWidget):
 
     def _lang_changed(self, _):
         cfg = load_config(); cfg["language"] = self.langSel.currentData(); save_config(cfg)
+
+    def _edit_pron(self):
+        """Editor sencillo del diccionario de pronunciación (JSON validado)."""
+        p = ensure_pron()
+        try: cur = p.read_text("utf-8")
+        except Exception: cur = json.dumps(DEFAULT_PRON, ensure_ascii=False, indent=2)
+        txt, ok = QInputDialog.getMultiLineText(self, "Diccionario de pronunciación",
+            "pron: palabra → cómo se dice · say_letters: siglas deletreadas · "
+            "say_word: siglas como palabra", cur)
+        if not ok: return
+        try:
+            data = json.loads(txt)
+            assert isinstance(data, dict)
+        except Exception:
+            QMessageBox.warning(self, "Pronunciación", "El JSON no es válido; no se guardó."); return
+        p.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
+        self.progLabel.setText("Diccionario de pronunciación guardado.")
 
     def _use_model(self, mid):
         cfg = load_config(); cfg["model"] = mid; save_config(cfg); self.refresh()
