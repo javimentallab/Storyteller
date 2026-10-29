@@ -26,6 +26,10 @@ LOCAL_BOOKS = HOME_CC / "books"
 _VENV      = HOME_CC / "engine" / ".venv"
 VPY        = _VENV / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 CC_ENGINE  = HOME_CC / "engine" / "cc_engine.py"
+# Motor XTTS (multilingüe) en su propio venv, aislado del de F5.
+_VENV_XTTS = HOME_CC / "engine" / ".venv-xtts"
+VPY_XTTS   = _VENV_XTTS / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+CC_XTTS    = HOME_CC / "engine" / "cc_xtts.py"
 MODELS_DIR = HOME_CC / "models"
 CONFIG     = HOME_CC / "config.json"
 PRON_FILE  = HOME_CC / "pron.json"   # diccionario de pronunciación (para el motor)
@@ -57,13 +61,17 @@ NOWIN = 0x08000000 if os.name == "nt" else 0
 
 # Modelos de voz neural que el usuario puede descargar (desde Hugging Face).
 MODELS = [
-    {"id": "f5-spanish", "name": "F5 Español", "repo": "jpgallegoar/F5-Spanish",
+    {"id": "f5-spanish", "name": "F5 Español", "backend": "f5", "repo": "jpgallegoar/F5-Spanish",
      "ckpt": "model_1250000.safetensors", "vocab": "vocab.txt", "arch": "F5TTS_Base",
      "lang": "es", "size": "~1,3 GB", "desc": "Castellano peninsular, alta calidad. Es la voz A."},
-    {"id": "f5-english", "name": "F5 Inglés (oficial)", "repo": "SWivid/F5-TTS",
+    {"id": "f5-english", "name": "F5 Inglés (oficial)", "backend": "f5", "repo": "SWivid/F5-TTS",
      "ckpt": "F5TTS_v1_Base/model_1250000.safetensors", "vocab": "F5TTS_v1_Base/vocab.txt",
      "arch": "F5TTS_v1_Base", "lang": "en", "size": "~1,3 GB",
      "desc": "Inglés (modelo base oficial F5-TTS). Mejor con una voz de referencia en inglés."},
+    {"id": "xtts-v2", "name": "XTTS v2 (multilingüe)", "backend": "xtts", "lang": "es",
+     "repo": "coqui/XTTS-v2", "size": "~1,8 GB",
+     "desc": "Multilingüe: pronuncia bien los términos en inglés dentro del español. "
+             "Clona tu voz. Usa más VRAM que F5."},
 ]
 
 # Modelos de transcripción (faster-whisper) para importar audiolibros EN LOCAL,
@@ -111,7 +119,20 @@ def all_models(cfg=None):
 def model_by_id(mid, cfg=None):
     ms = all_models(cfg); return next((m for m in ms if m["id"] == mid), ms[0])
 def model_dir(mid): return MODELS_DIR / mid
+def xtts_ready():
+    """El venv de XTTS está instalado (lo crea el bootstrap/instalación de XTTS)."""
+    return VPY_XTTS.exists()
+def xtts_model_cached():
+    """El modelo XTTS v2 ya está descargado en la caché de coqui-tts."""
+    import glob
+    pats = [Path.home() / "AppData/Local/tts", Path.home() / ".local/share/tts"]
+    for base in pats:
+        if list(base.glob("*xtts_v2*")) if base.exists() else []:
+            return True
+    return False
 def model_installed(m):
+    if m.get("backend") == "xtts":
+        return xtts_ready() and xtts_model_cached()
     d = model_dir(m["id"]); return (d / m["ckpt"]).exists() and (d / m["vocab"]).exists()
 
 def whisper_by_id(wid):
@@ -341,22 +362,35 @@ class LocalGenWorker(QThread):
                 except Exception: pass
             else:
                 dest.mkdir(parents=True, exist_ok=True)
-            md = model_dir(self.model["id"])
-            cmd = [str(VPY), "-I", str(CC_ENGINE), "generate",
-                   "--epub", str(epub), "--out", str(dest),
-                   "--ckpt", str(md / self.model["ckpt"]), "--vocab", str(md / self.model["vocab"]),
-                   "--arch", self.model["arch"]]
-            if self.resume:
-                cmd += ["--resume"]
-            cmd += ["--lang", self.model.get("lang", "es")]   # idioma para leer los números
             pron = ensure_pron()
-            if pron.exists():
-                cmd += ["--pron", str(pron)]                  # diccionario de pronunciación
-            if self.voice:
-                cmd += ["--voice", str(self.voice["wav"]), "--voice-text", str(self.voice["txt"])]
-            if load_config().get("qc_auto"):
-                cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
-                        "--qc-threshold", "0.85", "--qc-retries", "2"]
+            if self.model.get("backend") == "xtts":
+                # Motor XTTS (multilingüe), su propio venv. Lee la frase entera; la voz
+                # de referencia la clona del wav de la voz activa.
+                cmd = [str(VPY_XTTS), "-I", str(CC_XTTS), "generate",
+                       "--epub", str(epub), "--out", str(dest),
+                       "--lang", self.model.get("lang", "es")]
+                if self.voice:
+                    cmd += ["--voice", str(self.voice["wav"])]
+                if self.resume:
+                    cmd += ["--resume"]
+                if pron.exists():
+                    cmd += ["--pron", str(pron)]
+            else:
+                md = model_dir(self.model["id"])
+                cmd = [str(VPY), "-I", str(CC_ENGINE), "generate",
+                       "--epub", str(epub), "--out", str(dest),
+                       "--ckpt", str(md / self.model["ckpt"]), "--vocab", str(md / self.model["vocab"]),
+                       "--arch", self.model["arch"]]
+                if self.resume:
+                    cmd += ["--resume"]
+                cmd += ["--lang", self.model.get("lang", "es")]   # idioma para leer los números
+                if pron.exists():
+                    cmd += ["--pron", str(pron)]                  # diccionario de pronunciación
+                if self.voice:
+                    cmd += ["--voice", str(self.voice["wav"]), "--voice-text", str(self.voice["txt"])]
+                if load_config().get("qc_auto"):
+                    cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
+                            "--qc-threshold", "0.85", "--qc-retries", "2"]
             self.progress.emit("Reanudando la narración…" if self.resume else "Cargando el modelo…", -1)
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
@@ -462,6 +496,30 @@ class WhisperDownloadWorker(QThread):
             p.wait()
             if whisper_installed(self.model): self.done.emit()
             else: self.failed.emit("La descarga del modelo de transcripción no se completó.")
+        except Exception as e:
+            self.failed.emit(str(e))
+
+
+class XttsDownloadWorker(QThread):
+    """Descarga el modelo XTTS v2 a la caché de coqui-tts (en el venv de XTTS)."""
+    progress = Signal(str)
+    done     = Signal()
+    failed   = Signal(str)
+
+    def run(self):
+        try:
+            code = ("import os; os.environ['COQUI_TOS_AGREED']='1'; "
+                    "from TTS.api import TTS; TTS('tts_models/multilingual/multi-dataset/xtts_v2'); "
+                    "print('XTTS-DL-DONE')")
+            p = subprocess.Popen([str(VPY_XTTS), "-c", code], stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                                 errors="replace", creationflags=NOWIN)
+            for line in p.stdout:
+                line = line.rstrip()
+                if line and "warning" not in line.lower(): self.progress.emit(line[:120])
+            p.wait()
+            if xtts_model_cached(): self.done.emit()
+            else: self.failed.emit("La descarga del modelo XTTS no se completó.")
         except Exception as e:
             self.failed.emit(str(e))
 
@@ -1019,18 +1077,24 @@ class ModelsScreen(QWidget):
         desc = QLabel(f"{mdl.get('desc','')}  · Idioma: {lang_name(mdl.get('lang','es'))}  ({mdl['repo']})")
         desc.setObjectName("booksub"); desc.setWordWrap(True)
         lay.addWidget(desc)
+        is_xtts = mdl.get("backend") == "xtts"
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
         if model_installed(mdl):
             use = QPushButton("Usar"); use.setObjectName("tb"); use.setEnabled(cfg["model"] != mdl["id"])
             use.clicked.connect(lambda _, i=mdl["id"]: self._use_model(i))
             dele = QPushButton("Borrar"); dele.setObjectName("tb")
-            dele.clicked.connect(lambda _, m=mdl: self._delete_model(m))
+            dele.clicked.connect((lambda _, m=mdl: self._delete_xtts(m)) if is_xtts
+                                 else (lambda _, m=mdl: self._delete_model(m)))
             btns.addWidget(use); btns.addWidget(dele)
         else:
             dl = QPushButton(f"Descargar  ({mdl.get('size','?')})"); dl.setObjectName("open")
-            dl.setEnabled(engine_ready())
-            if not engine_ready(): dl.setToolTip("Espera a que termine de instalarse el motor local")
-            dl.clicked.connect(lambda _, m=mdl: self._download(m))
+            ready = xtts_ready() if is_xtts else engine_ready()
+            dl.setEnabled(ready)
+            if not ready:
+                dl.setToolTip("El motor XTTS aún se está instalando" if is_xtts
+                              else "Espera a que termine de instalarse el motor local")
+            dl.clicked.connect((lambda _, m=mdl: self._download_xtts(m)) if is_xtts
+                               else (lambda _, m=mdl: self._download(m)))
             btns.addWidget(dl)
         if mdl.get("custom"):
             rm = QPushButton("Quitar"); rm.setObjectName("tb")
@@ -1128,6 +1192,28 @@ class ModelsScreen(QWidget):
         d = model_dir(mdl["id"])
         if d.exists(): shutil.rmtree(d, ignore_errors=True)
         self.progLabel.setText(f"Modelo «{mdl['name']}» borrado (archivos)."); self.refresh()
+
+    def _download_xtts(self, mdl):
+        if self.dl and self.dl.isRunning(): return
+        self.progLabel.setText("Descargando XTTS v2… (puede tardar, ~1,8 GB)")
+        self.dl = XttsDownloadWorker()
+        self.dl.progress.connect(lambda t: self.progLabel.setText(t))
+        self.dl.done.connect(lambda: (self.progLabel.setText("XTTS v2 listo."), self.refresh()))
+        self.dl.failed.connect(lambda e: (self.progLabel.setText("Error descargando XTTS: " + e), self.refresh()))
+        self.dl.start(); self.refresh()
+
+    def _delete_xtts(self, mdl):
+        """Borra el modelo XTTS de la caché de coqui-tts (deja el venv)."""
+        import glob
+        removed = False
+        for base in (Path.home() / "AppData/Local/tts", Path.home() / ".local/share/tts"):
+            if base.exists():
+                for d in base.glob("*xtts_v2*"):
+                    shutil.rmtree(d, ignore_errors=True); removed = True
+        cfg = load_config()
+        if cfg.get("model") == mdl["id"]: cfg["model"] = MODELS[0]["id"]; save_config(cfg)
+        self.progLabel.setText("Modelo XTTS borrado (caché)." if removed else "No había caché de XTTS.")
+        self.refresh()
 
     def _remove_custom(self, mid):
         cfg = load_config()
@@ -1821,12 +1907,13 @@ class Cuentacuentos(QMainWindow):
         if not path or not os.path.exists(path): return
         cfg = load_config()
         if cfg["engine"] == "local":
-            if not engine_ready():
+            m = model_by_id(cfg["model"], cfg)
+            ready = xtts_ready() if m.get("backend") == "xtts" else engine_ready()
+            if not ready:
                 QMessageBox.information(self, "Storyteller",
-                    "El motor local todavía se está instalando. Prueba dentro de un rato, "
+                    "El motor todavía se está instalando. Prueba dentro de un rato, "
                     "o cambia a «Servidor propio» en Modelos.")
                 return
-            m = model_by_id(cfg["model"], cfg)
             if not model_installed(m):
                 QMessageBox.information(self, "Storyteller",
                     f"Antes descarga el modelo «{m['name']}» en Modelos.")

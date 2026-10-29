@@ -1,5 +1,6 @@
 # Entorno del motor (se instala/descarga, no se versiona)
 engine/.venv/
+engine/.venv-xtts/
 engine/__pycache__/
 engine/.ready
 __pycache__/
