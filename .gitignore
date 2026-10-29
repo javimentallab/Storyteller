@@ -14,6 +14,8 @@ books/
 engine/voices/
 # configuración local (motor, servidor, voz…)
 config.json
+# diccionario de pronunciación del usuario (la semilla está en el código)
+pron.json
 # muestras de voz locales
 muestras_voz/
 
