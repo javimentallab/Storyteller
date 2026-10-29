@@ -1,0 +1,2 @@
+# Los scripts de shell deben conservar finales de línea LF (si no, el shebang falla en Linux)
+*.sh text eol=lf

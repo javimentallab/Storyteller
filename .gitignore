@@ -1,0 +1,25 @@
+# Entorno del motor (se instala/descarga, no se versiona)
+engine/.venv/
+engine/__pycache__/
+engine/.ready
+__pycache__/
+*.pyc
+
+# Datos del usuario: descargables desde la app, NO incluidos
+# modelos TTS y Whisper (Hugging Face)
+models/
+# biblioteca narrada / importada
+books/
+# voces de referencia (clonadas o descargadas por el usuario)
+engine/voices/
+# configuración local (motor, servidor, voz…)
+config.json
+# muestras de voz locales
+muestras_voz/
+
+# Audio / EPUB / temporales
+*.wav
+*.mp3
+*.epub
+*.tmp
+*.log
