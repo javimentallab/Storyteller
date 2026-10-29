@@ -47,6 +47,7 @@ def normalize_numbers(text):
         import num2words  # noqa: F401
     except Exception:
         return text
+    text = re.sub(r"(?<=\d)[   ](?=\d{3}\b)", "", text)  # 3 000 / 3<nbsp>000 -> 3000
     text = re.sub(r"(?<=\d)\.(?=\d{3}\b)", "", text)      # 1.000 -> 1000
     return re.sub(r"\d+(?:,\d+)?", _n2w, text)
 
@@ -116,7 +117,9 @@ def normalize_punct(text):
     text = re.sub(r"[“”«»\"]", "", text)
     text = text.replace("；", ";").replace("，", ",")
     text = re.sub(r"\s*;\s*", ", ", text)        # ; como pausa de coma
+    text = re.sub(r"(\d),(\d)", "\\1\x00\\2", text)   # proteger la coma decimal (3,14)
     text = re.sub(r"\s*,\s*", ", ", text)        # espacio tras coma
+    text = text.replace("\x00", ",")
     text = re.sub(r"[ \t]{2,}", " ", text)
     return text.strip()
 
