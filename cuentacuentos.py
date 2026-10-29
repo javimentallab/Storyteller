@@ -6,7 +6,7 @@ Lee un EPUB, lo manda a Mint para narrarlo con la voz neural (F5, voz A),
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
 resaltada, clic para saltar). La generacion corre en Mint (GPU) por SSH.
 """
-import sys, os, re, json, shutil, subprocess, time, unicodedata, tempfile
+import sys, os, re, json, shutil, subprocess, time, unicodedata, tempfile, threading
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer
@@ -14,7 +14,7 @@ from PySide6.QtGui import QShortcut, QKeySequence, QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QSlider, QScrollArea, QFileDialog, QProgressBar,
-    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox,
+    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog,
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
@@ -334,13 +334,17 @@ class LocalGenWorker(QThread):
         self.epub = Path(epub_path); self.name = name or slug(self.epub.stem)
         self.model = model; self.voice = voice; self.mode = "run"; self.proc = None
         self.resume = resume
+        self.procs = []                                   # procesos de los tramos (modo paralelo)
+        self._plock = threading.Lock()
 
     def stop(self, save):
         self.mode = "stopsave" if save else "cancel"
-        p = self.proc
-        if p and p.poll() is None:
-            try: p.terminate()
-            except Exception: pass
+        with self._plock:
+            procs = [self.proc] + list(self.procs)
+        for p in procs:
+            if p and p.poll() is None:
+                try: p.terminate()
+                except Exception: pass
 
     def run(self):
         tmp_epub = None
@@ -375,6 +379,9 @@ class LocalGenWorker(QThread):
                     cmd += ["--resume"]
                 if pron.exists():
                     cmd += ["--pron", str(pron)]
+                if load_config().get("qc_auto"):             # QC también en XTTS (voz-server Whisper)
+                    cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
+                            "--qc-threshold", "0.85", "--qc-retries", "2"]
             else:
                 md = model_dir(self.model["id"])
                 cmd = [str(VPY), "-I", str(CC_ENGINE), "generate",
@@ -391,32 +398,17 @@ class LocalGenWorker(QThread):
                 if load_config().get("qc_auto"):
                     cmd += ["--qc-url", voz_http_url() + "/v1/audio/transcriptions",
                             "--qc-threshold", "0.85", "--qc-retries", "2"]
-            self.progress.emit("Reanudando la narración…" if self.resume else "Cargando el modelo…", -1)
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                 text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
-            self.proc = p
-            logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
-            total = done = 0; cap_cur = cap_tot = 0
-            for line in p.stdout:
-                line = line.rstrip()
-                try: logf.write(line + "\n"); logf.flush()
-                except Exception: pass
-                m = re.search(r"capitulos:\s*(\d+)", line)
-                if m: cap_tot = int(m.group(1))
-                m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
-                if m: cap_cur = int(m.group(1)); total += int(m.group(2))
-                if re.match(r"\s*frase \d+/\d+", line):
-                    done += 1; pct = int(done / total * 100) if total else -1
-                    self.progress.emit(f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}", pct)
-                elif "regenerando" in line:
-                    self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
-                elif "reintento en CPU" in line:
-                    self.progress.emit("La GPU estaba ocupada; generando en CPU (más lento)…", -1)
-                elif "modelo cargado" in line:
-                    self.progress.emit("Modelo cargado, narrando…", -1)
-            p.wait()
-            try: logf.close()
-            except Exception: pass
+            # Nº de tramos en paralelo: reparte los capítulos entre N procesos en la
+            # misma GPU (XTTS no la satura → varios a la vez suman). 1 = camino clásico.
+            streams = int(load_config().get("parallel_streams", 1) or 1)
+            st0 = read_gen_state(dest) or {}
+            if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
+                streams = int(st0["streams"] or 1)
+            n = self._count_chapters(cmd) if streams > 1 else 1
+            if streams > 1 and n > 1:
+                self._run_parallel(cmd, dest, max(1, min(streams, n)), n)
+            else:
+                self._run_single(cmd, dest)
             if self.mode == "cancel":
                 # Cancelar una generación DESDE CERO descarta todo; cancelar una
                 # REANUDACIÓN conserva lo que ya había (no borrar el libro entero).
@@ -445,6 +437,134 @@ class LocalGenWorker(QThread):
         finally:
             if tmp_epub:
                 try: os.remove(tmp_epub)
+                except Exception: pass
+
+    # ---- un solo proceso (camino clásico) --------------------------------
+    def _run_single(self, cmd, dest):
+        self.progress.emit("Reanudando la narración…" if self.resume else "Cargando el modelo…", -1)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                             text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
+        self.proc = p
+        logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
+        total = done = 0; cap_cur = cap_tot = 0
+        for line in p.stdout:
+            line = line.rstrip()
+            try: logf.write(line + "\n"); logf.flush()
+            except Exception: pass
+            m = re.search(r"capitulos:\s*(\d+)", line)
+            if m: cap_tot = int(m.group(1))
+            m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
+            if m: cap_cur = int(m.group(1)); total += int(m.group(2))
+            if re.match(r"\s*frase \d+/\d+", line):
+                done += 1; pct = int(done / total * 100) if total else -1
+                self.progress.emit(f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}", pct)
+            elif "regenerando" in line:
+                self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
+            elif "reintento en CPU" in line:
+                self.progress.emit("La GPU estaba ocupada; generando en CPU (más lento)…", -1)
+            elif "modelo cargado" in line:
+                self.progress.emit("Modelo cargado, narrando…", -1)
+        p.wait()
+        try: logf.close()
+        except Exception: pass
+
+    # ---- varios tramos en paralelo ---------------------------------------
+    def _count_chapters(self, base_cmd):
+        """Nº de capítulos del EPUB, lanzando el subcomando `count` del motor."""
+        try:
+            i = base_cmd.index("--epub"); epub = base_cmd[i + 1]
+            exe = base_cmd[0]; script = base_cmd[2]
+            p = subprocess.run([exe, "-I", script, "count", "--epub", epub],
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               text=True, encoding="utf-8", errors="replace",
+                               creationflags=NOWIN, timeout=180)
+            m = re.search(r"CHAPTERS\s+(\d+)", p.stdout or "")
+            return int(m.group(1)) if m else 1
+        except Exception:
+            return 1
+
+    @staticmethod
+    def _split_ranges(n, streams):
+        """Reparte 1..n en `streams` tramos contiguos lo más equilibrados posible."""
+        base, extra = divmod(n, streams)
+        ranges = []; start = 1
+        for i in range(streams):
+            size = base + (1 if i < extra else 0)
+            if size <= 0: continue
+            ranges.append((start, start + size - 1)); start += size
+        return ranges
+
+    def _run_parallel(self, base_cmd, dest, streams, n):
+        ranges = self._split_ranges(n, streams)
+        streams = len(ranges)
+        self._lock = threading.Lock()
+        self._tot_fr = 0; self._done_fr = 0; self._caps_done = 0
+        self.procs = []
+        logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
+        self.progress.emit(f"Narrando en {streams} tramos en paralelo — cargando modelos…", -1)
+
+        def worker(idx, rng):
+            cs, ce = rng
+            cmd = list(base_cmd) + ["--chap-start", str(cs), "--chap-end", str(ce),
+                                    "--manifest-name", f"manifest.p{idx}.json", "--no-state"]
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                 text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
+            with self._plock: self.procs.append(p)
+            for line in p.stdout:
+                line = line.rstrip()
+                with self._lock:
+                    try: logf.write(f"[t{idx}] {line}\n"); logf.flush()
+                    except Exception: pass
+                    mm = re.search(r"\[cap \d+\].*->\s*(\d+) frases", line)
+                    if mm: self._tot_fr += int(mm.group(1))
+                    if "] LISTO" in line:
+                        self._caps_done += 1
+                    if re.match(r"\s*frase \d+/\d+", line):
+                        self._done_fr += 1
+                        pct = int(self._done_fr / self._tot_fr * 100) if self._tot_fr else -1
+                        if pct > 99: pct = 99
+                        self.progress.emit(
+                            f"Narrando en {streams} tramos — capítulo {self._caps_done}/{n} "
+                            f"— frase {self._done_fr}", pct)
+                    elif "QC frase" in line and "regenerando" in line:
+                        self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
+                    elif "reintento en CPU" in line:
+                        self.progress.emit("La GPU estaba ocupada; un tramo va en CPU (más lento)…", -1)
+            p.wait()
+
+        ths = [threading.Thread(target=worker, args=(i, r), daemon=True)
+               for i, r in enumerate(ranges, 1)]
+        for t in ths: t.start()
+        for t in ths: t.join()
+        try: logf.close()
+        except Exception: pass
+        self._merge_manifests(dest, streams, n)
+
+    def _merge_manifests(self, dest, streams, n):
+        """Une los manifest.pN.json de los tramos en un manifest.json ordenado y
+        escribe gen_state.json (complete solo si están TODOS los capítulos)."""
+        merged = []
+        for idx in range(1, streams + 1):
+            try:
+                part = json.loads((dest / f"manifest.p{idx}.json").read_text("utf-8"))
+                if isinstance(part, list): merged += part
+            except Exception: pass
+        merged = [e for e in merged if isinstance(e, dict) and "id" in e]
+        merged.sort(key=lambda e: e["id"])
+        if not merged:
+            return                                        # nada terminado: el post-bloque decide
+        complete = (self.mode == "run") and sum(1 for e in merged if e.get("done")) >= n
+        def _atomic(path, text):
+            tmp = str(path) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f: f.write(text)
+            os.replace(tmp, path)
+        _atomic(dest / "manifest.json", json.dumps(merged, ensure_ascii=False, indent=2))
+        _atomic(dest / "gen_state.json",
+                json.dumps({"total": n, "complete": bool(complete), "streams": streams},
+                           ensure_ascii=False))
+        if complete:                                      # ya no hacen falta los parciales
+            for idx in range(1, streams + 1):
+                try: (dest / f"manifest.p{idx}.json").unlink()
                 except Exception: pass
 
 
@@ -979,6 +1099,24 @@ class ModelsScreen(QWidget):
         self.qcChk.toggled.connect(self._qc_changed)
         self.col.addWidget(self.qcChk)
 
+        self.parRow = QWidget()
+        pr2 = QHBoxLayout(self.parRow); pr2.setContentsMargins(0, 0, 0, 0); pr2.setSpacing(10)
+        plb = QLabel("Velocidad / uso de GPU:"); plb.setObjectName("booksub")
+        self.streamsSel = QComboBox()
+        self.streamsSel.addItem("Normal — 1 tramo (no satura la GPU, más lento)", 1)
+        self.streamsSel.addItem("Rápido — 2 tramos (≈1,8×)", 2)
+        self.streamsSel.addItem("Máximo — 3 tramos (≈2,6×, exprime la GPU)", 3)
+        self.streamsSel.setToolTip("Cómo narrar en este equipo:\n"
+                                   "• Normal: un solo proceso, como siempre. No satura la GPU "
+                                   "(puedes seguir usándola), pero es lo más lento.\n"
+                                   "• Rápido / Máximo: reparte los capítulos entre 2 o 3 procesos "
+                                   "a la vez. Mucho más rápido, pero la GPU queda muy cargada "
+                                   "(con 3, al límite: no juegues mientras narra). Si diera error "
+                                   "de memoria de la GPU, baja de 3 a 2.")
+        self.streamsSel.currentIndexChanged.connect(self._streams_changed)
+        pr2.addWidget(plb); pr2.addWidget(self.streamsSel); pr2.addStretch(1)
+        self.col.addWidget(self.parRow)
+
         self.note = QLabel(""); self.note.setObjectName("hint"); self.note.setWordWrap(True)
         self.col.addWidget(self.note)
 
@@ -1032,6 +1170,7 @@ class ModelsScreen(QWidget):
         """Parte de la pantalla que depende de local/remoto. Se puede llamar sola
         (al cambiar el motor) sin reconstruir la lista de modelos/voces ni perder scroll."""
         self.serverRow.setVisible(cfg["engine"] != "local")
+        self.parRow.setVisible(cfg["engine"] == "local")   # los tramos paralelos son solo locales
         if cfg["engine"] == "local" and not engine_ready():
             self.note.setText("El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio.")
         elif cfg["engine"] == "local":
@@ -1046,6 +1185,9 @@ class ModelsScreen(QWidget):
         self.engineSel.blockSignals(False)
         self.serverEdit.setText(cfg.get("server", ""))
         self.qcChk.blockSignals(True); self.qcChk.setChecked(bool(cfg.get("qc_auto"))); self.qcChk.blockSignals(False)
+        self.streamsSel.blockSignals(True)
+        si = {1: 0, 2: 1, 3: 2}.get(int(cfg.get("parallel_streams", 1) or 1), 0)
+        self.streamsSel.setCurrentIndex(si); self.streamsSel.blockSignals(False)
         self.langSel.blockSignals(True)
         li = next((i for i, (c, _n) in enumerate(LANGS) if c == active_language(cfg)), 0)
         self.langSel.setCurrentIndex(li); self.langSel.blockSignals(False)
@@ -1164,6 +1306,9 @@ class ModelsScreen(QWidget):
 
     def _qc_changed(self, on):
         cfg = load_config(); cfg["qc_auto"] = bool(on); save_config(cfg)
+
+    def _streams_changed(self, _):
+        cfg = load_config(); cfg["parallel_streams"] = int(self.streamsSel.currentData() or 1); save_config(cfg)
 
     def _lang_changed(self, _):
         cfg = load_config(); cfg["language"] = self.langSel.currentData(); save_config(cfg)
@@ -1428,7 +1573,9 @@ class PlayerPage(QWidget):
         self._manual_scroll = False   # si el usuario paginó a mano, no recolocar solo
 
         self.player = QMediaPlayer()
-        self.audio = QAudioOutput(); self.audio.setVolume(1.0); self.player.setAudioOutput(self.audio)
+        self.audio = QAudioOutput()
+        self._vol = max(0, min(100, int(load_config().get("volume", 100) or 100)))
+        self.audio.setVolume(self._vol / 100); self.player.setAudioOutput(self.audio)
         self.player.positionChanged.connect(self.on_pos)
         self.player.durationChanged.connect(self.on_dur)
         self.player.playbackStateChanged.connect(self.on_state)
@@ -1459,6 +1606,11 @@ class PlayerPage(QWidget):
         self.outSel = QComboBox(); self.outSel.setMaximumWidth(190); self.outSel.setToolTip("Salida de audio")
         self.outSel.currentIndexChanged.connect(self._out_changed)
         hb.addWidget(self.outSel)
+        self.volSld = QSlider(Qt.Horizontal); self.volSld.setRange(0, 100)
+        self.volSld.setValue(self._vol); self.volSld.setFixedWidth(90)
+        self.volSld.setToolTip("Volumen")
+        self.volSld.valueChanged.connect(self._vol_changed)
+        hb.addWidget(self.volSld)
         self.chap = QComboBox(); self.chap.setMinimumWidth(150)
         self.chap.currentIndexChanged.connect(self.on_chap_change)
         hb.addWidget(self.chap)
@@ -1605,6 +1757,11 @@ class PlayerPage(QWidget):
         i = self.outSel.currentIndex()
         if 0 <= i < len(getattr(self, "_devs", [])):
             cfg = load_config(); cfg["audio_device"] = self._devs[i].description(); save_config(cfg)
+
+    def _vol_changed(self, v):
+        v = max(0, min(100, int(v)))
+        self._vol = v; self.audio.setVolume(v / 100)
+        cfg = load_config(); cfg["volume"] = v; save_config(cfg)
 
     def stop(self):
         self._save_playback()                               # recordar el punto al salir
@@ -1905,6 +2062,16 @@ class Cuentacuentos(QMainWindow):
 
     def _generate(self, path, name=None, resume=False):
         if not path or not os.path.exists(path): return
+        # Candado SÍNCRONO: no permitir una segunda narración mientras otra está en
+        # marcha. Un doble disparo (p. ej. doble clic) lanzaba procesos duplicados que
+        # se pisaban en la GPU. Usamos una bandera y no worker.isRunning(), porque el
+        # hilo tarda un instante en figurar como "running" tras start() y el 2º disparo
+        # se colaba en ese hueco. La bandera se marca aquí, antes de arrancar nada.
+        if getattr(self, "_gen_busy", False):
+            QMessageBox.information(self, "Storyteller",
+                "Ya hay una narración en marcha. Espera a que termine o deténla "
+                "antes de empezar otra.")
+            return
         cfg = load_config()
         if cfg["engine"] == "local":
             m = model_by_id(cfg["model"], cfg)
@@ -1921,6 +2088,7 @@ class Cuentacuentos(QMainWindow):
             self.worker = LocalGenWorker(path, m, active_voice(cfg), name=name, resume=resume)
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
+        self._gen_busy = True                             # ya comprometidos: bloquea un 2º disparo
         self.library.set_generating(True, "Reanudando…" if resume else "Preparando…", -1)
         self.worker.progress.connect(lambda t, p: self.library.set_generating(True, t, p))
         self.worker.failed.connect(self._gen_fail)
@@ -1939,6 +2107,7 @@ class Cuentacuentos(QMainWindow):
         self.worker.stop(False)
 
     def _cleanup_gen_conns(self):
+        self._gen_busy = False                            # libera el candado de narración
         for btn in (self.library.stopBtn, self.library.cancelBtn):
             try: btn.clicked.disconnect()
             except Exception: pass
@@ -1959,6 +2128,43 @@ class Cuentacuentos(QMainWindow):
         self.library.set_generating(False)
         self.library.refresh()
         self.open_book(folder)
+
+    # ---- cierre de la aplicación -----------------------------------------
+    def _stop_worker_and_wait(self, worker, label):
+        """Al cerrar la app: detiene y GUARDA el trabajo en curso, esperando a que el
+        worker vuelque su estado a disco (manifest.json + gen_state.json). Sin esta
+        espera, matar la ventana corta el QThread de golpe y el libro queda en limbo
+        (sin manifest → ni aparece en la biblioteca ni es reanudable)."""
+        if not worker or not worker.isRunning():
+            return
+        try: worker.stop(True)                       # equivale a «Detener y guardar»
+        except Exception: pass
+        dlg = QProgressDialog(label, "", 0, 0, self)     # barra indeterminada, sin cancelar
+        dlg.setWindowTitle("Storyteller")
+        dlg.setCancelButton(None)
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.show()
+        deadline = time.monotonic() + 45             # tope de seguridad: el cierre nunca cuelga
+        while worker.isRunning() and time.monotonic() < deadline:
+            worker.wait(150)
+            QApplication.processEvents()
+        try: dlg.close()
+        except Exception: pass
+
+    def closeEvent(self, event):
+        # Guardar el marcador de escucha del reproductor (stop() lo persiste antes de parar).
+        try: self.player.stop()
+        except Exception: pass
+        # Detener y GUARDAR cualquier narración / transcripción en marcha, esperando a que
+        # el estado quede escrito (→ el libro aparece «a medias» y se puede reanudar).
+        try: self._stop_worker_and_wait(getattr(self, "worker", None),
+                                         "Guardando la narración en curso…")
+        except Exception: pass
+        try: self._stop_worker_and_wait(getattr(self, "imp", None),
+                                         "Guardando la transcripción en curso…")
+        except Exception: pass
+        event.accept()
 
 
 STYLE = """
