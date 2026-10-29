@@ -498,7 +498,7 @@ class LocalGenWorker(QThread):
         ranges = self._split_ranges(n, streams)
         streams = len(ranges)
         self._lock = threading.Lock()
-        self._tot_fr = 0; self._done_fr = 0; self._caps_done = 0
+        self._tot_fr = 0; self._done_fr = 0; self._caps_seen = set()
         self.procs = []
         logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
         self.progress.emit(f"Narrando en {streams} tramos en paralelo — cargando modelos…", -1)
@@ -515,16 +515,16 @@ class LocalGenWorker(QThread):
                 with self._lock:
                     try: logf.write(f"[t{idx}] {line}\n"); logf.flush()
                     except Exception: pass
+                    cm = re.search(r"\[cap (\d+)\]", line)
+                    if cm: self._caps_seen.add(int(cm.group(1)))   # capítulos CON contenido (= los que salen en "ir a capítulo"); en paralelo/reanudación cuadra con la lista del reproductor
                     mm = re.search(r"\[cap \d+\].*->\s*(\d+) frases", line)
                     if mm: self._tot_fr += int(mm.group(1))
-                    if "] LISTO" in line:
-                        self._caps_done += 1
                     if re.match(r"\s*frase \d+/\d+", line):
                         self._done_fr += 1
                         pct = int(self._done_fr / self._tot_fr * 100) if self._tot_fr else -1
                         if pct > 99: pct = 99
                         self.progress.emit(
-                            f"Narrando en {streams} tramos — capítulo {self._caps_done}/{n} "
+                            f"Narrando en {streams} tramos — capítulo {len(self._caps_seen)}/{n} "
                             f"— frase {self._done_fr}", pct)
                     elif "QC frase" in line and "regenerando" in line:
                         self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
