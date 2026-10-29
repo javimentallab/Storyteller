@@ -147,12 +147,12 @@ def cmd_generate(a):
             # recall baja del umbral, regenera (XTTS al re-inferir da otra muestra) y se
             # queda con la mejor. Igual que el motor F5; reutiliza utilidades de cc_engine.
             best_wav = None; best_score = -1e9; sr = 24000
-            attempts = (a.qc_retries + 1) if a.qc_url else 1
+            attempts = (a.qc_retries + 1) if E.qc_on(a) else 1
             for att in range(attempts):
                 wav, sr = infer(gen_text)
-                if not a.qc_url:
+                if not E.qc_on(a):
                     best_wav = wav; break
-                hyp = E.qc_transcribe(wav, sr, a.qc_url)
+                hyp = E.qc_hyp(wav, sr, a)
                 if hyp is None:
                     if best_wav is None: best_wav = wav
                     print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
@@ -202,7 +202,8 @@ def main():
     g.add_argument("--chap-end", type=int, default=0)        # tramo paralelo: ultimo cap (0=sin tope)
     g.add_argument("--manifest-name", default="manifest.json")
     g.add_argument("--no-state", action="store_true")
-    g.add_argument("--qc-url", default="")                   # endpoint Whisper; vacío = QC off
+    g.add_argument("--qc-url", default="")                   # endpoint Whisper HTTP (voz-server)
+    g.add_argument("--qc-whisper-dir", default="")           # modelo Whisper LOCAL (sin red); uno u otro activa el QC
     g.add_argument("--qc-threshold", type=float, default=0.85)
     g.add_argument("--qc-retries", type=int, default=2)
     g.set_defaults(func=cmd_generate)

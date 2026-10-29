@@ -203,6 +203,46 @@ def qc_transcribe(wav, sr, url, timeout=60):
         try: os.remove(tmp)
         except OSError: pass
 
+_QC_LOCAL_MODEL = None
+def qc_load_local(model_dir):
+    """Carga (una vez) un faster-whisper LOCAL para el QC. A propósito en CPU int8:
+    el QC corre junto a la narración (y hasta 3 tramos XTTS a la vez) en la misma
+    GPU; en CPU no pelea VRAM ni tumba la generación."""
+    global _QC_LOCAL_MODEL
+    if _QC_LOCAL_MODEL is None:
+        from faster_whisper import WhisperModel
+        _QC_LOCAL_MODEL = WhisperModel(model_dir, device="cpu", compute_type="int8")
+    return _QC_LOCAL_MODEL
+
+def qc_transcribe_local(wav, sr, model_dir, lang=None):
+    """Transcribe la frase con un Whisper LOCAL (sin red). Devuelve el texto o None."""
+    import numpy as np, soundfile as sf
+    fd, tmp = tempfile.mkstemp(suffix=".wav"); os.close(fd)
+    try:
+        sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
+        model = qc_load_local(model_dir)
+        segs, _ = model.transcribe(tmp, language=(lang or None), vad_filter=True, beam_size=1)
+        return " ".join(s.text for s in segs)
+    except Exception as e:
+        print(f"  QC local falló: {type(e).__name__}", flush=True)
+        return None
+    finally:
+        try: os.remove(tmp)
+        except OSError: pass
+
+def qc_on(a):
+    """¿QC activo? Lo activa un Whisper LOCAL (--qc-whisper-dir) o remoto (--qc-url)."""
+    return bool(getattr(a, "qc_whisper_dir", "") or getattr(a, "qc_url", ""))
+
+def qc_hyp(wav, sr, a):
+    """Transcribe para QC donde toque: LOCAL si hay --qc-whisper-dir, si no por HTTP."""
+    wd = getattr(a, "qc_whisper_dir", "")
+    if wd:
+        return qc_transcribe_local(wav, sr, wd, getattr(a, "lang", None))
+    if getattr(a, "qc_url", ""):
+        return qc_transcribe(wav, sr, a.qc_url)
+    return None
+
 def cmd_download(a):
     from huggingface_hub import hf_hub_download
     os.makedirs(a.dest, exist_ok=True)
@@ -476,7 +516,7 @@ def cmd_generate(a):
             s = sents[si]
             gen_text = normalize_text(s)
             best_wav = None; best_score = -1e9
-            attempts = (a.qc_retries + 1) if a.qc_url else 1
+            attempts = (a.qc_retries + 1) if qc_on(a) else 1
             for att in range(attempts):
                 if att > 0:
                     try:
@@ -487,9 +527,9 @@ def cmd_generate(a):
                 wav, sr, _ = m.infer(ref_file=a.voice, ref_text=ref_text, gen_text=gen_text,
                                      remove_silence=True, nfe_step=nfe)
                 wav = np.asarray(wav, dtype="float32")
-                if not a.qc_url:
+                if not qc_on(a):
                     best_wav = wav; break
-                hyp = qc_transcribe(wav, sr, a.qc_url)
+                hyp = qc_hyp(wav, sr, a)
                 if hyp is None:
                     if best_wav is None: best_wav = wav
                     print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
@@ -541,7 +581,8 @@ def main():
     g.add_argument("--voice-text", default=os.path.join(here, "voices", "narrator.txt"))
     g.add_argument("--gap", type=float, default=0.28); g.add_argument("--nfe", type=int, default=40)
     g.add_argument("--device", default="auto")
-    g.add_argument("--qc-url", default="")                   # endpoint Whisper; vacío = QC off
+    g.add_argument("--qc-url", default="")                   # endpoint Whisper HTTP (voz-server)
+    g.add_argument("--qc-whisper-dir", default="")           # modelo Whisper LOCAL (sin red); uno u otro activa el QC
     g.add_argument("--qc-threshold", type=float, default=0.85)
     g.add_argument("--qc-retries", type=int, default=2)
     g.add_argument("--resume", action="store_true")         # continuar un libro a medias
