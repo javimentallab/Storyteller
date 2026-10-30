@@ -227,6 +227,16 @@ def list_books():
     return sorted(out, key=lambda b: b["title"].lower())
 
 
+def chap_label(m):
+    """Nombre del capítulo en las listas: el título del propio libro (que ya lleva su número, «18. …»),
+    sin anteponer la posición en la lista — con tramos en paralelo hay huecos y la posición no es el capítulo.
+    Las secciones sin título (el motor les pone «Capitulo N») salen como «Sección N»."""
+    t = (m.get("title") or "").strip()
+    if not t or re.fullmatch(r"Capitulo \d+", t):
+        return f"Sección {m.get('id', '?')}"
+    return t
+
+
 # ---------------------------------------------------------------- generacion
 class GenWorker(QThread):
     progress = Signal(str, int)
@@ -1748,7 +1758,7 @@ class PlayerPage(QWidget):
         if len(self.manifest) == 1:
             QMessageBox.information(self, "Ir a capítulo", "Este título tiene un solo capítulo.")
             return
-        items = [f"{i+1}. {m['title']}" for i, m in enumerate(self.manifest)]
+        items = [chap_label(m) for m in self.manifest]
         cur = self.cap if 0 <= self.cap < len(items) else 0
         item, ok = QInputDialog.getItem(self, "Ir a capítulo", "Capítulo:", items, cur, False)
         if ok and item in items:
@@ -1855,7 +1865,7 @@ class PlayerPage(QWidget):
                              else self.book_dir.name.replace("-", " ").capitalize())
         self.chap.blockSignals(True); self.chap.clear()
         for i, m in enumerate(self.manifest):
-            self.chap.addItem(f"{i+1}. {m['title']}")
+            self.chap.addItem(chap_label(m))
         self.chap.setVisible(len(self.manifest) > 1)
         self.chap.blockSignals(False)
         self.gotoChapBtn.setEnabled(len(self.manifest) > 1)
