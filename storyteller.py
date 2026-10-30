@@ -228,13 +228,14 @@ def list_books():
 
 
 def chap_label(m):
-    """Nombre del capítulo en las listas: el título del propio libro (que ya lleva su número, «18. …»),
-    sin anteponer la posición en la lista — con tramos en paralelo hay huecos y la posición no es el capítulo.
-    Las secciones sin título (el motor les pone «Capitulo N») salen como «Sección N»."""
+    """Nombre del capítulo en las listas: «nº de sección · título del libro» («23 · 18. Encuentra…»).
+    El nº es el de la sección en el EPUB (= el de la barra «capítulo X/n»), no la posición en la lista:
+    con tramos en paralelo hay huecos. Las secciones sin título (el motor les pone «Capitulo N») salen «Sección N»."""
+    n = m.get("id", "?")
     t = (m.get("title") or "").strip()
     if not t or re.fullmatch(r"Capitulo \d+", t):
-        return f"Sección {m.get('id', '?')}"
-    return t
+        t = f"Sección {n}"
+    return f"{n} · {t}"
 
 
 # ---------------------------------------------------------------- generacion
