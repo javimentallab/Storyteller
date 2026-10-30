@@ -192,6 +192,78 @@ def fmt(ms):
     s = max(0, int(ms // 1000))
     return f"{s // 60}:{s % 60:02d}"
 
+def fmt_eta(sec):
+    """«quedan ~1 h 10 min (hacia las 14:35)» para la barra de narración."""
+    if sec is None: return "calculando tiempo restante…"
+    m = int(round(sec / 60))
+    if m < 1: dur = "menos de 1 min"
+    elif m < 60: dur = f"~{m} min"
+    else: dur = f"~{m // 60} h {m % 60:02d} min"
+    end = time.localtime(time.time() + sec); now = time.localtime()
+    days = (time.mktime((end.tm_year, end.tm_mon, end.tm_mday, 0, 0, 0, 0, 0, -1))
+            - time.mktime((now.tm_year, now.tm_mon, now.tm_mday, 0, 0, 0, 0, 0, -1))) // 86400
+    when = time.strftime("%H:%M", end)
+    when = when if days <= 0 else (f"mañana {when}" if days == 1 else f"en {int(days)} días, {when}")
+    return f"quedan {dur} (hacia las {when})" if days <= 0 else f"quedan {dur} ({when})"
+
+class EtaTracker:
+    """Tiempo restante de una narración. Lleva las frases pendientes de CADA capítulo
+    (idempotente: lo que diga el motor sobrescribe) y el ritmo reciente de cada tramo
+    (1, 2 o 3 procesos; últimas WIN frases, incluye QC y cambios de capítulo). El libro
+    acaba cuando acaba el tramo MÁS LENTO."""
+    WIN = 40
+
+    def __init__(self, sents, ranges, dest=None):
+        self.sents = list(sents)                          # frases por capítulo (1-based → [i-1])
+        self.total = sum(self.sents)
+        self.left = {i: n for i, n in enumerate(self.sents, 1)}
+        self.caps = {k: range(cs, ce + 1) for k, (cs, ce) in ranges.items()}
+        self.cur = {}; self.ts = {k: [] for k in ranges}
+        if dest:                                          # reanudar: descontar lo ya narrado
+            for f in Path(dest).glob("manifest*.json"):
+                try: man = json.loads(f.read_text("utf-8"))
+                except Exception: continue
+                for e in man if isinstance(man, list) else []:
+                    if isinstance(e, dict) and e.get("id") in self.left:
+                        done = self.left[e["id"]] if e.get("done") else int(e.get("n") or 0)
+                        self.left[e["id"]] = max(0, min(self.left[e["id"]],
+                                                         self.sents[e["id"] - 1] - done))
+
+    def line(self, k, line):
+        """Actualiza con una línea del motor del tramo k."""
+        m = re.search(r"\[cap (\d+)\]", line)
+        if m:
+            cap = int(m.group(1))
+            if "ya hecho" in line: self.left[cap] = 0
+            elif (q := re.search(r"quedan (\d+)", line)): self.left[cap] = int(q.group(1))
+            elif (q := re.search(r"->\s*(\d+) frases", line)): self.left[cap] = int(q.group(1))
+            else: return
+            self.cur[k] = cap
+            return
+        m = re.match(r"\s*frase (\d+)/(\d+)", line)
+        if m and k in self.cur:
+            self.left[self.cur[k]] = int(m.group(2)) - int(m.group(1))
+            ts = self.ts[k]; ts.append(time.monotonic())
+            if len(ts) > self.WIN: del ts[0]
+
+    def _rem(self, k): return sum(self.left.get(c, 0) for c in self.caps[k])
+
+    def pct(self):
+        left = sum(self._rem(k) for k in self.caps)
+        return min(99, int((self.total - left) / self.total * 100)) if self.total else -1
+
+    def seconds(self):
+        """Segundos que faltan (None = aún sin ritmo medido en algún tramo vivo)."""
+        worst = 0.0; now = time.monotonic()
+        for k in self.caps:
+            r = self._rem(k)
+            if r <= 0: continue
+            ts = self.ts[k]
+            if len(ts) < 4 or ts[-1] <= ts[0]: return None
+            per = (ts[-1] - ts[0]) / (len(ts) - 1)        # s por frase en este tramo
+            worst = max(worst, r * per - min(now - ts[-1], per))
+        return max(0.0, worst)
+
 def read_gen_state(d):
     try:
         return json.loads((Path(d) / "gen_state.json").read_text("utf-8"))
@@ -428,11 +500,12 @@ class LocalGenWorker(QThread):
             st0 = read_gen_state(dest) or {}
             if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
                 streams = int(st0["streams"] or 1)
-            n = self._count_chapters(cmd) if streams > 1 else 1
+            self.progress.emit("Contando las frases del libro…", -1)
+            n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
             if streams > 1 and n > 1:
-                self._run_parallel(cmd, dest, max(1, min(streams, n)), n)
+                self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
             else:
-                self._run_single(cmd, dest)
+                self._run_single(cmd, dest, sents)
             if self.mode == "cancel":
                 # Cancelar una generación DESDE CERO descarta todo; cancelar una
                 # REANUDACIÓN conserva lo que ya había (no borrar el libro entero).
@@ -464,8 +537,9 @@ class LocalGenWorker(QThread):
                 except Exception: pass
 
     # ---- un solo proceso (camino clásico) --------------------------------
-    def _run_single(self, cmd, dest):
+    def _run_single(self, cmd, dest, sents=None):
         self.progress.emit("Reanudando la narración…" if self.resume else "Cargando el modelo…", -1)
+        eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
         self.proc = p
@@ -479,9 +553,12 @@ class LocalGenWorker(QThread):
             if m: cap_tot = int(m.group(1))
             m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
             if m: cap_cur = int(m.group(1)); total += int(m.group(2))
+            if eta: eta.line(1, line)
             if re.match(r"\s*frase \d+/\d+", line):
                 done += 1; pct = int(done / total * 100) if total else -1
-                self.progress.emit(f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}", pct)
+                txt = f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}"
+                if eta: pct = eta.pct(); txt += " — " + fmt_eta(eta.seconds())
+                self.progress.emit(txt, pct)
             elif "regenerando" in line:
                 self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
             elif "reintento en CPU" in line:
@@ -494,7 +571,8 @@ class LocalGenWorker(QThread):
 
     # ---- varios tramos en paralelo ---------------------------------------
     def _count_chapters(self, base_cmd):
-        """Nº de capítulos del EPUB, lanzando el subcomando `count` del motor."""
+        """(nº de capítulos, frases por capítulo) del EPUB, con el subcomando `count`
+        del motor. Las frases salen [] si el motor no las da (sin estimación)."""
         try:
             i = base_cmd.index("--epub"); epub = base_cmd[i + 1]
             exe = base_cmd[0]; script = base_cmd[2]
@@ -503,9 +581,12 @@ class LocalGenWorker(QThread):
                                text=True, encoding="utf-8", errors="replace",
                                creationflags=NOWIN, timeout=180)
             m = re.search(r"CHAPTERS\s+(\d+)", p.stdout or "")
-            return int(m.group(1)) if m else 1
+            ms = re.search(r"^SENTS((?: \d+)*)\s*$", p.stdout or "", re.M)
+            sents = [int(x) for x in ms.group(1).split()] if ms else []
+            n = int(m.group(1)) if m else 1
+            return n, (sents if len(sents) == n and sum(sents) else [])
         except Exception:
-            return 1
+            return 1, []
 
     @staticmethod
     def _split_ranges(n, streams):
@@ -518,9 +599,10 @@ class LocalGenWorker(QThread):
             ranges.append((start, start + size - 1)); start += size
         return ranges
 
-    def _run_parallel(self, base_cmd, dest, streams, n):
+    def _run_parallel(self, base_cmd, dest, streams, n, sents=None):
         ranges = self._split_ranges(n, streams)
         streams = len(ranges)
+        eta = EtaTracker(sents, dict(enumerate(ranges, 1)), dest if self.resume else None) if sents else None
         self._lock = threading.Lock()
         self._tot_fr = 0; self._done_fr = 0; self._caps_seen = set()
         self.procs = []
@@ -543,13 +625,15 @@ class LocalGenWorker(QThread):
                     if cm: self._caps_seen.add(int(cm.group(1)))   # capítulos CON contenido (= los que salen en "ir a capítulo"); en paralelo/reanudación cuadra con la lista del reproductor
                     mm = re.search(r"\[cap \d+\].*->\s*(\d+) frases", line)
                     if mm: self._tot_fr += int(mm.group(1))
+                    if eta: eta.line(idx, line)
                     if re.match(r"\s*frase \d+/\d+", line):
                         self._done_fr += 1
                         pct = int(self._done_fr / self._tot_fr * 100) if self._tot_fr else -1
                         if pct > 99: pct = 99
-                        self.progress.emit(
-                            f"Narrando en {streams} tramos — capítulo {len(self._caps_seen)}/{n} "
-                            f"— frase {self._done_fr}", pct)
+                        txt = (f"Narrando en {streams} tramos — capítulo {len(self._caps_seen)}/{n} "
+                               f"— frase {self._done_fr}")
+                        if eta: pct = eta.pct(); txt += " — " + fmt_eta(eta.seconds())
+                        self.progress.emit(txt, pct)
                     elif "QC frase" in line and "regenerando" in line:
                         self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
                     elif "reintento en CPU" in line:
@@ -1019,6 +1103,7 @@ class LibraryPage(QWidget):
         self.progWrap = QWidget(); self.progWrap.setObjectName("progwrap")
         pv = QVBoxLayout(self.progWrap); pv.setContentsMargins(16, 10, 16, 12); pv.setSpacing(7)
         self.progLabel = QLabel(""); self.progLabel.setObjectName("proglabel")
+        self.progLabel.setWordWrap(True)                  # con el tiempo restante la línea es larga
         self.prog = QProgressBar(); self.prog.setTextVisible(False); self.prog.setFixedHeight(6)
         pv.addWidget(self.progLabel); pv.addWidget(self.prog)
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
