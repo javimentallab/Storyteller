@@ -49,7 +49,14 @@ def normalize_numbers(text):
         return text
     text = re.sub(r"(?<=\d)[   ](?=\d{3}\b)", "", text)  # 3 000 / 3<nbsp>000 -> 3000
     text = re.sub(r"(?<=\d)\.(?=\d{3}\b)", "", text)      # 1.000 -> 1000
-    return re.sub(r"\d+(?:,\d+)?", _n2w, text)
+    # miles al estilo inglés que dejan las traducciones: 3,000 / 21,000 -> 3000
+    # (solo grupos exactos de 3 cifras; un decimal "3,5" no casa)
+    text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b(?![,.]\d)", lambda m: m.group(0).replace(",", ""), text)
+    text = re.sub(r"\d+(?:,\d+)?", _n2w, text)
+    if NUM_LANG == "es":                                  # 21000 -> veintiún mil, no "veintiuno mil"
+        text = re.sub(r"\bveintiuno (mil|millones)\b", r"veintiún \1", text)
+        text = re.sub(r"\buno (mil|millones)\b", r"un \1", text)
+    return text
 
 
 # ======================================================================
@@ -85,14 +92,36 @@ def load_pron(path):
 def _spell_letters(w):
     return " ".join(_LETTER_ES.get(c, c) for c in w.lower())
 
+# Palabras cortas que en MAYÚSCULAS son palabras, no siglas (títulos y
+# etiquetas de diálogo: "PRUEBA ESTO EN UNA REUNIÓN", "YO:", "TÚ:").
+_SHORT_WORDS = {"A", "Y", "O", "U", "E", "DE", "LA", "EL", "EN", "NO", "YO", "TU", "TÚ",
+                "ÉL", "MI", "MÍ", "SU", "SE", "SÉ", "LO", "UN", "AL", "ES", "YA", "SI",
+                "SÍ", "NI", "VA", "ME", "TE", "LE", "OS", "HA", "HE", "DA", "DE", "VE",
+                "OH", "AY", "EH", "AH", "IR", "TÉ", "AÚN", "OÍR"}
+# Abreviaturas que se leen enteras (en mayúsculas o no): Sr. -> señor, EE. UU. ...
+_ABBR = [(r"\bEE\.?\s?UU\.?(?!\w)", "Estados Unidos"),
+         (r"\b[Ss][Rr][Aa]\.(?=\s)", "señora"), (r"\b[Ss][Rr][Tt][Aa]\.(?=\s)", "señorita"),
+         (r"\b[Ss][Rr]\.(?=\s)", "señor"), (r"\b[Dd][Rr][Aa]\.(?=\s)", "doctora"),
+         (r"\b[Dd][Rr]\.(?=\s)", "doctor"), (r"\b[Jj][Rr]\.?(?!\w)", "júnior")]
+_V = "AEIOUÁÉÍÓÚÜ"
+
 def _pronounceable(w):
     """Heurística: ¿parece una palabra leíble (no una sigla deletreada)?"""
+    up = w.upper()
     low = w.lower()
     vowels = sum(c in "aeiouáéíóúü" for c in low)
     if vowels == 0:
         return False
+    if up in _SHORT_WORDS:
+        return True
+    if len(up) <= 2:
+        return False
+    if len(up) == 3:
+        # forma de sílaba española: DOC, VOZ, SIN, DEL, MÁS (CVC), IRA, UNA (VCV),
+        # CIA (CVV). CPU, USB, ADN, FBI no casan -> se deletrean.
+        return bool(re.fullmatch(f"[^{_V}][{_V}]{{1,2}}[^{_V}]?|[{_V}][^{_V}][{_V}]", up))
     # sin vocales seguidas imposibles y con proporción de vocales razonable
-    return vowels >= max(1, len(low) // 4) and len(low) >= 4
+    return vowels >= max(1, len(low) // 4)
 
 def _fix_caps(token):
     """Convierte una palabra TODO-MAYÚSCULAS a algo que F5 lea bien."""
@@ -144,6 +173,8 @@ def _lower_initial(text):
 def normalize_text(text):
     """Pipeline completo para el audio (no toca el subtítulo)."""
     text = normalize_punct(text)
+    for pat, rep in _ABBR:
+        text = re.sub(pat, rep, text)
     text = " ".join(_fix_caps(t) for t in text.split(" "))
     text = _lower_initial(text)
     text = _apply_pron(text)
