@@ -271,7 +271,7 @@ def main():
     g.set_defaults(func=cmd_generate)
     c = sub.add_parser("count")                              # nº de capitulos (reparto de tramos)
     c.add_argument("--epub", required=True)
-    c.set_defaults(func=lambda a: print("CHAPTERS", len(E.chapters_from_epub(a.epub)), flush=True))
+    c.set_defaults(func=E.cmd_count)                         # CHAPTERS + SENTS (mismo reparto en frases)
     a = ap.parse_args(); a.func(a)
 
 if __name__ == "__main__":

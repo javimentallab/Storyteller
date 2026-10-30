@@ -418,8 +418,11 @@ def write_state(outdir, total, complete):
                  json.dumps({"total": total, "complete": bool(complete)}, ensure_ascii=False))
 
 def cmd_count(a):
-    """Imprime el nº de capitulos del EPUB (sin cargar el modelo), para repartir tramos."""
-    print("CHAPTERS", len(chapters_from_epub(a.epub)), flush=True)
+    """Imprime el nº de capitulos del EPUB (sin cargar el modelo), para repartir tramos,
+    y las frases de cada uno (SENTS), para que la app estime el tiempo restante."""
+    chaps = chapters_from_epub(a.epub)
+    print("CHAPTERS", len(chaps), flush=True)
+    print("SENTS", " ".join(str(len(split_sentences(ch["text"]))) for ch in chaps), flush=True)
 
 def cmd_generate(a):
     import numpy as np
