@@ -1658,8 +1658,12 @@ class PlayerPage(QWidget):
         self.playBtn.clicked.connect(self.toggle)
         self.tcur = QLabel("0:00"); self.tcur.setObjectName("time")
         self.speed = QComboBox()
-        for v in ("0,75×", "1×", "1,25×", "1,5×", "1,75×", "2×"): self.speed.addItem(v)
-        self.speed.setCurrentIndex(1); self.speed.currentIndexChanged.connect(self.on_speed)
+        self._speeds = [round(0.75 + 0.05 * i, 2) for i in range(26)]  # 0,75 .. 2,00 en pasos de 0,05
+        for v in self._speeds:
+            lbl = f"{v:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+            self.speed.addItem(f"{lbl}×")
+        self.speed.setCurrentIndex(self._speeds.index(1.0))
+        self.speed.currentIndexChanged.connect(self.on_speed)
         spd = QLabel("Velocidad"); spd.setObjectName("time")
         ctr.addWidget(self.prevBtn); ctr.addWidget(self.back10); ctr.addWidget(self.playBtn)
         ctr.addWidget(self.fwd10); ctr.addWidget(self.nextBtn); ctr.addSpacing(10); ctr.addWidget(self.tcur)
@@ -1968,7 +1972,8 @@ class PlayerPage(QWidget):
             self._pause_until = time.monotonic() + 4.5
 
     def on_speed(self, idx):
-        self.player.setPlaybackRate([0.75, 1.0, 1.25, 1.5, 1.75, 2.0][idx])
+        if 0 <= idx < len(self._speeds):
+            self.player.setPlaybackRate(self._speeds[idx])
 
     def on_chap_change(self, i):
         self.load_chap(i, self.player.playbackState() == QMediaPlayer.PlayingState)
