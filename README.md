@@ -35,14 +35,14 @@ Los pesos de los modelos y las voces se descargan desde *Modelos* a `~/cuentacue
 
 ## Uso
 
-- **Windows:** `Cuentacuentos.bat` (o `pythonw cuentacuentos.py`).
-- **Linux/macOS:** `./storyteller.sh` (o `python3 cuentacuentos.py`).
+- **Windows:** `Storyteller.bat` (o `pythonw storyteller.py`).
+- **Linux/macOS:** `./storyteller.sh` (o `python3 storyteller.py`).
 
-Argumentos: `cuentacuentos.py <libro.epub>` genera, `--book <carpeta>` abre uno hecho.
+Argumentos: `storyteller.py <libro.epub>` genera, `--book <carpeta>` abre uno hecho.
 
 ## Estructura
 
-- `cuentacuentos.py` — la aplicación (biblioteca + reproductor + gestor de modelos).
+- `storyteller.py` — la aplicación (biblioteca + reproductor + gestor de modelos).
 - `engine/cc_engine.py` — motor local: `download` / `generate` (F5) y
   `whisper-download` / `whisper` (transcripción en streaming).
 
