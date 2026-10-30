@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Cuentacuentos — app de escritorio (PySide6).
+Storyteller — app de escritorio (PySide6).
 Biblioteca de libros narrados + reproductor con subtitulos sincronizados.
 Lee un EPUB, lo manda a Mint para narrarlo con la voz neural (F5, voz A),
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
@@ -2227,7 +2227,7 @@ QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
 
 def main():
     app = QApplication(sys.argv)
-    _ico = HOME_CC / "cuentacuentos.ico"
+    _ico = HOME_CC / "storyteller.ico"
     if _ico.exists(): app.setWindowIcon(QIcon(str(_ico)))
     win = Cuentacuentos(); win.show()
     a = sys.argv[1:]
