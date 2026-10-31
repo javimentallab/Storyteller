@@ -1,0 +1,221 @@
+# Polski. NN|tekst, NN = pozycja w st_lang.SOURCE; \n = nowa linia; zachować {0}, {1}…
+0|F5 hiszpański
+1|Hiszpański z Hiszpanii, wysoka jakość. To głos A.
+2|F5 angielski (oficjalny)
+3|Angielski (oficjalny model bazowy F5-TTS). Najlepszy z angielskim głosem referencyjnym.
+4|XTTS v2 (wielojęzyczny)
+5|Wielojęzyczny: dobrze wymawia angielskie terminy w hiszpańskim tekście. Klonuje twój głos. Zużywa więcej VRAM niż F5.
+6|Szybki; jakość wystarczająca do napisów audiobooków.
+7|Lepsza jakość, nieco wolniejszy.
+8|Najwyższa jakość; najcięższy i najwolniejszy.
+9|Angielski — przykład F5
+10|Hiszpański
+11|Wykryj automatycznie
+12|Angielski
+13|Francuski
+14|Niemiecki
+15|Włoski
+16|Portugalski
+17|Kataloński
+18|Galicyjski
+19|Baskijski
+20|QC jest włączone, ale nie pobrano modelu Whisper. Pobierz go w „Modelach”, aby sprawdzać jakość. Czytam bez QC.
+21|Głos A — niski (F5 hiszpański)
+22|obliczam pozostały czas…
+23|mniej niż 1 min
+24|~{0} min
+25|~{0} h {1} min
+26|jutro {0}
+27|za {0} dni, {1}
+28|zostało {0} (koniec około {1})
+29|zostało {0} ({1})
+30|Sekcja {0}
+31|Wysyłam EPUB na serwer…
+32|Nie udało się wysłać EPUB na serwer:\n
+33|Wznawiam silnik mowy…
+34|Uruchamiam silnik mowy…
+35|Czytam rozdział {0}/{1} — zdanie {2}
+36|Sprawdzam jakość (QC) i generuję zdanie od nowa…
+37|Rozdział {0} gotowy
+38|Zwalniam GPU…
+39|Zapisuję wygenerowane…
+40|Pobieram nagranie…
+41|Zatrzymano, ale żaden rozdział nie był jeszcze gotowy do zapisania.
+42|Generowanie się skończyło, ale nie udało się pobrać dźwięku:\n
+43|Nieoczekiwany błąd: {0}
+44|Liczę zdania książki…
+45|Czytanie nie dało dźwięku. Może brakować pamięci GPU (zamknij gry lub aplikacje, które jej używają) albo model jest niekompletny.
+46|Wznawiam czytanie…
+47|Wczytuję model…
+48|GPU była zajęta; generuję na CPU (wolniej)…
+49|Model wczytany, czytam…
+50|Czytam w {0} równoległych częściach — wczytuję modele…
+51|Czytam w {0} częściach — rozdział {1}/{2} — zdanie {3}
+52|GPU była zajęta; jedna część działa na CPU (wolniej)…
+53|Pobieranie nie zostawiło kompletnego modelu.
+54|Pobieranie modelu XTTS nie zostało ukończone.
+55|Nie znajduję dźwięku tej książki, nie da się wznowić.
+56|Konwertuję dźwięk…
+57|Nie udało się przekonwertować dźwięku (obsługiwany format? zainstalowany ffmpeg?).
+58|Nie udało się odczytać długości dźwięku.
+59|Nieoczekiwany błąd podczas importu: {0}
+60|Transkrybuję (serwer)… {0}–{1} z {2}  ·  zapisano {3}/{4} min
+61|Transkrypcja się przerwała (serwer mowy nie działa?). To, co przetranskrybowano, jest zapisane; możesz Wznowić.
+62|Najpierw pobierz model transkrypcji (Whisper) w „Modelach”.
+63|Wczytuję model transkrypcji…
+64|Transkrybuję z Whisperem… {0} / {1}
+65|Transkrybuję z Whisperem…
+66|Nie udało się transkrybować lokalnie (niekompletny model Whisper albo za mało pamięci?).
+67| · ⏸ w połowie
+68|Rozdziały: {0} · {1} min{2}
+69|▸ Wznów
+70|Czytaj tę książkę dalej od miejsca, w którym przerwano
+71|Usuń tę książkę
+72|twoja czytana biblioteka
+73|↻ Odśwież
+74|Przeczytaj ponownie folder z książkami
+75|Modele
+76|Importuj audiobook…
+77|Dodaj istniejący audiobook/dźwięk i przetranskrybuj go (Whisper) na napisy
+78|Otwórz EPUB…
+79|Nie ma jeszcze książek.\nNaciśnij „Otwórz EPUB…”, a Storyteller przeczyta ją głosem A.
+80|Zatrzymaj i zapisz
+81|Anuluj
+82|Usuń książkę
+83|Usunąć „{0}” i jej nagranie? Nie da się tego cofnąć.
+84|‹ Biblioteka
+85|Modele i głosy
+86|Generuj na:
+87|Ten komputer (lokalnie)
+88|Własny serwer
+89|Serwer:
+90|użytkownik@host twojego serwera (SSH)
+91|Sprawdzaj i generuj od nowa źle brzmiące zdania (QC Whisper)
+92|Po każdym przeczytanym zdaniu transkrybuje je Whisperem i, jeśli nie zgadza się z tekstem, generuje od nowa. Wolniej, ale wyłapuje halucynacje. Używa Whispera z miejsca, w którym czytasz: LOKALNIE modelu pobranego w „Modelach”; na serwerze — tego z serwera. (Lokalnie potrzebny jest pobrany model Whisper.)
+93|Szybkość / użycie GPU:
+94|Normalnie — 1 część (nie przeciąża GPU, wolniej)
+95|Szybko — 2 części (≈1,8×)
+96|Maksymalnie — 3 części (≈2,6×, wyciska GPU)
+97|Jak czytać na tym komputerze:\n• Normalnie: jeden proces, jak zawsze. Nie przeciąża GPU (możesz jej dalej używać), ale to najwolniejsze.\n• Szybko / Maksymalnie: dzieli rozdziały między 2 lub 3 procesy naraz. Dużo szybciej, ale GPU jest mocno obciążona (przy 3 na granicy: nie graj w trakcie czytania). Przy błędzie pamięci GPU zejdź z 3 na 2.
+98|Modele głosu (czytanie EPUB)
+99|+ Dodaj model przez URL / repo…
+100|Transkrypcja audiobooków (Whisper)
+101|Język dźwięku:
+102|Głosy referencyjne
+103|+ Dodaj głos (plik)…
+104|+ Wczytaj głos z URL…
+105|Po dodaniu głosu tekst referencyjny jest transkrybowany automatycznie (Whisper); możesz go poprawić.
+106|Głosy do pobrania
+107|Jak głos czyta pewne słowa: obce terminy, skróty i konkretne słowa, które źle brzmią. Nie zmienia napisów.
+108|Edytuj słownik wymowy…
+109|Lokalny silnik się instaluje (PyTorch + F5). W międzyczasie możesz generować na własnym serwerze.
+110|Generuje na tym komputerze z GPU. Wybierz model i głos; pobierz model, jeśli trzeba.
+111|Generuje przez SSH na wskazanym serwerze (musi mieć zainstalowany ten sam silnik). Model i głos stąd są używane w trybie lokalnym.
+112|✓ Zainstalowany
+113|Niepobrany · {0}
+114|{0}  · Język: {1}  ({2})
+115|Użyj
+116|Usuń
+117|Pobierz  ({0})
+118|Silnik XTTS wciąż się instaluje
+119|Poczekaj, aż lokalny silnik się zainstaluje
+120|Usuń z listy
+121|Słownik wymowy
+122|pron: słowo → jak się je mówi · say_letters: skróty literowane · say_word: skróty jako słowo
+123|JSON jest niepoprawny; nie zapisano.
+124|Słownik wymowy zapisany.
+125|Model „{0}” usunięty (pliki).
+126|Pobieram XTTS v2… (może potrwać, ~1,8 GB)
+127|XTTS v2 gotowy.
+128|Błąd pobierania XTTS:
+129|Model XTTS usunięty (pamięć podręczna).
+130|Nie było pamięci podręcznej XTTS.
+131|Dodaj model
+132|Repo lub URL Hugging Face\n(np. użytkownik/model lub https://huggingface.co/użytkownik/model):
+133|Nazwa checkpointu w repo:
+134|Nazwa słownika w repo:
+135|Architektura (F5TTS_Base dla większości; F5TTS_v1_Base dla oficjalnego v1):
+136|Język modelu (kod: es, en, fr, de, it, pt…):
+137|Wyświetlana nazwa:
+138|Dodane przez ciebie
+139|Model „{0}” dodany. Naciśnij Pobierz.
+140|Pobieram „{0}”…
+141|Pobieranie zakończone.
+142|Błąd pobierania:
+143|Model transkrypcji „{0}” usunięty.
+144|Model transkrypcji gotowy.
+145|nie udało się przekonwertować dźwięku (ffmpeg?)
+146|Transkrybuję głos Whisperem…
+147|Tekst głosu
+148|Co mówi nagranie (wykryte automatycznie; popraw, jeśli trzeba):
+149|Dodaj głos
+150|Nazwa głosu:
+151|Mój głos
+152|Głos „{0}” dodany i wybrany.
+153|Nie udało się dodać głosu:
+154|Nagranie głosu (5-12 s, czyste)
+155|Dźwięk (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Wczytaj głos z URL
+157|Link do nagrania głosu (http/https, wav/mp3, 5-15 s):
+158|URL musi zaczynać się od http:// lub https://
+159|Pobieram głos…
+160|Nie udało się pobrać głosu z tego URL.
+161|Niepoprawny URL głosu.
+162|Nie udało się pobrać głosu.
+163|Głos „{0}” pobrany.
+164|Błąd zapisu głosu:
+165|{0}  · Język: {1}
+166|✓ Pobrany
+167|Pobierz
+168|↻ Generuj od nowa
+169|Przeczytaj całą książkę od nowa z jej EPUB
+170|Czytaj dalej od miejsca, w którym przerwano
+171|⤓ Eksportuj
+172|Zapisz przeczytany dźwięk jako MP3
+173|Wyjście dźwięku
+174|Głośność
+175|Szybkość
+176|▲ Strona
+177|Strona ▼
+178|Cofnij o stronę tekstu
+179|Przejdź o stronę tekstu dalej
+180|⤓ Idź do pozycji…
+181|Skocz do minuty:sekundy rozdziału
+182|≡ Idź do rozdziału…
+183|Wybierz rozdział z listy
+184|Idź do pozycji
+185|Minuta:sekunda (rozdział ma {0}):
+186|Wpisz czas jako „minuty:sekundy”, np. 3:40.
+187|Idź do rozdziału
+188|Ten tytuł ma tylko jeden rozdział.
+189|Rozdział:
+190|Generuj od nowa
+191|Przeczytać całą książkę od zera? Obecna wersja zostanie nadpisana.
+192|Eksportuj
+193|Nie ma wygenerowanego dźwięku do eksportu.
+194|Zapisz czytanie jako MP3
+195|Dźwięk MP3 (*.mp3)
+196|ffmpeg zawiódł
+197|Nie znaleziono ffmpeg. Jest potrzebny do łączenia rozdziałów.
+198|Nie udało się wyeksportować:\n{0}
+199|Zapisano:\n{0}\n\nRozdziały: {1}.
+200|Wybierz EPUB
+201|Książki EPUB (*.epub)
+202|Wybierz audiobook do importu
+203|Dźwięk (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Wszystkie (*.*)
+204|Wznawiam transkrypcję…
+205|Przygotowuję…
+206|Zatrzymuję i zapisuję przetranskrybowane…
+207|Anuluję…
+208|Importuj audiobook
+209|Wznów
+210|Nie znajduję oryginalnego EPUB tej książki, nie da się wznowić.
+211|Czytanie już trwa. Poczekaj, aż się skończy, albo je zatrzymaj, zanim zaczniesz następne.
+212|Silnik wciąż się instaluje. Spróbuj za chwilę albo przełącz na „Własny serwer” w Modelach.
+213|Najpierw pobierz model „{0}” w Modelach.
+214|Wznawiam…
+215|Zatrzymuję i zapisuję wygenerowane…
+216|Zapisuję trwające czytanie…
+217|Zapisuję trwającą transkrypcję…
+218|aktywny
+219|Wymowa

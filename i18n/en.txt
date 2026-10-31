@@ -1,0 +1,221 @@
+# English. NN|text, NN = position in st_lang.SOURCE; \n = line break; keep {0}, {1}…
+0|F5 Spanish
+1|Peninsular Spanish, high quality. This is voice A.
+2|F5 English (official)
+3|English (official F5-TTS base model). Best with an English reference voice.
+4|XTTS v2 (multilingual)
+5|Multilingual: pronounces English terms inside Spanish text properly. Clones your voice. Uses more VRAM than F5.
+6|Fast; good enough for audiobook subtitles.
+7|Better quality, a bit slower.
+8|Best quality; the heaviest and slowest.
+9|English — F5 sample
+10|Spanish
+11|Detect automatically
+12|English
+13|French
+14|German
+15|Italian
+16|Portuguese
+17|Catalan
+18|Galician
+19|Basque
+20|QC is on but no Whisper model is downloaded. Download one in “Models” to check the quality. Narrating without QC.
+21|Voice A — deep (F5 Spanish)
+22|working out the time left…
+23|less than 1 min
+24|~{0} min
+25|~{0} h {1} min
+26|tomorrow {0}
+27|in {0} days, {1}
+28|{0} left (done around {1})
+29|{0} left ({1})
+30|Section {0}
+31|Sending the EPUB to the server…
+32|Couldn't send the EPUB to the server:\n
+33|Resuming the voice engine…
+34|Starting the voice engine…
+35|Narrating chapter {0}/{1} — sentence {2}
+36|Checking quality (QC) and regenerating a sentence…
+37|Chapter {0} done
+38|Freeing the GPU…
+39|Saving what was generated…
+40|Fetching the recording…
+41|Stopped, but no chapter was finished yet to save.
+42|The generation finished but I couldn't fetch the audio:\n
+43|Unexpected error: {0}
+44|Counting the book's sentences…
+45|The narration produced no audio. The GPU may be short of memory (close games or apps using it) or the model may be incomplete.
+46|Resuming the narration…
+47|Loading the model…
+48|The GPU was busy; generating on the CPU (slower)…
+49|Model loaded, narrating…
+50|Narrating in {0} parallel chunks — loading models…
+51|Narrating in {0} chunks — chapter {1}/{2} — sentence {3}
+52|The GPU was busy; one chunk runs on the CPU (slower)…
+53|The download didn't leave the model complete.
+54|The XTTS model download didn't finish.
+55|Can't find this book's audio, so it can't be resumed.
+56|Converting audio…
+57|Couldn't convert the audio (supported format? is ffmpeg installed?).
+58|Couldn't read the audio's length.
+59|Unexpected error while importing: {0}
+60|Transcribing (server)… {0}–{1} of {2}  ·  saved {3}/{4} min
+61|The transcription was cut off (voice server down?). What was transcribed is saved; you can Resume.
+62|First download a transcription model (Whisper) in “Models”.
+63|Loading the transcription model…
+64|Transcribing with Whisper… {0} / {1}
+65|Transcribing with Whisper…
+66|Couldn't transcribe locally (incomplete Whisper model or not enough memory?).
+67| · ⏸ half done
+68|{0} chapters · {1} min{2}
+69|▸ Resume
+70|Carry on narrating this book from where it stopped
+71|Delete this book
+72|your narrated library
+73|↻ Refresh
+74|Read the books folder again
+75|Models
+76|Import audiobook…
+77|Add an existing audiobook/audio and transcribe it (Whisper) for subtitles
+78|Open EPUB…
+79|No books yet.\nPress “Open EPUB…” and Storyteller will narrate it with voice A.
+80|Stop and save
+81|Cancel
+82|Delete book
+83|Delete “{0}” and its recording? This can't be undone.
+84|‹ Library
+85|Models and voices
+86|Generate on:
+87|This computer (local)
+88|Own server
+89|Server:
+90|user@host of your server (SSH)
+91|Check and regenerate sentences that sound wrong (Whisper QC)
+92|After narrating each sentence, transcribes it with Whisper and, if it doesn't match the text, regenerates it. Slower, but catches hallucinations. Uses the Whisper of the place you narrate on: LOCAL uses the model downloaded in “Models”; the server uses its own. (Locally a downloaded Whisper model is needed.)
+93|Speed / GPU use:
+94|Normal — 1 chunk (doesn't max out the GPU, slower)
+95|Fast — 2 chunks (≈1.8×)
+96|Maximum — 3 chunks (≈2.6×, pushes the GPU)
+97|How to narrate on this computer:\n• Normal: a single process, as always. Doesn't max out the GPU (you can keep using it), but it's the slowest.\n• Fast / Maximum: splits the chapters between 2 or 3 processes at once. Much faster, but the GPU is heavily loaded (with 3, at the limit: don't game while it narrates). If you get a GPU memory error, go down from 3 to 2.
+98|Voice models (narrate EPUB)
+99|+ Add model by URL / repo…
+100|Audiobook transcription (Whisper)
+101|Audio language:
+102|Reference voices
+103|+ Add voice (file)…
+104|+ Load voice by URL…
+105|When you add a voice, the reference text is transcribed automatically (Whisper); you can correct it.
+106|Downloadable voices
+107|How the voice reads certain words: foreign terms, acronyms and particular words that sound wrong. Doesn't change the subtitles.
+108|Edit pronunciation dictionary…
+109|The local engine is being installed (PyTorch + F5). Meanwhile you can generate on your own server.
+110|Generated on this computer with the GPU. Choose model and voice; download the model if needed.
+111|Generated over SSH on the server you give (it must have the same engine installed). The model and voice here are used in local mode.
+112|✓ Installed
+113|Not downloaded · {0}
+114|{0}  · Language: {1}  ({2})
+115|Use
+116|Delete
+117|Download  ({0})
+118|The XTTS engine is still being installed
+119|Wait for the local engine to finish installing
+120|Remove
+121|Pronunciation dictionary
+122|pron: word → how it's said · say_letters: acronyms spelled out · say_word: acronyms read as a word
+123|The JSON isn't valid; not saved.
+124|Pronunciation dictionary saved.
+125|Model “{0}” deleted (files).
+126|Downloading XTTS v2… (this can take a while, ~1.8 GB)
+127|XTTS v2 ready.
+128|Error downloading XTTS:
+129|XTTS model deleted (cache).
+130|There was no XTTS cache.
+131|Add model
+132|Hugging Face repo or URL\n(e.g. user/model or https://huggingface.co/user/model):
+133|Name of the checkpoint inside the repo:
+134|Name of the vocabulary inside the repo:
+135|Architecture (F5TTS_Base for most; F5TTS_v1_Base for the official v1):
+136|Model language (code: es, en, fr, de, it, pt…):
+137|Display name:
+138|Added by you
+139|Model “{0}” added. Press Download.
+140|Downloading “{0}”…
+141|Download complete.
+142|Download error:
+143|Transcription model “{0}” deleted.
+144|Transcription model ready.
+145|couldn't convert the audio (ffmpeg?)
+146|Transcribing the voice with Whisper…
+147|Voice text
+148|What the audio says (detected automatically; correct it if needed):
+149|Add voice
+150|Name for the voice:
+151|My voice
+152|Voice “{0}” added and selected.
+153|Couldn't add the voice:
+154|Voice audio (5-12 s, clean)
+155|Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Load voice by URL
+157|Link to the voice audio (http/https, wav/mp3, 5-15 s):
+158|The URL must start with http:// or https://
+159|Downloading the voice…
+160|Couldn't download the voice from that URL.
+161|Invalid voice URL.
+162|Couldn't download the voice.
+163|Voice “{0}” downloaded.
+164|Error saving the voice:
+165|{0}  · Language: {1}
+166|✓ Downloaded
+167|Download
+168|↻ Regenerate
+169|Narrate the whole book again from its EPUB
+170|Carry on narrating from where it stopped
+171|⤓ Export
+172|Save the narrated audio as MP3
+173|Audio output
+174|Volume
+175|Speed
+176|▲ Page
+177|Page ▼
+178|Go back one page of text
+179|Go forward one page of text
+180|⤓ Go to position…
+181|Jump to a minute:second of the chapter
+182|≡ Go to chapter…
+183|Pick a chapter from the list
+184|Go to position
+185|Minute:second (chapter of {0}):
+186|Write the time as “minutes:seconds”, e.g. 3:40.
+187|Go to chapter
+188|This title has a single chapter.
+189|Chapter:
+190|Regenerate
+191|Narrate the whole book again from scratch? The current one is overwritten.
+192|Export
+193|There's no generated audio to export.
+194|Save narration as MP3
+195|MP3 audio (*.mp3)
+196|ffmpeg failed
+197|ffmpeg wasn't found. It's needed to join the chapters.
+198|Couldn't export:\n{0}
+199|Saved:\n{0}\n\n{1} chapter(s).
+200|Choose an EPUB
+201|EPUB books (*.epub)
+202|Choose an audiobook to import
+203|Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;All (*.*)
+204|Resuming transcription…
+205|Preparing…
+206|Stopping and saving what was transcribed…
+207|Cancelling…
+208|Import audiobook
+209|Resume
+210|Can't find this book's original EPUB, so it can't be resumed.
+211|A narration is already running. Wait for it to finish or stop it before starting another.
+212|The engine is still being installed. Try again in a while, or switch to “Own server” in Models.
+213|First download the model “{0}” in Models.
+214|Resuming…
+215|Stopping and saving what was generated…
+216|Saving the narration in progress…
+217|Saving the transcription in progress…
+218|active
+219|Pronunciation

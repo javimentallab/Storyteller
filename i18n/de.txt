@@ -1,0 +1,221 @@
+# Deutsch. NN|Text, NN = Position in st_lang.SOURCE; \n = Zeilenumbruch; {0}, {1}… beibehalten
+0|F5 Spanisch
+1|Spanisch aus Spanien, hohe Qualität. Das ist Stimme A.
+2|F5 Englisch (offiziell)
+3|Englisch (offizielles F5-TTS-Basismodell). Am besten mit einer englischen Referenzstimme.
+4|XTTS v2 (mehrsprachig)
+5|Mehrsprachig: spricht englische Begriffe in spanischem Text richtig aus. Klont deine Stimme. Braucht mehr VRAM als F5.
+6|Schnell; gut genug für Hörbuch-Untertitel.
+7|Bessere Qualität, etwas langsamer.
+8|Beste Qualität; das schwerste und langsamste.
+9|Englisch — F5-Beispiel
+10|Spanisch
+11|Automatisch erkennen
+12|Englisch
+13|Französisch
+14|Deutsch
+15|Italienisch
+16|Portugiesisch
+17|Katalanisch
+18|Galicisch
+19|Baskisch
+20|QC ist an, aber es ist kein Whisper-Modell heruntergeladen. Lade eins unter „Modelle“ herunter, damit die Qualität geprüft wird. Ich erzähle ohne QC.
+21|Stimme A — tief (F5 Spanisch)
+22|berechne die Restzeit…
+23|weniger als 1 min
+24|~{0} min
+25|~{0} h {1} min
+26|morgen {0}
+27|in {0} Tagen, {1}
+28|noch {0} (fertig gegen {1})
+29|noch {0} ({1})
+30|Abschnitt {0}
+31|Sende das EPUB an den Server…
+32|Konnte das EPUB nicht an den Server senden:\n
+33|Setze die Sprach-Engine fort…
+34|Starte die Sprach-Engine…
+35|Erzähle Kapitel {0}/{1} — Satz {2}
+36|Prüfe die Qualität (QC) und erzeuge einen Satz neu…
+37|Kapitel {0} fertig
+38|Gebe die GPU frei…
+39|Speichere das Erzeugte…
+40|Hole die Aufnahme…
+41|Angehalten, aber es war noch kein Kapitel fertig zum Speichern.
+42|Die Erzeugung ist fertig, aber ich konnte das Audio nicht holen:\n
+43|Unerwarteter Fehler: {0}
+44|Zähle die Sätze des Buchs…
+45|Die Erzählung hat kein Audio erzeugt. Vielleicht fehlt der GPU Speicher (schließe Spiele oder Apps, die sie nutzen) oder das Modell ist unvollständig.
+46|Setze die Erzählung fort…
+47|Lade das Modell…
+48|Die GPU war belegt; erzeuge auf der CPU (langsamer)…
+49|Modell geladen, erzähle…
+50|Erzähle in {0} parallelen Abschnitten — lade Modelle…
+51|Erzähle in {0} Abschnitten — Kapitel {1}/{2} — Satz {3}
+52|Die GPU war belegt; ein Abschnitt läuft auf der CPU (langsamer)…
+53|Der Download hat das Modell nicht vollständig hinterlassen.
+54|Der Download des XTTS-Modells wurde nicht abgeschlossen.
+55|Ich finde das Audio dieses Buchs nicht, Fortsetzen geht nicht.
+56|Wandle Audio um…
+57|Das Audio konnte nicht umgewandelt werden (unterstütztes Format? ffmpeg installiert?).
+58|Konnte die Länge des Audios nicht lesen.
+59|Unerwarteter Fehler beim Import: {0}
+60|Transkribiere (Server)… {0}–{1} von {2}  ·  gespeichert {3}/{4} min
+61|Die Transkription brach ab (Sprachserver ausgefallen?). Das Transkribierte ist gespeichert; du kannst Fortsetzen.
+62|Lade zuerst ein Transkriptionsmodell (Whisper) unter „Modelle“ herunter.
+63|Lade das Transkriptionsmodell…
+64|Transkribiere mit Whisper… {0} / {1}
+65|Transkribiere mit Whisper…
+66|Lokales Transkribieren ging nicht (Whisper-Modell unvollständig oder zu wenig Speicher?).
+67| · ⏸ halb fertig
+68|{0} Kapitel · {1} min{2}
+69|▸ Fortsetzen
+70|Dieses Buch dort weitererzählen, wo es aufgehört hat
+71|Dieses Buch löschen
+72|deine erzählte Bibliothek
+73|↻ Aktualisieren
+74|Den Bücherordner neu einlesen
+75|Modelle
+76|Hörbuch importieren…
+77|Ein vorhandenes Hörbuch/Audio hinzufügen und für Untertitel transkribieren (Whisper)
+78|EPUB öffnen…
+79|Noch keine Bücher.\nKlicke auf „EPUB öffnen…“ und Storyteller erzählt es mit Stimme A.
+80|Anhalten und speichern
+81|Abbrechen
+82|Buch löschen
+83|„{0}“ und seine Aufnahme löschen? Das lässt sich nicht rückgängig machen.
+84|‹ Bibliothek
+85|Modelle und Stimmen
+86|Erzeugen auf:
+87|Diesem Computer (lokal)
+88|Eigener Server
+89|Server:
+90|benutzer@host deines Servers (SSH)
+91|Schlecht klingende Sätze prüfen und neu erzeugen (Whisper-QC)
+92|Nach jedem erzählten Satz wird er mit Whisper transkribiert und, wenn er nicht zum Text passt, neu erzeugt. Langsamer, aber fängt Halluzinationen ab. Nutzt das Whisper des Orts, an dem du erzählst: LOKAL das unter „Modelle“ heruntergeladene Modell; auf dem Server das des Servers. (Lokal ist ein heruntergeladenes Whisper-Modell nötig.)
+93|Tempo / GPU-Nutzung:
+94|Normal — 1 Abschnitt (lastet die GPU nicht aus, langsamer)
+95|Schnell — 2 Abschnitte (≈1,8×)
+96|Maximal — 3 Abschnitte (≈2,6×, holt alles aus der GPU)
+97|So wird auf diesem Computer erzählt:\n• Normal: ein einziger Prozess, wie immer. Lastet die GPU nicht aus (du kannst sie weiter nutzen), ist aber am langsamsten.\n• Schnell / Maximal: verteilt die Kapitel auf 2 oder 3 Prozesse gleichzeitig. Viel schneller, aber die GPU ist stark ausgelastet (mit 3 am Limit: nicht spielen, während erzählt wird). Bei einem GPU-Speicherfehler von 3 auf 2 gehen.
+98|Stimmmodelle (EPUB erzählen)
+99|+ Modell per URL / Repo hinzufügen…
+100|Hörbuch-Transkription (Whisper)
+101|Sprache des Audios:
+102|Referenzstimmen
+103|+ Stimme hinzufügen (Datei)…
+104|+ Stimme per URL laden…
+105|Beim Hinzufügen einer Stimme wird der Referenztext automatisch transkribiert (Whisper); du kannst ihn korrigieren.
+106|Herunterladbare Stimmen
+107|Wie die Stimme bestimmte Wörter liest: Fremdwörter, Abkürzungen und einzelne Wörter, die falsch klingen. Ändert die Untertitel nicht.
+108|Aussprachewörterbuch bearbeiten…
+109|Die lokale Engine wird gerade installiert (PyTorch + F5). In der Zwischenzeit kannst du auf einem eigenen Server erzeugen.
+110|Erzeugt auf diesem Computer mit der GPU. Wähle Modell und Stimme; lade das Modell herunter, falls nötig.
+111|Erzeugt per SSH auf dem angegebenen Server (dort muss dieselbe Engine installiert sein). Modell und Stimme von hier werden im lokalen Modus genutzt.
+112|✓ Installiert
+113|Nicht heruntergeladen · {0}
+114|{0}  · Sprache: {1}  ({2})
+115|Verwenden
+116|Löschen
+117|Herunterladen  ({0})
+118|Die XTTS-Engine wird noch installiert
+119|Warte, bis die lokale Engine installiert ist
+120|Entfernen
+121|Aussprachewörterbuch
+122|pron: Wort → wie es gesagt wird · say_letters: buchstabierte Abkürzungen · say_word: Abkürzungen als Wort
+123|Das JSON ist ungültig; nicht gespeichert.
+124|Aussprachewörterbuch gespeichert.
+125|Modell „{0}“ gelöscht (Dateien).
+126|Lade XTTS v2 herunter… (kann dauern, ~1,8 GB)
+127|XTTS v2 bereit.
+128|Fehler beim Herunterladen von XTTS:
+129|XTTS-Modell gelöscht (Cache).
+130|Es gab keinen XTTS-Cache.
+131|Modell hinzufügen
+132|Hugging-Face-Repo oder -URL\n(z. B. benutzer/modell oder https://huggingface.co/benutzer/modell):
+133|Name des Checkpoints im Repo:
+134|Name des Vokabulars im Repo:
+135|Architektur (F5TTS_Base für die meisten; F5TTS_v1_Base für das offizielle v1):
+136|Sprache des Modells (Code: es, en, fr, de, it, pt…):
+137|Anzeigename:
+138|Von dir hinzugefügt
+139|Modell „{0}“ hinzugefügt. Klicke auf Herunterladen.
+140|Lade „{0}“ herunter…
+141|Download abgeschlossen.
+142|Fehler beim Download:
+143|Transkriptionsmodell „{0}“ gelöscht.
+144|Transkriptionsmodell bereit.
+145|Audio ließ sich nicht umwandeln (ffmpeg?)
+146|Transkribiere die Stimme mit Whisper…
+147|Text der Stimme
+148|Was im Audio gesagt wird (automatisch erkannt; bei Bedarf korrigieren):
+149|Stimme hinzufügen
+150|Name der Stimme:
+151|Meine Stimme
+152|Stimme „{0}“ hinzugefügt und ausgewählt.
+153|Konnte die Stimme nicht hinzufügen:
+154|Audio der Stimme (5-12 s, sauber)
+155|Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Stimme per URL laden
+157|Link zum Audio der Stimme (http/https, wav/mp3, 5-15 s):
+158|Die URL muss mit http:// oder https:// beginnen
+159|Lade die Stimme herunter…
+160|Die Stimme konnte von dieser URL nicht heruntergeladen werden.
+161|Ungültige Stimm-URL.
+162|Die Stimme konnte nicht heruntergeladen werden.
+163|Stimme „{0}“ heruntergeladen.
+164|Fehler beim Speichern der Stimme:
+165|{0}  · Sprache: {1}
+166|✓ Heruntergeladen
+167|Herunterladen
+168|↻ Neu erzeugen
+169|Das ganze Buch aus seinem EPUB neu erzählen
+170|Dort weitererzählen, wo es aufgehört hat
+171|⤓ Exportieren
+172|Das erzählte Audio als MP3 speichern
+173|Audioausgabe
+174|Lautstärke
+175|Tempo
+176|▲ Seite
+177|Seite ▼
+178|Eine Textseite zurück
+179|Eine Textseite vor
+180|⤓ Zu Position…
+181|Zu einer Minute:Sekunde des Kapitels springen
+182|≡ Zu Kapitel…
+183|Ein Kapitel aus der Liste wählen
+184|Zu Position
+185|Minute:Sekunde (Kapitel von {0}):
+186|Gib die Zeit als „Minuten:Sekunden“ ein, z. B. 3:40.
+187|Zu Kapitel
+188|Dieser Titel hat nur ein Kapitel.
+189|Kapitel:
+190|Neu erzeugen
+191|Das ganze Buch von vorn neu erzählen? Das aktuelle wird überschrieben.
+192|Exportieren
+193|Es gibt kein erzeugtes Audio zum Exportieren.
+194|Erzählung als MP3 speichern
+195|MP3-Audio (*.mp3)
+196|ffmpeg ist fehlgeschlagen
+197|ffmpeg wurde nicht gefunden. Es wird zum Zusammenfügen der Kapitel gebraucht.
+198|Export fehlgeschlagen:\n{0}
+199|Gespeichert:\n{0}\n\n{1} Kapitel.
+200|Wähle ein EPUB
+201|EPUB-Bücher (*.epub)
+202|Wähle ein Hörbuch zum Importieren
+203|Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Alle (*.*)
+204|Setze die Transkription fort…
+205|Bereite vor…
+206|Halte an und speichere das Transkribierte…
+207|Breche ab…
+208|Hörbuch importieren
+209|Fortsetzen
+210|Ich finde das ursprüngliche EPUB dieses Buchs nicht, Fortsetzen geht nicht.
+211|Es läuft schon eine Erzählung. Warte, bis sie fertig ist, oder halte sie an, bevor du eine neue startest.
+212|Die Engine wird noch installiert. Versuch es gleich noch mal oder wechsle unter Modelle auf „Eigener Server“.
+213|Lade zuerst das Modell „{0}“ unter Modelle herunter.
+214|Setze fort…
+215|Halte an und speichere das Erzeugte…
+216|Speichere die laufende Erzählung…
+217|Speichere die laufende Transkription…
+218|aktiv
+219|Aussprache

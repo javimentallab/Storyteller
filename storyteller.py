@@ -14,9 +14,11 @@ from PySide6.QtGui import QShortcut, QKeySequence, QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QSlider, QScrollArea, QFileDialog, QProgressBar,
-    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog,
+    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog, QSizePolicy,
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
+
+from st_lang import _  # interface texts in the user's language
 
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "/home/oem/epub-tts"
@@ -61,42 +63,42 @@ NOWIN = 0x08000000 if os.name == "nt" else 0
 
 # Modelos de voz neural que el usuario puede descargar (desde Hugging Face).
 MODELS = [
-    {"id": "f5-spanish", "name": "F5 Español", "backend": "f5", "repo": "jpgallegoar/F5-Spanish",
+    {"id": "f5-spanish", "name": _("F5 Español"), "backend": "f5", "repo": "jpgallegoar/F5-Spanish",
      "ckpt": "model_1250000.safetensors", "vocab": "vocab.txt", "arch": "F5TTS_Base",
-     "lang": "es", "size": "~1,3 GB", "desc": "Castellano peninsular, alta calidad. Es la voz A."},
-    {"id": "f5-english", "name": "F5 Inglés (oficial)", "backend": "f5", "repo": "SWivid/F5-TTS",
+     "lang": "es", "size": "~1,3 GB", "desc": _("Castellano peninsular, alta calidad. Es la voz A.")},
+    {"id": "f5-english", "name": _("F5 Inglés (oficial)"), "backend": "f5", "repo": "SWivid/F5-TTS",
      "ckpt": "F5TTS_v1_Base/model_1250000.safetensors", "vocab": "F5TTS_v1_Base/vocab.txt",
      "arch": "F5TTS_v1_Base", "lang": "en", "size": "~1,3 GB",
-     "desc": "Inglés (modelo base oficial F5-TTS). Mejor con una voz de referencia en inglés."},
-    {"id": "xtts-v2", "name": "XTTS v2 (multilingüe)", "backend": "xtts", "lang": "es",
+     "desc": _("Inglés (modelo base oficial F5-TTS). Mejor con una voz de referencia en inglés.")},
+    {"id": "xtts-v2", "name": _("XTTS v2 (multilingüe)"), "backend": "xtts", "lang": "es",
      "repo": "coqui/XTTS-v2", "size": "~1,8 GB",
-     "desc": "Multilingüe: pronuncia bien los términos en inglés dentro del español. "
-             "Clona tu voz. Usa más VRAM que F5."},
+     "desc": _("Multilingüe: pronuncia bien los términos en inglés dentro del español. "
+             "Clona tu voz. Usa más VRAM que F5.")},
 ]
 
 # Modelos de transcripción (faster-whisper) para importar audiolibros EN LOCAL,
 # sin depender de un servidor. Se descargan de Hugging Face como los de voz.
 WHISPER_MODELS = [
     {"id": "whisper-small", "name": "Whisper small", "repo": "Systran/faster-whisper-small",
-     "size": "~0,5 GB", "desc": "Rápido; calidad suficiente para subtítulos de audiolibros."},
+     "size": "~0,5 GB", "desc": _("Rápido; calidad suficiente para subtítulos de audiolibros.")},
     {"id": "whisper-medium", "name": "Whisper medium", "repo": "Systran/faster-whisper-medium",
-     "size": "~1,5 GB", "desc": "Mejor calidad, algo más lento."},
+     "size": "~1,5 GB", "desc": _("Mejor calidad, algo más lento.")},
     {"id": "whisper-large-v3", "name": "Whisper large-v3", "repo": "Systran/faster-whisper-large-v3",
-     "size": "~3 GB", "desc": "Máxima calidad; el más pesado y lento."},
+     "size": "~3 GB", "desc": _("Máxima calidad; el más pesado y lento.")},
 ]
 
 # Voces de referencia descargables (clips públicos). El usuario también puede
 # cargar las suyas por archivo o URL (con autotranscripción del texto).
 VOICE_PRESETS = [
-    {"id": "en-nature", "name": "Inglés — ejemplo F5", "lang": "en",
+    {"id": "en-nature", "name": _("Inglés — ejemplo F5"), "lang": "en",
      "url": "https://raw.githubusercontent.com/SWivid/F5-TTS/main/src/f5_tts/infer/examples/basic/basic_ref_en.wav",
      "text": "Some call me nature, others call me mother nature."},
 ]
 
 # Idiomas para la transcripción de audiolibros (Whisper es multilingüe). "auto" = detectar.
-LANGS = [("es", "Español"), ("auto", "Detectar automáticamente"), ("en", "Inglés"),
-         ("fr", "Francés"), ("de", "Alemán"), ("it", "Italiano"), ("pt", "Portugués"),
-         ("ca", "Catalán"), ("gl", "Gallego"), ("eu", "Euskera")]
+LANGS = [("es", _("Español")), ("auto", _("Detectar automáticamente")), ("en", _("Inglés")),
+         ("fr", _("Francés")), ("de", _("Alemán")), ("it", _("Italiano")), ("pt", _("Portugués")),
+         ("ca", _("Catalán")), ("gl", _("Gallego")), ("eu", _("Euskera"))]
 
 def load_config():
     cfg = {"engine": "local", "model": MODELS[0]["id"], "voice": "narrator", "server": ""}
@@ -150,8 +152,8 @@ def qc_args_local(cfg=None):
         return [], None
     w = whisper_by_id(active_whisper_id(cfg))
     if not whisper_installed(w):
-        return [], ("QC activado pero no hay modelo Whisper descargado. Descárgalo en "
-                    "«Modelos» para que revise la calidad. Narro sin QC.")
+        return [], (_("QC activado pero no hay modelo Whisper descargado. Descárgalo en "
+                    "«Modelos» para que revise la calidad. Narro sin QC."))
     return (["--qc-whisper-dir", str(model_dir(w["id"])),
              "--qc-threshold", "0.85", "--qc-retries", "2"], None)
 def active_language(cfg=None):
@@ -169,7 +171,7 @@ def voices():
         vid = wav.stem
         namef = wav.with_suffix(".name")
         if namef.exists(): name = namef.read_text(encoding="utf-8").strip()
-        elif vid == "narrator": name = "Voz A — grave (F5 Español)"
+        elif vid == "narrator": name = _("Voz A — grave (F5 Español)")
         else: name = vid.replace("-", " ").capitalize()
         out.append({"id": vid, "name": name, "wav": wav, "txt": txt})
     return out
@@ -194,17 +196,17 @@ def fmt(ms):
 
 def fmt_eta(sec):
     """«quedan ~1 h 10 min (hacia las 14:35)» para la barra de narración."""
-    if sec is None: return "calculando tiempo restante…"
+    if sec is None: return _("calculando tiempo restante…")
     m = int(round(sec / 60))
-    if m < 1: dur = "menos de 1 min"
-    elif m < 60: dur = f"~{m} min"
-    else: dur = f"~{m // 60} h {m % 60:02d} min"
+    if m < 1: dur = _("menos de 1 min")
+    elif m < 60: dur = _('~{0} min').format(m)
+    else: dur = _('~{0} h {1} min').format(m // 60, format(m % 60, '02d'))
     end = time.localtime(time.time() + sec); now = time.localtime()
     days = (time.mktime((end.tm_year, end.tm_mon, end.tm_mday, 0, 0, 0, 0, 0, -1))
             - time.mktime((now.tm_year, now.tm_mon, now.tm_mday, 0, 0, 0, 0, 0, -1))) // 86400
     when = time.strftime("%H:%M", end)
-    when = when if days <= 0 else (f"mañana {when}" if days == 1 else f"en {int(days)} días, {when}")
-    return f"quedan {dur} (hacia las {when})" if days <= 0 else f"quedan {dur} ({when})"
+    when = when if days <= 0 else (_('mañana {0}').format(when) if days == 1 else _('en {0} días, {1}').format(int(days), when))
+    return _('quedan {0} (hacia las {1})').format(dur, when) if days <= 0 else _('quedan {0} ({1})').format(dur, when)
 
 class EtaTracker:
     """Tiempo restante de una narración. Lleva las frases pendientes de CADA capítulo
@@ -397,7 +399,7 @@ def chap_label(m):
     n = m.get("id", "?")
     t = (m.get("title") or "").strip()
     if not t or re.fullmatch(r"Capitulo \d+", t):
-        t = f"Sección {n}"
+        t = _('Sección {0}').format(n)
     return f"{n} · {t}"
 
 
@@ -444,13 +446,13 @@ class GenWorker(QThread):
                     shutil.copyfile(epub, tmp_epub); epub = Path(tmp_epub)
             except Exception: pass
             remote_epub = f"{REMOTE_DIR}/inbox/{self.name}.epub"
-            self.progress.emit("Enviando el EPUB a Mint…", -1)
+            self.progress.emit(_("Enviando el EPUB a Mint…"), -1)
             r = self._run(SCP + [str(epub), f"{self.host}:{remote_epub}"])
             if r.returncode != 0:
-                self.failed.emit("No pude enviar el EPUB a Mint:\n" + r.stderr.strip()); return
+                self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + r.stderr.strip()); return
 
-            self.progress.emit("Reanudando el motor de voz…" if self.resume
-                               else "Arrancando el motor de voz…", -1)
+            self.progress.emit(_("Reanudando el motor de voz…") if self.resume
+                               else _("Arrancando el motor de voz…"), -1)
             qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
             rs = "CC_RESUME=1 " if self.resume else ""
             cmd = f"cd {REMOTE_DIR} && {qc}{rs}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
@@ -470,13 +472,13 @@ class GenWorker(QThread):
                 if re.match(r"\s*frase \d+/\d+", line):
                     done += 1
                     pct = int(done / total * 100) if total else -1
-                    self.progress.emit(f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}", pct)
+                    self.progress.emit(_('Narrando capítulo {0}/{1} — frase {2}').format(cap_cur, cap_tot, done), pct)
                 elif "regenerando" in line:
-                    self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
+                    self.progress.emit(_("Revisando calidad (QC) y regenerando una frase…"), -1)
                 elif "LISTO" in line:
-                    self.progress.emit(f"Capítulo {cap_cur} listo", -1)
+                    self.progress.emit(_('Capítulo {0} listo').format(cap_cur), -1)
                 elif "voz-server parado" in line:
-                    self.progress.emit("Liberando la GPU…", -1)
+                    self.progress.emit(_("Liberando la GPU…"), -1)
             p.wait()
 
             if self.mode == "cancel":
@@ -484,16 +486,16 @@ class GenWorker(QThread):
                     self._run(SSH + [self.host, f"rm -rf '{REMOTE_DIR}/out/{self.name}'"])
                 self.canceled.emit(); return
 
-            msg = "Guardando lo generado…" if self.mode == "stopsave" else "Trayendo la grabación…"
+            msg = _("Guardando lo generado…") if self.mode == "stopsave" else _("Trayendo la grabación…")
             self.progress.emit(msg, -1)
             if dest.exists(): shutil.rmtree(dest, ignore_errors=True)
             dest.mkdir(parents=True, exist_ok=True)
             r = self._run(SCP + ["-r", f"{self.host}:{REMOTE_DIR}/out/{self.name}/.", str(dest)])
             if r.returncode != 0 or not (dest / "manifest.json").exists():
                 if self.mode == "stopsave":
-                    self.failed.emit("Lo detuve, pero aún no había ningún capítulo terminado que guardar.")
+                    self.failed.emit(_("Lo detuve, pero aún no había ningún capítulo terminado que guardar."))
                 else:
-                    self.failed.emit("La generación terminó pero no pude traerme el audio:\n" + r.stderr.strip())
+                    self.failed.emit(_("La generación terminó pero no pude traerme el audio:\n") + r.stderr.strip())
                 return
             for junk in list(dest.glob("*.wav")) + list(dest.glob("*.tmp")):
                 try: junk.unlink()
@@ -502,7 +504,7 @@ class GenWorker(QThread):
             except Exception: pass
             self.done.emit(str(dest))
         except Exception as e:
-            self.failed.emit(f"Error inesperado: {e}")
+            self.failed.emit(_('Error inesperado: {0}').format(e))
         finally:
             if tmp_epub:
                 try: os.remove(tmp_epub)
@@ -592,7 +594,7 @@ class LocalGenWorker(QThread):
             st0 = read_gen_state(dest) or {}
             if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
                 streams = int(st0["streams"] or 1)
-            self.progress.emit("Contando las frases del libro…", -1)
+            self.progress.emit(_("Contando las frases del libro…"), -1)
             n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
             if streams > 1 and n > 1:
                 self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
@@ -614,15 +616,15 @@ class LocalGenWorker(QThread):
                 except Exception: pass
             if not (dest / "manifest.json").exists():
                 if self.mode == "stopsave":
-                    self.failed.emit("Lo detuve, pero aún no había ningún capítulo terminado que guardar.")
+                    self.failed.emit(_("Lo detuve, pero aún no había ningún capítulo terminado que guardar."))
                 else:
                     shutil.rmtree(dest, ignore_errors=True)
-                    self.failed.emit("La narración no produjo audio. Puede faltar memoria en la GPU "
-                                     "(cierra juegos u apps que la usen) o el modelo estar incompleto.")
+                    self.failed.emit(_("La narración no produjo audio. Puede faltar memoria en la GPU "
+                                     "(cierra juegos u apps que la usen) o el modelo estar incompleto."))
                 return
             self.done.emit(str(dest))
         except Exception as e:
-            self.failed.emit(f"Error inesperado: {e}")
+            self.failed.emit(_('Error inesperado: {0}').format(e))
         finally:
             ACTIVE_GEN.discard(str(LOCAL_BOOKS / self.name))
             if tmp_epub:
@@ -631,7 +633,7 @@ class LocalGenWorker(QThread):
 
     # ---- un solo proceso (camino clásico) --------------------------------
     def _run_single(self, cmd, dest, sents=None):
-        self.progress.emit("Reanudando la narración…" if self.resume else "Cargando el modelo…", -1)
+        self.progress.emit(_("Reanudando la narración…") if self.resume else _("Cargando el modelo…"), -1)
         eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
@@ -649,15 +651,15 @@ class LocalGenWorker(QThread):
             if eta: eta.line(1, line)
             if re.match(r"\s*frase \d+/\d+", line):
                 done += 1; pct = int(done / total * 100) if total else -1
-                txt = f"Narrando capítulo {cap_cur}/{cap_tot} — frase {done}"
+                txt = _('Narrando capítulo {0}/{1} — frase {2}').format(cap_cur, cap_tot, done)
                 if eta: pct = eta.pct(); txt += " — " + fmt_eta(eta.seconds())
                 self.progress.emit(txt, pct)
             elif "regenerando" in line:
-                self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
+                self.progress.emit(_("Revisando calidad (QC) y regenerando una frase…"), -1)
             elif "reintento en CPU" in line:
-                self.progress.emit("La GPU estaba ocupada; generando en CPU (más lento)…", -1)
+                self.progress.emit(_("La GPU estaba ocupada; generando en CPU (más lento)…"), -1)
             elif "modelo cargado" in line:
-                self.progress.emit("Modelo cargado, narrando…", -1)
+                self.progress.emit(_("Modelo cargado, narrando…"), -1)
         p.wait()
         try: logf.close()
         except Exception: pass
@@ -709,7 +711,7 @@ class LocalGenWorker(QThread):
             except Exception: pass
         self._last_merge = time.monotonic()
         logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
-        self.progress.emit(f"Narrando en {streams} tramos en paralelo — cargando modelos…", -1)
+        self.progress.emit(_('Narrando en {0} tramos en paralelo — cargando modelos…').format(streams), -1)
 
         def worker(idx, rng):
             cs, ce = rng
@@ -732,14 +734,13 @@ class LocalGenWorker(QThread):
                         self._done_fr += 1
                         pct = int(self._done_fr / self._tot_fr * 100) if self._tot_fr else -1
                         if pct > 99: pct = 99
-                        txt = (f"Narrando en {streams} tramos — capítulo {len(self._caps_seen)}/{n} "
-                               f"— frase {self._done_fr}")
+                        txt = (_('Narrando en {0} tramos — capítulo {1}/{2} — frase {3}').format(streams, len(self._caps_seen), n, self._done_fr))
                         if eta: pct = eta.pct(); txt += " — " + fmt_eta(eta.seconds())
                         self.progress.emit(txt, pct)
                     elif "QC frase" in line and "regenerando" in line:
-                        self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
+                        self.progress.emit(_("Revisando calidad (QC) y regenerando una frase…"), -1)
                     elif "reintento en CPU" in line:
-                        self.progress.emit("La GPU estaba ocupada; un tramo va en CPU (más lento)…", -1)
+                        self.progress.emit(_("La GPU estaba ocupada; un tramo va en CPU (más lento)…"), -1)
                     # Fusión periódica: ante un cuelgue el libro queda en la biblioteca
                     # (a medias, reanudable) con lo narrado hasta hace unos segundos.
                     if time.monotonic() - self._last_merge > 20:
@@ -784,7 +785,7 @@ class DownloadWorker(QThread):
                 if line: self.progress.emit(line)
             p.wait()
             if model_installed(self.model): self.done.emit()
-            else: self.failed.emit("La descarga no dejó el modelo completo.")
+            else: self.failed.emit(_("La descarga no dejó el modelo completo."))
         except Exception as e:
             self.failed.emit(str(e))
 
@@ -834,7 +835,7 @@ class XttsDownloadWorker(QThread):
                 if line and "warning" not in line.lower(): self.progress.emit(line[:120])
             p.wait()
             if xtts_model_cached(): self.done.emit()
-            else: self.failed.emit("La descarga del modelo XTTS no se completó.")
+            else: self.failed.emit(_("La descarga del modelo XTTS no se completó."))
         except Exception as e:
             self.failed.emit(str(e))
 
@@ -874,7 +875,7 @@ class ImportWorker(QThread):
         """Lanza un proceso que se puede terminar desde stop(); devuelve (rc, stdout_bytes)."""
         self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      creationflags=NOWIN)
-        out, _ = self.proc.communicate()
+        out, _err = self.proc.communicate()
         rc = self.proc.returncode; self.proc = None
         return rc, (out or b"")
 
@@ -891,7 +892,7 @@ class ImportWorker(QThread):
         la lista de segmentos con tiempos ya desplazados, o None si falla."""
         fd, wav = tempfile.mkstemp(suffix=".wav"); os.close(fd)
         try:
-            rc, _ = self._proc(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{length:.3f}",
+            rc, _out = self._proc(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-t", f"{length:.3f}",
                                 "-i", str(mp3), "-ar", "16000", "-ac", "1", wav])
             if rc != 0 or not os.path.exists(wav) or os.path.getsize(wav) < 1000:
                 return None
@@ -941,7 +942,7 @@ class ImportWorker(QThread):
                 dest = Path(self.resume_dir); self._dest = dest
                 mp3 = dest / "cap01.mp3"
                 if not mp3.exists():
-                    self.failed.emit("No encuentro el audio de este libro, no puedo reanudar."); return
+                    self.failed.emit(_("No encuentro el audio de este libro, no puedo reanudar.")); return
                 tf = dest / "title.txt"
                 title = tf.read_text("utf-8").strip() if tf.exists() else dest.name
                 try:
@@ -962,15 +963,15 @@ class ImportWorker(QThread):
                 while dest.exists():
                     n += 1; dest = LOCAL_BOOKS / f"{sl}-{n}"
                 dest.mkdir(parents=True, exist_ok=True); self._dest = dest
-                self.progress.emit("Convirtiendo audio…", -1)
+                self.progress.emit(_("Convirtiendo audio…"), -1)
                 mp3 = dest / "cap01.mp3"
-                rc, _ = self._proc(["ffmpeg", "-y", "-i", str(src), "-codec:a", "libmp3lame",
+                rc, _out = self._proc(["ffmpeg", "-y", "-i", str(src), "-codec:a", "libmp3lame",
                                     "-b:a", "128k", str(mp3)])
                 if self.mode == "cancel":
                     shutil.rmtree(dest, ignore_errors=True); self.canceled.emit(); return
                 if rc != 0 or not mp3.exists():
                     shutil.rmtree(dest, ignore_errors=True)
-                    self.failed.emit("No se pudo convertir el audio (¿formato soportado? ¿ffmpeg instalado?).")
+                    self.failed.emit(_("No se pudo convertir el audio (¿formato soportado? ¿ffmpeg instalado?)."))
                     return
                 dur = self._duration(mp3); cues = []; covered = 0.0
                 (dest / "title.txt").write_text(title, "utf-8")
@@ -978,7 +979,7 @@ class ImportWorker(QThread):
 
             if dur <= 0:
                 if not resume: shutil.rmtree(dest, ignore_errors=True)
-                self.failed.emit("No pude leer la duración del audio."); return
+                self.failed.emit(_("No pude leer la duración del audio.")); return
 
             # LOCAL = Whisper en este equipo (sin servidor); REMOTO = voz-server por SSH.
             lang = active_language()
@@ -997,7 +998,7 @@ class ImportWorker(QThread):
             self.done.emit(str(dest))
         except Exception as e:
             # nunca borrar un parcial reanudable por un error inesperado
-            self.failed.emit(f"Error inesperado al importar: {e}")
+            self.failed.emit(_('Error inesperado al importar: {0}').format(e))
 
     def _transcribe_remote(self, dest, mp3, title, dur, cues, covered, language="es"):
         """Transcribe por tramos contra el Whisper del voz-server (SSH/HTTP)."""
@@ -1008,16 +1009,15 @@ class ImportWorker(QThread):
                 break
             length = min(self.CHUNK, dur - start)
             self.progress.emit(
-                f"Transcribiendo (servidor)… {fmt(start*1000)}–{fmt((start+length)*1000)} "
-                f"de {fmt(dur*1000)}  ·  guardado {int(covered//60)}/{int((dur+59)//60)} min", -1)
+                _('Transcribiendo (servidor)… {0}–{1} de {2}  ·  guardado {3}/{4} min').format(fmt(start*1000), fmt((start+length)*1000), fmt(dur*1000), int(covered//60), int((dur+59)//60)), -1)
             segs = self._transcribe_chunk(mp3, start, length, url, language)
             if self.mode == "cancel":
                 break
             if segs is None:
                 if self.mode == "stopsave":
                     break
-                return (False, "Se cortó la transcripción (¿servidor de voz caído?). "
-                               "Lo transcrito se ha guardado; puedes Reanudar.", covered)
+                return (False, _("Se cortó la transcripción (¿servidor de voz caído?). "
+                               "Lo transcrito se ha guardado; puedes Reanudar."), covered)
             for s in segs:
                 cues.append({"i": len(cues), "start": s["start"], "end": s["end"], "text": s["text"]})
             covered = round(start + length, 3)
@@ -1032,11 +1032,11 @@ class ImportWorker(QThread):
         Al reanudar transcribe solo el tramo que falta ([covered, fin]) y lo desplaza."""
         wm = whisper_by_id(active_whisper_id()); mdir = model_dir(wm["id"])
         if not (mdir / "model.bin").exists():
-            return (False, "Antes descarga un modelo de transcripción (Whisper) en «Modelos».", covered)
+            return (False, _("Antes descarga un modelo de transcripción (Whisper) en «Modelos»."), covered)
         audio = str(mp3); offset = 0.0; clip = None
         if covered > 0.5:                                    # reanudar: solo lo que falta
             fd, clip = tempfile.mkstemp(suffix=".wav"); os.close(fd)
-            rc, _ = self._proc(["ffmpeg", "-y", "-ss", f"{covered:.3f}", "-i", str(mp3),
+            rc, _out = self._proc(["ffmpeg", "-y", "-ss", f"{covered:.3f}", "-i", str(mp3),
                                 "-ar", "16000", "-ac", "1", clip])
             if self.mode == "cancel":
                 try: os.remove(clip)
@@ -1046,7 +1046,7 @@ class ImportWorker(QThread):
                 audio = clip; offset = covered
             else:
                 cues.clear(); covered = 0.0                  # no se pudo recortar: rehacer entero
-        self.progress.emit("Cargando el modelo de transcripción…", -1)
+        self.progress.emit(_("Cargando el modelo de transcripción…"), -1)
         cmd = [str(VPY), "-I", str(CC_ENGINE), "whisper", "--audio", audio,
                "--model-dir", str(mdir), "--device", "auto", "--offset", f"{offset:.3f}",
                "--language", language or "es"]
@@ -1061,14 +1061,14 @@ class ImportWorker(QThread):
                 got = True
                 cues.append({"i": len(cues), "start": s["start"], "end": s["end"], "text": s["text"]})
                 covered = max(covered, float(s["end"]))
-                self.progress.emit(f"Transcribiendo con Whisper… {fmt(covered*1000)} / {fmt(dur*1000)}",
+                self.progress.emit(_('Transcribiendo con Whisper… {0} / {1}').format(fmt(covered*1000), fmt(dur*1000)),
                                    int(min(100, covered / dur * 100)) if dur else -1)
                 if time.monotonic() - last > 4:
                     last = time.monotonic(); self._save(dest, title, cues, dur, covered, False)
             elif "WH-DONE" in line:
                 done_seen = True
             elif "whisper cargado" in line:
-                self.progress.emit("Transcribiendo con Whisper…", -1)
+                self.progress.emit(_("Transcribiendo con Whisper…"), -1)
             if self.mode in ("stopsave", "cancel"):
                 try: self.proc.terminate()
                 except Exception: pass
@@ -1085,7 +1085,7 @@ class ImportWorker(QThread):
             self._save(dest, title, cues, dur, covered, False)
             return (True, "", covered)
         if not done_seen and not got:
-            return (False, "No se pudo transcribir en local (¿modelo Whisper incompleto o falta memoria?).", covered)
+            return (False, _("No se pudo transcribir en local (¿modelo Whisper incompleto o falta memoria?)."), covered)
         covered = dur                                        # terminó: cubre todo el audio
         self._save(dest, title, cues, dur, covered, False)
         return (True, "", covered)
@@ -1122,18 +1122,18 @@ class BookCard(QFrame):
         col = QVBoxLayout(); col.setSpacing(3)
         t = QLabel(book["title"]); t.setObjectName("booktitle"); t.setWordWrap(True)
         mins = round(book["dur"] / 60)
-        extra = " · ⏸ a medias" if book.get("resumable") else ""
-        sub = QLabel(f"{book['n']} capítulos · {mins} min{extra}"); sub.setObjectName("booksub")
+        extra = _(" · ⏸ a medias") if book.get("resumable") else ""
+        sub = QLabel(_('{0} capítulos · {1} min{2}').format(book['n'], mins, extra)); sub.setObjectName("booksub")
         col.addWidget(t); col.addWidget(sub)
         row.addLayout(col, 1)
         if book.get("resumable"):
-            self.resumeBtn = QPushButton("▸ Reanudar"); self.resumeBtn.setObjectName("tb")
-            self.resumeBtn.setToolTip("Seguir narrando este libro desde donde se detuvo")
+            self.resumeBtn = QPushButton(_("▸ Reanudar")); self.resumeBtn.setObjectName("tb")
+            self.resumeBtn.setToolTip(_("Seguir narrando este libro desde donde se detuvo"))
             self.resumeBtn.setCursor(Qt.PointingHandCursor)
             self.resumeBtn.clicked.connect(lambda: self.resumed.emit(self.dir))
             row.addWidget(self.resumeBtn, 0, Qt.AlignTop)
         self.delBtn = QPushButton("🗑"); self.delBtn.setObjectName("trash")
-        self.delBtn.setToolTip("Eliminar este libro"); self.delBtn.setCursor(Qt.PointingHandCursor)
+        self.delBtn.setToolTip(_("Eliminar este libro")); self.delBtn.setCursor(Qt.PointingHandCursor)
         self.delBtn.clicked.connect(lambda: self.deleted.emit(self.dir))
         row.addWidget(self.delBtn, 0, Qt.AlignTop)
 
@@ -1142,6 +1142,36 @@ class BookCard(QFrame):
 
 
 # ------------------------------------------------------------------- biblioteca
+class ElidedLabel(QLabel):
+    """One-line label that cuts long text with "…" instead of widening the window.
+    text() returns the full text; the tooltip shows it too."""
+
+    def __init__(self, text=""):
+        super().__init__()
+        self._full = ""
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setMinimumWidth(60)
+        self.setText(text)
+
+    def text(self):
+        return self._full
+
+    def setText(self, text):
+        self._full = text or ""
+        self.setToolTip(self._full)
+        self._elide()
+
+    def _elide(self):
+        w = max(0, self.contentsRect().width())
+        QLabel.setText(self, self.fontMetrics().elidedText(self._full, Qt.ElideRight, w))
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e); self._elide()
+
+    def changeEvent(self, e):
+        super().changeEvent(e); self._elide()
+
+
 class LibraryPage(QWidget):
     openBook = Signal(str)
     openEpub = Signal()
@@ -1157,20 +1187,20 @@ class LibraryPage(QWidget):
         hb = QHBoxLayout(head); hb.setContentsMargins(16, 12, 16, 12); hb.setSpacing(12)
         brand = QVBoxLayout(); brand.setSpacing(2)
         w = QLabel("Storyteller"); w.setObjectName("word")
-        self.tag = QLabel("tu biblioteca narrada"); self.tag.setObjectName("tag")
+        self.tag = QLabel(_("tu biblioteca narrada")); self.tag.setObjectName("tag")
         brand.addWidget(w); brand.addWidget(self.tag)
         hb.addLayout(brand); hb.addStretch(1)
-        self.refreshBtn = QPushButton("↻ Actualizar"); self.refreshBtn.setObjectName("tb")
-        self.refreshBtn.setToolTip("Volver a leer la carpeta de libros")
+        self.refreshBtn = QPushButton(_("↻ Actualizar")); self.refreshBtn.setObjectName("tb")
+        self.refreshBtn.setToolTip(_("Volver a leer la carpeta de libros"))
         self.refreshBtn.setCursor(Qt.PointingHandCursor)
         self.refreshBtn.clicked.connect(self.refresh)
-        self.voicesBtn = QPushButton("Modelos"); self.voicesBtn.setObjectName("tb")
+        self.voicesBtn = QPushButton(_("Modelos")); self.voicesBtn.setObjectName("tb")
         self.voicesBtn.setCursor(Qt.PointingHandCursor); self.voicesBtn.clicked.connect(self.openModels.emit)
-        self.importBtn = QPushButton("Importar audiolibro…"); self.importBtn.setObjectName("open")
+        self.importBtn = QPushButton(_("Importar audiolibro…")); self.importBtn.setObjectName("open")
         self.importBtn.setCursor(Qt.PointingHandCursor)
-        self.importBtn.setToolTip("Añadir un audiolibro/audio existente y transcribirlo (Whisper) para subtítulos")
+        self.importBtn.setToolTip(_("Añadir un audiolibro/audio existente y transcribirlo (Whisper) para subtítulos"))
         self.importBtn.clicked.connect(self.importAudio.emit)
-        self.openBtn = QPushButton("Abrir EPUB…"); self.openBtn.setObjectName("open")
+        self.openBtn = QPushButton(_("Abrir EPUB…")); self.openBtn.setObjectName("open")
         self.openBtn.setCursor(Qt.PointingHandCursor)
         self.openBtn.clicked.connect(self.openEpub.emit)
         hb.addWidget(self.refreshBtn); hb.addWidget(self.voicesBtn)
@@ -1180,7 +1210,7 @@ class LibraryPage(QWidget):
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setObjectName("reader")
         inner = QWidget(); self.grid = QVBoxLayout(inner)
         self.grid.setContentsMargins(16, 16, 16, 16); self.grid.setSpacing(12)
-        self.empty = QLabel("Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará con la voz A.")
+        self.empty = QLabel(_("Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará con la voz A."))
         self.empty.setObjectName("hint"); self.empty.setWordWrap(True); self.empty.setAlignment(Qt.AlignCenter)
         self.grid.addWidget(self.empty)
         self.grid.addStretch(1)
@@ -1194,8 +1224,8 @@ class LibraryPage(QWidget):
         self.prog = QProgressBar(); self.prog.setTextVisible(False); self.prog.setFixedHeight(6)
         pv.addWidget(self.progLabel); pv.addWidget(self.prog)
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
-        self.stopBtn = QPushButton("Detener y guardar"); self.stopBtn.setObjectName("tb")
-        self.cancelBtn = QPushButton("Cancelar"); self.cancelBtn.setObjectName("tb")
+        self.stopBtn = QPushButton(_("Detener y guardar")); self.stopBtn.setObjectName("tb")
+        self.cancelBtn = QPushButton(_("Cancelar")); self.cancelBtn.setObjectName("tb")
         for b in (self.stopBtn, self.cancelBtn): b.setCursor(Qt.PointingHandCursor)
         btns.addWidget(self.stopBtn); btns.addWidget(self.cancelBtn)
         pv.addLayout(btns)
@@ -1221,8 +1251,8 @@ class LibraryPage(QWidget):
         d = Path(folder)
         tf = d / "title.txt"
         name = tf.read_text(encoding="utf-8").strip() if tf.exists() else d.name
-        r = QMessageBox.question(self, "Eliminar libro",
-                                 f"¿Eliminar «{name}» y su grabación? No se puede deshacer.")
+        r = QMessageBox.question(self, _("Eliminar libro"),
+                                 _('¿Eliminar «{0}» y su grabación? No se puede deshacer.').format(name))
         if r == QMessageBox.StandardButton.Yes:
             shutil.rmtree(folder, ignore_errors=True)
             self.refresh()
@@ -1261,9 +1291,9 @@ class ModelsScreen(QWidget):
 
         head = QWidget(); head.setObjectName("head")
         hb = QHBoxLayout(head); hb.setContentsMargins(10, 8, 16, 8); hb.setSpacing(10)
-        self.backBtn = QPushButton("‹ Biblioteca"); self.backBtn.setObjectName("tb")
+        self.backBtn = QPushButton(_("‹ Biblioteca")); self.backBtn.setObjectName("tb")
         self.backBtn.setCursor(Qt.PointingHandCursor); self.backBtn.clicked.connect(self.back.emit)
-        ttl = QLabel("Modelos y voces"); ttl.setObjectName("word2")
+        ttl = QLabel(_("Modelos y voces")); ttl.setObjectName("word2")
         hb.addWidget(self.backBtn); hb.addWidget(ttl); hb.addStretch(1)
         root.addWidget(head)
 
@@ -1272,45 +1302,45 @@ class ModelsScreen(QWidget):
         self.col.setContentsMargins(16, 16, 16, 16); self.col.setSpacing(10)
 
         erow = QHBoxLayout(); erow.setSpacing(10)
-        el = QLabel("Generar en:"); el.setObjectName("booksub")
+        el = QLabel(_("Generar en:")); el.setObjectName("booksub")
         self.engineSel = QComboBox()
-        self.engineSel.addItem("Este equipo (local)", "local")
-        self.engineSel.addItem("Servidor propio", "remote")
+        self.engineSel.addItem(_("Este equipo (local)"), "local")
+        self.engineSel.addItem(_("Servidor propio"), "remote")
         self.engineSel.currentIndexChanged.connect(self._engine_changed)
         erow.addWidget(el); erow.addWidget(self.engineSel); erow.addStretch(1)
         self.col.addLayout(erow)
 
         self.serverRow = QWidget()
         sr = QHBoxLayout(self.serverRow); sr.setContentsMargins(0, 0, 0, 0); sr.setSpacing(10)
-        slb = QLabel("Servidor:"); slb.setObjectName("booksub")
-        self.serverEdit = QLineEdit(); self.serverEdit.setPlaceholderText("usuario@host de tu servidor (SSH)")
+        slb = QLabel(_("Servidor:")); slb.setObjectName("booksub")
+        self.serverEdit = QLineEdit(); self.serverEdit.setPlaceholderText(_("usuario@host de tu servidor (SSH)"))
         self.serverEdit.editingFinished.connect(self._server_changed)
         sr.addWidget(slb); sr.addWidget(self.serverEdit, 1)
         self.col.addWidget(self.serverRow)
 
-        self.qcChk = QCheckBox("Revisar y regenerar frases que suenen mal (QC Whisper)")
-        self.qcChk.setToolTip("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
+        self.qcChk = QCheckBox(_("Revisar y regenerar frases que suenen mal (QC Whisper)"))
+        self.qcChk.setToolTip(_("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
                               "texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del "
                               "sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el Mint, "
-                              "el del Mint. (En local hace falta un modelo Whisper descargado.)")
+                              "el del Mint. (En local hace falta un modelo Whisper descargado.)"))
         self.qcChk.setCursor(Qt.PointingHandCursor)
         self.qcChk.toggled.connect(self._qc_changed)
         self.col.addWidget(self.qcChk)
 
         self.parRow = QWidget()
         pr2 = QHBoxLayout(self.parRow); pr2.setContentsMargins(0, 0, 0, 0); pr2.setSpacing(10)
-        plb = QLabel("Velocidad / uso de GPU:"); plb.setObjectName("booksub")
+        plb = QLabel(_("Velocidad / uso de GPU:")); plb.setObjectName("booksub")
         self.streamsSel = QComboBox()
-        self.streamsSel.addItem("Normal — 1 tramo (no satura la GPU, más lento)", 1)
-        self.streamsSel.addItem("Rápido — 2 tramos (≈1,8×)", 2)
-        self.streamsSel.addItem("Máximo — 3 tramos (≈2,6×, exprime la GPU)", 3)
-        self.streamsSel.setToolTip("Cómo narrar en este equipo:\n"
+        self.streamsSel.addItem(_("Normal — 1 tramo (no satura la GPU, más lento)"), 1)
+        self.streamsSel.addItem(_("Rápido — 2 tramos (≈1,8×)"), 2)
+        self.streamsSel.addItem(_("Máximo — 3 tramos (≈2,6×, exprime la GPU)"), 3)
+        self.streamsSel.setToolTip(_("Cómo narrar en este equipo:\n"
                                    "• Normal: un solo proceso, como siempre. No satura la GPU "
                                    "(puedes seguir usándola), pero es lo más lento.\n"
                                    "• Rápido / Máximo: reparte los capítulos entre 2 o 3 procesos "
                                    "a la vez. Mucho más rápido, pero la GPU queda muy cargada "
                                    "(con 3, al límite: no juegues mientras narra). Si diera error "
-                                   "de memoria de la GPU, baja de 3 a 2.")
+                                   "de memoria de la GPU, baja de 3 a 2."))
         self.streamsSel.currentIndexChanged.connect(self._streams_changed)
         pr2.addWidget(plb); pr2.addWidget(self.streamsSel); pr2.addStretch(1)
         self.col.addWidget(self.parRow)
@@ -1318,15 +1348,15 @@ class ModelsScreen(QWidget):
         self.note = QLabel(""); self.note.setObjectName("hint"); self.note.setWordWrap(True)
         self.col.addWidget(self.note)
 
-        h1 = QLabel("Modelos de voz (narrar EPUB)"); h1.setObjectName("sec"); self.col.addWidget(h1)
+        h1 = QLabel(_("Modelos de voz (narrar EPUB)")); h1.setObjectName("sec"); self.col.addWidget(h1)
         self.cards = QVBoxLayout(); self.cards.setSpacing(10); self.col.addLayout(self.cards)
-        self.addModelBtn = QPushButton("+ Añadir modelo por URL / repo…"); self.addModelBtn.setObjectName("tb")
+        self.addModelBtn = QPushButton(_("+ Añadir modelo por URL / repo…")); self.addModelBtn.setObjectName("tb")
         self.addModelBtn.setCursor(Qt.PointingHandCursor); self.addModelBtn.clicked.connect(self._add_model)
         amrow = QHBoxLayout(); amrow.addStretch(1); amrow.addWidget(self.addModelBtn); self.col.addLayout(amrow)
 
-        hw = QLabel("Transcripción de audiolibros (Whisper)"); hw.setObjectName("sec"); self.col.addWidget(hw)
+        hw = QLabel(_("Transcripción de audiolibros (Whisper)")); hw.setObjectName("sec"); self.col.addWidget(hw)
         lrow = QHBoxLayout(); lrow.setSpacing(10)
-        llb = QLabel("Idioma del audio:"); llb.setObjectName("booksub")
+        llb = QLabel(_("Idioma del audio:")); llb.setObjectName("booksub")
         self.langSel = QComboBox()
         for code, name in LANGS: self.langSel.addItem(name, code)
         self.langSel.currentIndexChanged.connect(self._lang_changed)
@@ -1334,26 +1364,26 @@ class ModelsScreen(QWidget):
         self.col.addLayout(lrow)
         self.whisperCards = QVBoxLayout(); self.whisperCards.setSpacing(10); self.col.addLayout(self.whisperCards)
 
-        h2 = QLabel("Voces de referencia"); h2.setObjectName("sec"); self.col.addWidget(h2)
+        h2 = QLabel(_("Voces de referencia")); h2.setObjectName("sec"); self.col.addWidget(h2)
         self.voiceRows = QVBoxLayout(); self.voiceRows.setSpacing(10); self.col.addLayout(self.voiceRows)
-        self.addVoiceBtn = QPushButton("+ Añadir voz (archivo)…"); self.addVoiceBtn.setObjectName("tb")
+        self.addVoiceBtn = QPushButton(_("+ Añadir voz (archivo)…")); self.addVoiceBtn.setObjectName("tb")
         self.addVoiceBtn.setCursor(Qt.PointingHandCursor); self.addVoiceBtn.clicked.connect(self._add_voice)
-        self.addVoiceUrlBtn = QPushButton("+ Cargar voz por URL…"); self.addVoiceUrlBtn.setObjectName("tb")
+        self.addVoiceUrlBtn = QPushButton(_("+ Cargar voz por URL…")); self.addVoiceUrlBtn.setObjectName("tb")
         self.addVoiceUrlBtn.setCursor(Qt.PointingHandCursor); self.addVoiceUrlBtn.clicked.connect(self._add_voice_url)
         avrow = QHBoxLayout(); avrow.addStretch(1)
         avrow.addWidget(self.addVoiceBtn); avrow.addWidget(self.addVoiceUrlBtn); self.col.addLayout(avrow)
-        vhint = QLabel("Al añadir una voz, el texto de referencia se transcribe solo (Whisper); "
-                       "puedes corregirlo."); vhint.setObjectName("booksub"); vhint.setWordWrap(True)
+        vhint = QLabel(_("Al añadir una voz, el texto de referencia se transcribe solo (Whisper); "
+                       "puedes corregirlo.")); vhint.setObjectName("booksub"); vhint.setWordWrap(True)
         self.col.addWidget(vhint)
 
-        hv = QLabel("Voces descargables"); hv.setObjectName("sec"); self.col.addWidget(hv)
+        hv = QLabel(_("Voces descargables")); hv.setObjectName("sec"); self.col.addWidget(hv)
         self.presetRows = QVBoxLayout(); self.presetRows.setSpacing(10); self.col.addLayout(self.presetRows)
 
-        hp = QLabel("Pronunciación"); hp.setObjectName("sec"); self.col.addWidget(hp)
-        phint = QLabel("Cómo lee la voz ciertas palabras: términos extranjeros, siglas y "
-                       "palabras concretas que suenen mal. No cambia los subtítulos.")
+        hp = QLabel(_("Pronunciación")); hp.setObjectName("sec"); self.col.addWidget(hp)
+        phint = QLabel(_("Cómo lee la voz ciertas palabras: términos extranjeros, siglas y "
+                       "palabras concretas que suenen mal. No cambia los subtítulos."))
         phint.setObjectName("booksub"); phint.setWordWrap(True); self.col.addWidget(phint)
-        self.editPronBtn = QPushButton("Editar diccionario de pronunciación…"); self.editPronBtn.setObjectName("tb")
+        self.editPronBtn = QPushButton(_("Editar diccionario de pronunciación…")); self.editPronBtn.setObjectName("tb")
         self.editPronBtn.setCursor(Qt.PointingHandCursor); self.editPronBtn.clicked.connect(self._edit_pron)
         prow = QHBoxLayout(); prow.addStretch(1); prow.addWidget(self.editPronBtn); self.col.addLayout(prow)
 
@@ -1370,11 +1400,11 @@ class ModelsScreen(QWidget):
         self.serverRow.setVisible(cfg["engine"] != "local")
         self.parRow.setVisible(cfg["engine"] == "local")   # los tramos paralelos son solo locales
         if cfg["engine"] == "local" and not engine_ready():
-            self.note.setText("El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio.")
+            self.note.setText(_("El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio."))
         elif cfg["engine"] == "local":
-            self.note.setText("Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta.")
+            self.note.setText(_("Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta."))
         else:
-            self.note.setText("Se genera por SSH en el servidor que indiques (debe tener el mismo motor instalado). El modelo y la voz de aquí se usan en el modo local.")
+            self.note.setText(_("Se genera por SSH en el servidor que indiques (debe tener el mismo motor instalado). El modelo y la voz de aquí se usan en el modo local."))
 
     def refresh(self):
         cfg = load_config()
@@ -1409,36 +1439,36 @@ class ModelsScreen(QWidget):
         top = QHBoxLayout()
         name = QLabel(mdl["name"]); name.setObjectName("booktitle"); top.addWidget(name)
         if cfg["model"] == mdl["id"]:
-            chip = QLabel("activo"); chip.setObjectName("chip"); top.addWidget(chip)
+            chip = QLabel(_("activo")); chip.setObjectName("chip"); top.addWidget(chip)
         top.addStretch(1)
-        state = QLabel("✓ Instalado" if model_installed(mdl) else f"Sin descargar · {mdl.get('size','?')}")
+        state = QLabel(_("✓ Instalado") if model_installed(mdl) else _('Sin descargar · {0}').format(mdl.get('size','?')))
         state.setObjectName("booksub"); top.addWidget(state)
         lay.addLayout(top)
-        desc = QLabel(f"{mdl.get('desc','')}  · Idioma: {lang_name(mdl.get('lang','es'))}  ({mdl['repo']})")
+        desc = QLabel(_('{0}  · Idioma: {1}  ({2})').format(mdl.get('desc',''), lang_name(mdl.get('lang','es')), mdl['repo']))
         desc.setObjectName("booksub"); desc.setWordWrap(True)
         lay.addWidget(desc)
         is_xtts = mdl.get("backend") == "xtts"
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
         if model_installed(mdl):
-            use = QPushButton("Usar"); use.setObjectName("tb"); use.setEnabled(cfg["model"] != mdl["id"])
-            use.clicked.connect(lambda _, i=mdl["id"]: self._use_model(i))
-            dele = QPushButton("Borrar"); dele.setObjectName("tb")
-            dele.clicked.connect((lambda _, m=mdl: self._delete_xtts(m)) if is_xtts
-                                 else (lambda _, m=mdl: self._delete_model(m)))
+            use = QPushButton(_("Usar")); use.setObjectName("tb"); use.setEnabled(cfg["model"] != mdl["id"])
+            use.clicked.connect(lambda _checked, i=mdl["id"]: self._use_model(i))
+            dele = QPushButton(_("Borrar")); dele.setObjectName("tb")
+            dele.clicked.connect((lambda _checked, m=mdl: self._delete_xtts(m)) if is_xtts
+                                 else (lambda _checked, m=mdl: self._delete_model(m)))
             btns.addWidget(use); btns.addWidget(dele)
         else:
-            dl = QPushButton(f"Descargar  ({mdl.get('size','?')})"); dl.setObjectName("open")
+            dl = QPushButton(_('Descargar  ({0})').format(mdl.get('size','?'))); dl.setObjectName("open")
             ready = xtts_ready() if is_xtts else engine_ready()
             dl.setEnabled(ready)
             if not ready:
-                dl.setToolTip("El motor XTTS aún se está instalando" if is_xtts
-                              else "Espera a que termine de instalarse el motor local")
-            dl.clicked.connect((lambda _, m=mdl: self._download_xtts(m)) if is_xtts
-                               else (lambda _, m=mdl: self._download(m)))
+                dl.setToolTip(_("El motor XTTS aún se está instalando") if is_xtts
+                              else _("Espera a que termine de instalarse el motor local"))
+            dl.clicked.connect((lambda _checked, m=mdl: self._download_xtts(m)) if is_xtts
+                               else (lambda _checked, m=mdl: self._download(m)))
             btns.addWidget(dl)
         if mdl.get("custom"):
-            rm = QPushButton("Quitar"); rm.setObjectName("tb")
-            rm.clicked.connect(lambda _, i=mdl["id"]: self._remove_custom(i)); btns.addWidget(rm)
+            rm = QPushButton(_("Quitar")); rm.setObjectName("tb")
+            rm.clicked.connect(lambda _checked, i=mdl["id"]: self._remove_custom(i)); btns.addWidget(rm)
         for i in range(btns.count()):
             w = btns.itemAt(i).widget()
             if w: w.setCursor(Qt.PointingHandCursor)
@@ -1451,25 +1481,25 @@ class ModelsScreen(QWidget):
         top = QHBoxLayout()
         name = QLabel(wm["name"]); name.setObjectName("booktitle"); top.addWidget(name)
         if active_whisper_id(cfg) == wm["id"]:
-            chip = QLabel("activo"); chip.setObjectName("chip"); top.addWidget(chip)
+            chip = QLabel(_("activo")); chip.setObjectName("chip"); top.addWidget(chip)
         top.addStretch(1)
-        state = QLabel("✓ Instalado" if whisper_installed(wm) else f"Sin descargar · {wm.get('size','?')}")
+        state = QLabel(_("✓ Instalado") if whisper_installed(wm) else _('Sin descargar · {0}').format(wm.get('size','?')))
         state.setObjectName("booksub"); top.addWidget(state)
         lay.addLayout(top)
         desc = QLabel(f"{wm.get('desc','')}  ({wm['repo']})"); desc.setObjectName("booksub"); desc.setWordWrap(True)
         lay.addWidget(desc)
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
         if whisper_installed(wm):
-            use = QPushButton("Usar"); use.setObjectName("tb"); use.setEnabled(active_whisper_id(cfg) != wm["id"])
-            use.clicked.connect(lambda _, i=wm["id"]: self._use_whisper(i))
-            dele = QPushButton("Borrar"); dele.setObjectName("tb")
-            dele.clicked.connect(lambda _, m=wm: self._delete_whisper(m))
+            use = QPushButton(_("Usar")); use.setObjectName("tb"); use.setEnabled(active_whisper_id(cfg) != wm["id"])
+            use.clicked.connect(lambda _checked, i=wm["id"]: self._use_whisper(i))
+            dele = QPushButton(_("Borrar")); dele.setObjectName("tb")
+            dele.clicked.connect(lambda _checked, m=wm: self._delete_whisper(m))
             btns.addWidget(use); btns.addWidget(dele)
         else:
-            dl = QPushButton(f"Descargar  ({wm.get('size','?')})"); dl.setObjectName("open")
+            dl = QPushButton(_('Descargar  ({0})').format(wm.get('size','?'))); dl.setObjectName("open")
             dl.setEnabled(engine_ready())
-            if not engine_ready(): dl.setToolTip("Espera a que termine de instalarse el motor local")
-            dl.clicked.connect(lambda _, m=wm: self._download_whisper(m))
+            if not engine_ready(): dl.setToolTip(_("Espera a que termine de instalarse el motor local"))
+            dl.clicked.connect(lambda _checked, m=wm: self._download_whisper(m))
             btns.addWidget(dl)
         for i in range(btns.count()):
             w = btns.itemAt(i).widget()
@@ -1484,16 +1514,16 @@ class ModelsScreen(QWidget):
         if cfg.get("voice", "narrator") == v["id"]:
             chip = QLabel("activa"); chip.setObjectName("chip"); row.addWidget(chip)
         row.addStretch(1)
-        use = QPushButton("Usar"); use.setObjectName("tb"); use.setCursor(Qt.PointingHandCursor)
+        use = QPushButton(_("Usar")); use.setObjectName("tb"); use.setCursor(Qt.PointingHandCursor)
         use.setEnabled(cfg.get("voice", "narrator") != v["id"])
-        use.clicked.connect(lambda _, i=v["id"]: self._use_voice(i)); row.addWidget(use)
+        use.clicked.connect(lambda _checked, i=v["id"]: self._use_voice(i)); row.addWidget(use)
         if v["id"] != "narrator":
-            rm = QPushButton("Borrar"); rm.setObjectName("tb"); rm.setCursor(Qt.PointingHandCursor)
-            rm.clicked.connect(lambda _, vv=v: self._delete_voice(vv)); row.addWidget(rm)
+            rm = QPushButton(_("Borrar")); rm.setObjectName("tb"); rm.setCursor(Qt.PointingHandCursor)
+            rm.clicked.connect(lambda _checked, vv=v: self._delete_voice(vv)); row.addWidget(rm)
         return f
 
     # --- modelos
-    def _engine_changed(self, _):
+    def _engine_changed(self, _arg):
         # Solo actualiza lo que cambia (fila de servidor + texto): no reconstruye
         # la lista de modelos/voces, así no parpadea ni salta el scroll.
         cfg = load_config(); cfg["engine"] = self.engineSel.currentData(); save_config(cfg)
@@ -1505,10 +1535,10 @@ class ModelsScreen(QWidget):
     def _qc_changed(self, on):
         cfg = load_config(); cfg["qc_auto"] = bool(on); save_config(cfg)
 
-    def _streams_changed(self, _):
+    def _streams_changed(self, _arg):
         cfg = load_config(); cfg["parallel_streams"] = int(self.streamsSel.currentData() or 1); save_config(cfg)
 
-    def _lang_changed(self, _):
+    def _lang_changed(self, _arg):
         cfg = load_config(); cfg["language"] = self.langSel.currentData(); save_config(cfg)
 
     def _edit_pron(self):
@@ -1516,17 +1546,17 @@ class ModelsScreen(QWidget):
         p = ensure_pron()
         try: cur = p.read_text("utf-8")
         except Exception: cur = json.dumps(DEFAULT_PRON, ensure_ascii=False, indent=2)
-        txt, ok = QInputDialog.getMultiLineText(self, "Diccionario de pronunciación",
-            "pron: palabra → cómo se dice · say_letters: siglas deletreadas · "
-            "say_word: siglas como palabra", cur)
+        txt, ok = QInputDialog.getMultiLineText(self, _("Diccionario de pronunciación"),
+            _("pron: palabra → cómo se dice · say_letters: siglas deletreadas · "
+            "say_word: siglas como palabra"), cur)
         if not ok: return
         try:
             data = json.loads(txt)
             assert isinstance(data, dict)
         except Exception:
-            QMessageBox.warning(self, "Pronunciación", "El JSON no es válido; no se guardó."); return
+            QMessageBox.warning(self, _("Pronunciación"), _("El JSON no es válido; no se guardó.")); return
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
-        self.progLabel.setText("Diccionario de pronunciación guardado.")
+        self.progLabel.setText(_("Diccionario de pronunciación guardado."))
 
     def _use_model(self, mid):
         cfg = load_config(); cfg["model"] = mid; save_config(cfg); self.refresh()
@@ -1534,15 +1564,15 @@ class ModelsScreen(QWidget):
     def _delete_model(self, mdl):
         d = model_dir(mdl["id"])
         if d.exists(): shutil.rmtree(d, ignore_errors=True)
-        self.progLabel.setText(f"Modelo «{mdl['name']}» borrado (archivos)."); self.refresh()
+        self.progLabel.setText(_('Modelo «{0}» borrado (archivos).').format(mdl['name'])); self.refresh()
 
     def _download_xtts(self, mdl):
         if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText("Descargando XTTS v2… (puede tardar, ~1,8 GB)")
+        self.progLabel.setText(_("Descargando XTTS v2… (puede tardar, ~1,8 GB)"))
         self.dl = XttsDownloadWorker()
         self.dl.progress.connect(lambda t: self.progLabel.setText(t))
-        self.dl.done.connect(lambda: (self.progLabel.setText("XTTS v2 listo."), self.refresh()))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText("Error descargando XTTS: " + e), self.refresh()))
+        self.dl.done.connect(lambda: (self.progLabel.setText(_("XTTS v2 listo.")), self.refresh()))
+        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error descargando XTTS: ") + e), self.refresh()))
         self.dl.start(); self.refresh()
 
     def _delete_xtts(self, mdl):
@@ -1555,7 +1585,7 @@ class ModelsScreen(QWidget):
                     shutil.rmtree(d, ignore_errors=True); removed = True
         cfg = load_config()
         if cfg.get("model") == mdl["id"]: cfg["model"] = MODELS[0]["id"]; save_config(cfg)
-        self.progLabel.setText("Modelo XTTS borrado (caché)." if removed else "No había caché de XTTS.")
+        self.progLabel.setText(_("Modelo XTTS borrado (caché).") if removed else _("No había caché de XTTS."))
         self.refresh()
 
     def _remove_custom(self, mid):
@@ -1565,26 +1595,26 @@ class ModelsScreen(QWidget):
         save_config(cfg); self.refresh()
 
     def _add_model(self):
-        repo, ok = QInputDialog.getText(self, "Añadir modelo",
-            "Repo o URL de Hugging Face\n(p. ej. usuario/modelo o https://huggingface.co/usuario/modelo):")
+        repo, ok = QInputDialog.getText(self, _("Añadir modelo"),
+            _("Repo o URL de Hugging Face\n(p. ej. usuario/modelo o https://huggingface.co/usuario/modelo):"))
         if not ok or not repo.strip(): return
         repo = repo.strip()
         if "huggingface.co/" in repo:
             repo = repo.split("huggingface.co/", 1)[1].strip("/")
             repo = "/".join(repo.split("/")[:2])
-        ckpt, ok = QInputDialog.getText(self, "Añadir modelo",
-            "Nombre del checkpoint dentro del repo:", text="model_last.safetensors")
+        ckpt, ok = QInputDialog.getText(self, _("Añadir modelo"),
+            _("Nombre del checkpoint dentro del repo:"), text="model_last.safetensors")
         if not ok or not ckpt.strip(): return
-        vocab, ok = QInputDialog.getText(self, "Añadir modelo",
-            "Nombre del vocabulario dentro del repo:", text="vocab.txt")
+        vocab, ok = QInputDialog.getText(self, _("Añadir modelo"),
+            _("Nombre del vocabulario dentro del repo:"), text="vocab.txt")
         if not ok or not vocab.strip(): return
-        arch, ok = QInputDialog.getText(self, "Añadir modelo",
-            "Arquitectura (F5TTS_Base para la mayoría; F5TTS_v1_Base para el oficial v1):", text="F5TTS_Base")
+        arch, ok = QInputDialog.getText(self, _("Añadir modelo"),
+            _("Arquitectura (F5TTS_Base para la mayoría; F5TTS_v1_Base para el oficial v1):"), text="F5TTS_Base")
         if not ok or not arch.strip(): return
-        lang, ok = QInputDialog.getText(self, "Añadir modelo",
-            "Idioma del modelo (código: es, en, fr, de, it, pt…):", text="es")
+        lang, ok = QInputDialog.getText(self, _("Añadir modelo"),
+            _("Idioma del modelo (código: es, en, fr, de, it, pt…):"), text="es")
         if not ok or not lang.strip(): return
-        name, ok = QInputDialog.getText(self, "Añadir modelo", "Nombre para mostrar:", text=repo.split("/")[-1])
+        name, ok = QInputDialog.getText(self, _("Añadir modelo"), _("Nombre para mostrar:"), text=repo.split("/")[-1])
         if not ok or not name.strip(): return
         cfg = load_config()
         customs = cfg.get("custom_models", [])
@@ -1592,18 +1622,18 @@ class ModelsScreen(QWidget):
         customs = [m for m in customs if m["id"] != mid]
         customs.append({"id": mid, "name": name.strip(), "repo": repo,
                         "ckpt": ckpt.strip(), "vocab": vocab.strip(), "arch": arch.strip(),
-                        "lang": lang.strip().lower(), "size": "?", "desc": "Añadido por ti", "custom": True})
+                        "lang": lang.strip().lower(), "size": "?", "desc": _("Añadido por ti"), "custom": True})
         cfg["custom_models"] = customs; save_config(cfg)
-        self.progLabel.setText(f"Modelo «{name.strip()}» añadido. Pulsa Descargar.")
+        self.progLabel.setText(_('Modelo «{0}» añadido. Pulsa Descargar.').format(name.strip()))
         self.refresh()
 
     def _download(self, mdl):
         if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText(f"Descargando «{mdl['name']}»…")
+        self.progLabel.setText(_('Descargando «{0}»…').format(mdl['name']))
         self.dl = DownloadWorker(mdl)
         self.dl.progress.connect(lambda t: self.progLabel.setText(t))
-        self.dl.done.connect(lambda: (self.progLabel.setText("Descarga completada."), self.refresh()))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText("Error en la descarga: " + e), self.refresh()))
+        self.dl.done.connect(lambda: (self.progLabel.setText(_("Descarga completada.")), self.refresh()))
+        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error en la descarga: ") + e), self.refresh()))
         self.dl.start(); self.refresh()
 
     # --- whisper (transcripción de audiolibros)
@@ -1613,16 +1643,16 @@ class ModelsScreen(QWidget):
     def _delete_whisper(self, wm):
         d = model_dir(wm["id"])
         if d.exists(): shutil.rmtree(d, ignore_errors=True)
-        self.progLabel.setText(f"Modelo de transcripción «{wm['name']}» borrado."); self.refresh()
+        self.progLabel.setText(_('Modelo de transcripción «{0}» borrado.').format(wm['name'])); self.refresh()
 
     def _download_whisper(self, wm):
         if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText(f"Descargando «{wm['name']}»…")
+        self.progLabel.setText(_('Descargando «{0}»…').format(wm['name']))
         self.dl = WhisperDownloadWorker(wm)
         self.dl.progress.connect(lambda t: self.progLabel.setText(t))
         self.dl.done.connect(lambda i=wm["id"]: (self._use_whisper(i),
-                             self.progLabel.setText("Modelo de transcripción listo.")))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText("Error en la descarga: " + e), self.refresh()))
+                             self.progLabel.setText(_("Modelo de transcripción listo."))))
+        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error en la descarga: ") + e), self.refresh()))
         self.dl.start(); self.refresh()
 
     # --- voces
@@ -1674,48 +1704,48 @@ class ModelsScreen(QWidget):
         subprocess.run(["ffmpeg", "-y", "-i", str(audio), "-ar", "24000", "-ac", "1", str(dest_wav)],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=NOWIN)
         if not dest_wav.exists():
-            raise RuntimeError("no se pudo convertir el audio (¿ffmpeg?)")
+            raise RuntimeError(_("no se pudo convertir el audio (¿ffmpeg?)"))
         (VOICES_DIR / f"{vid}.txt").write_text(text.strip(), encoding="utf-8")
         (VOICES_DIR / f"{vid}.name").write_text(name.strip(), encoding="utf-8")
         return vid
 
     def _voice_wizard(self, audio, cleanup=None):
         """Flujo común: autotranscribe el texto (editable) + nombre + guardar."""
-        self.progLabel.setText("Transcribiendo la voz con Whisper…"); QApplication.processEvents()
+        self.progLabel.setText(_("Transcribiendo la voz con Whisper…")); QApplication.processEvents()
         guess = self._autotranscribe(audio) or ""
         self.progLabel.setText("")
-        txt, ok = QInputDialog.getMultiLineText(self, "Texto de la voz",
-            "Texto que dice el audio (autodetectado; corrígelo si hace falta):", guess)
+        txt, ok = QInputDialog.getMultiLineText(self, _("Texto de la voz"),
+            _("Texto que dice el audio (autodetectado; corrígelo si hace falta):"), guess)
         if ok and txt.strip():
-            name, ok = QInputDialog.getText(self, "Añadir voz", "Nombre para la voz:", text="Mi voz")
+            name, ok = QInputDialog.getText(self, _("Añadir voz"), _("Nombre para la voz:"), text=_("Mi voz"))
             if ok and name.strip():
                 try:
                     vid = self._voice_save(audio, name, txt)
                     self._use_voice(vid)                 # activar + refrescar
-                    self.progLabel.setText(f"Voz «{name.strip()}» añadida y activada.")
+                    self.progLabel.setText(_('Voz «{0}» añadida y activada.').format(name.strip()))
                 except Exception as e:
-                    self.progLabel.setText("No pude añadir la voz: " + str(e)); self.refresh()
+                    self.progLabel.setText(_("No pude añadir la voz: ") + str(e)); self.refresh()
         if cleanup:
             try: os.remove(cleanup)
             except OSError: pass
 
     def _add_voice(self):
-        wav, _ = QFileDialog.getOpenFileName(self, "Audio de la voz (5-12 s, limpio)",
-                                             str(Path.home()), "Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)")
+        wav, _filter = QFileDialog.getOpenFileName(self, _("Audio de la voz (5-12 s, limpio)"),
+                                             str(Path.home()), _("Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)"))
         if wav: self._voice_wizard(wav)
 
     def _add_voice_url(self):
-        url, ok = QInputDialog.getText(self, "Cargar voz por URL",
-                                       "Enlace al audio de la voz (http/https, wav/mp3, 5-15 s):")
+        url, ok = QInputDialog.getText(self, _("Cargar voz por URL"),
+                                       _("Enlace al audio de la voz (http/https, wav/mp3, 5-15 s):"))
         if not ok or not url.strip(): return
         if not is_http_url(url):
-            self.progLabel.setText("La URL debe empezar por http:// o https://"); return
+            self.progLabel.setText(_("La URL debe empezar por http:// o https://")); return
         fd, tmp = tempfile.mkstemp(suffix=".audio"); os.close(fd)
-        self.progLabel.setText("Descargando la voz…"); QApplication.processEvents()
+        self.progLabel.setText(_("Descargando la voz…")); QApplication.processEvents()
         rc = subprocess.run(["curl", "-s", "-L", "--max-time", "120", "-o", tmp, url.strip()],
                             creationflags=NOWIN).returncode
         if rc != 0 or not os.path.exists(tmp) or os.path.getsize(tmp) < 2000:
-            self.progLabel.setText("No se pudo descargar la voz desde esa URL.")
+            self.progLabel.setText(_("No se pudo descargar la voz desde esa URL."))
             try: os.remove(tmp)
             except OSError: pass
             return
@@ -1723,22 +1753,22 @@ class ModelsScreen(QWidget):
 
     def _download_preset(self, pr):
         if not is_http_url(pr.get("url", "")):
-            self.progLabel.setText("URL de voz no válida."); return
+            self.progLabel.setText(_("URL de voz no válida.")); return
         fd, tmp = tempfile.mkstemp(suffix=".wav"); os.close(fd)
-        self.progLabel.setText(f"Descargando «{pr['name']}»…"); QApplication.processEvents()
+        self.progLabel.setText(_('Descargando «{0}»…').format(pr['name'])); QApplication.processEvents()
         rc = subprocess.run(["curl", "-s", "-L", "--max-time", "120", "-o", tmp, pr["url"]],
                             creationflags=NOWIN).returncode
         if rc != 0 or not os.path.exists(tmp) or os.path.getsize(tmp) < 2000:
-            self.progLabel.setText("No se pudo descargar la voz.")
+            self.progLabel.setText(_("No se pudo descargar la voz."))
             try: os.remove(tmp)
             except OSError: pass
             return
         text = pr.get("text") or (self._autotranscribe(tmp) or "")
         try:
             self._voice_save(tmp, pr["name"], text)
-            self.progLabel.setText(f"Voz «{pr['name']}» descargada.")
+            self.progLabel.setText(_('Voz «{0}» descargada.').format(pr['name']))
         except Exception as e:
-            self.progLabel.setText("Error al guardar la voz: " + str(e))
+            self.progLabel.setText(_("Error al guardar la voz: ") + str(e))
         try: os.remove(tmp)
         except OSError: pass
         self.refresh()
@@ -1746,14 +1776,14 @@ class ModelsScreen(QWidget):
     def _preset_card(self, pr):
         f = QFrame(); f.setObjectName("bookcard")
         row = QHBoxLayout(f); row.setContentsMargins(16, 10, 16, 10); row.setSpacing(10)
-        name = QLabel(f"{pr['name']}  · Idioma: {lang_name(pr.get('lang','es'))}")
+        name = QLabel(_('{0}  · Idioma: {1}').format(pr['name'], lang_name(pr.get('lang','es'))))
         name.setObjectName("booktitle"); row.addWidget(name); row.addStretch(1)
         has = (VOICES_DIR / f"{slug(pr['name'])}.wav").exists()
         if has:
-            lbl = QLabel("✓ Descargada"); lbl.setObjectName("booksub"); row.addWidget(lbl)
+            lbl = QLabel(_("✓ Descargada")); lbl.setObjectName("booksub"); row.addWidget(lbl)
         else:
-            dl = QPushButton("Descargar"); dl.setObjectName("open"); dl.setCursor(Qt.PointingHandCursor)
-            dl.clicked.connect(lambda _, p=pr: self._download_preset(p)); row.addWidget(dl)
+            dl = QPushButton(_("Descargar")); dl.setObjectName("open"); dl.setCursor(Qt.PointingHandCursor)
+            dl.clicked.connect(lambda _checked, p=pr: self._download_preset(p)); row.addWidget(dl)
         return f
 
 
@@ -1781,37 +1811,40 @@ class PlayerPage(QWidget):
 
         root = QVBoxLayout(self); root.setContentsMargins(0, 0, 0, 0); root.setSpacing(0)
 
-        head = QWidget(); head.setObjectName("head")
-        hb = QHBoxLayout(head); hb.setContentsMargins(10, 8, 16, 8); hb.setSpacing(10)
-        self.backBtn = QPushButton("‹ Biblioteca"); self.backBtn.setObjectName("tb")
+        # Two rows so long translations fit: actions on top, audio output/volume/chapter below
+        head = QWidget(); head.setObjectName("head"); self.head = head
+        hv = QVBoxLayout(head); hv.setContentsMargins(10, 8, 16, 8); hv.setSpacing(6)
+        hb = QHBoxLayout(); hb.setSpacing(10); hv.addLayout(hb)
+        hb2 = QHBoxLayout(); hb2.setSpacing(10); hv.addLayout(hb2)
+        self.backBtn = QPushButton(_("‹ Biblioteca")); self.backBtn.setObjectName("tb")
         self.backBtn.setCursor(Qt.PointingHandCursor); self.backBtn.clicked.connect(self.back.emit)
-        self.booklbl = QLabel(""); self.booklbl.setObjectName("word2")
-        self.regenBtn = QPushButton("↻ Regenerar"); self.regenBtn.setObjectName("tb")
+        self.booklbl = ElidedLabel(""); self.booklbl.setObjectName("word2")
+        self.regenBtn = QPushButton(_("↻ Regenerar")); self.regenBtn.setObjectName("tb")
         self.regenBtn.setCursor(Qt.PointingHandCursor)
-        self.regenBtn.setToolTip("Volver a narrar el libro entero desde su EPUB")
+        self.regenBtn.setToolTip(_("Volver a narrar el libro entero desde su EPUB"))
         self.regenBtn.clicked.connect(self._do_regen); self.regenBtn.hide()
-        self.resumeBtn = QPushButton("▸ Reanudar"); self.resumeBtn.setObjectName("tb")
+        self.resumeBtn = QPushButton(_("▸ Reanudar")); self.resumeBtn.setObjectName("tb")
         self.resumeBtn.setCursor(Qt.PointingHandCursor)
-        self.resumeBtn.setToolTip("Seguir narrando desde donde se detuvo")
+        self.resumeBtn.setToolTip(_("Seguir narrando desde donde se detuvo"))
         self.resumeBtn.clicked.connect(self._do_resume); self.resumeBtn.hide()
-        self.exportBtn = QPushButton("⤓ Exportar"); self.exportBtn.setObjectName("tb")
+        self.exportBtn = QPushButton(_("⤓ Exportar")); self.exportBtn.setObjectName("tb")
         self.exportBtn.setCursor(Qt.PointingHandCursor)
-        self.exportBtn.setToolTip("Guardar el audio narrado como MP3")
+        self.exportBtn.setToolTip(_("Guardar el audio narrado como MP3"))
         self.exportBtn.clicked.connect(self._export); self.exportBtn.hide()
-        hb.addWidget(self.backBtn); hb.addWidget(self.booklbl); hb.addWidget(self.resumeBtn)
-        hb.addWidget(self.regenBtn); hb.addWidget(self.exportBtn); hb.addStretch(1)
-        spk = QLabel("🔊"); spk.setObjectName("time"); hb.addWidget(spk)
-        self.outSel = QComboBox(); self.outSel.setMaximumWidth(190); self.outSel.setToolTip("Salida de audio")
+        hb.addWidget(self.backBtn); hb.addWidget(self.booklbl, 1); hb.addWidget(self.resumeBtn)
+        hb.addWidget(self.regenBtn); hb.addWidget(self.exportBtn)
+        spk = QLabel("🔊"); spk.setObjectName("time"); hb2.addWidget(spk)
+        self.outSel = QComboBox(); self.outSel.setMinimumWidth(120); self.outSel.setMaximumWidth(280); self.outSel.setToolTip(_("Salida de audio"))
         self.outSel.currentIndexChanged.connect(self._out_changed)
-        hb.addWidget(self.outSel)
+        hb2.addWidget(self.outSel, 1)
         self.volSld = QSlider(Qt.Horizontal); self.volSld.setRange(0, 100)
         self.volSld.setValue(self._vol); self.volSld.setFixedWidth(90)
-        self.volSld.setToolTip("Volumen")
+        self.volSld.setToolTip(_("Volumen"))
         self.volSld.valueChanged.connect(self._vol_changed)
-        hb.addWidget(self.volSld)
+        hb2.addWidget(self.volSld); hb2.addSpacing(12)
         self.chap = QComboBox(); self.chap.setMinimumWidth(150)
         self.chap.currentIndexChanged.connect(self.on_chap_change)
-        hb.addWidget(self.chap)
+        hb2.addWidget(self.chap, 2)
         root.addWidget(head)
 
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setObjectName("reader")
@@ -1847,7 +1880,7 @@ class PlayerPage(QWidget):
             self.speed.addItem(f"{lbl}×")
         self.speed.setCurrentIndex(self._speeds.index(1.0))
         self.speed.currentIndexChanged.connect(self.on_speed)
-        spd = QLabel("Velocidad"); spd.setObjectName("time")
+        spd = QLabel(_("Velocidad")); spd.setObjectName("time")
         ctr.addWidget(self.prevBtn); ctr.addWidget(self.back10); ctr.addWidget(self.playBtn)
         ctr.addWidget(self.fwd10); ctr.addWidget(self.nextBtn); ctr.addSpacing(10); ctr.addWidget(self.tcur)
         ctr.addStretch(1); ctr.addWidget(spd); ctr.addWidget(self.speed)
@@ -1855,13 +1888,13 @@ class PlayerPage(QWidget):
 
         # --- fila de navegación: páginas de texto, ir a posición e ir a capítulo
         nav = QHBoxLayout(); nav.setSpacing(8)
-        self.pageUpBtn = QPushButton("▲ Página"); self.pageDnBtn = QPushButton("Página ▼")
-        self.pageUpBtn.setToolTip("Retroceder una página del texto")
-        self.pageDnBtn.setToolTip("Avanzar una página del texto")
-        self.gotoPosBtn = QPushButton("⤓ Ir a posición…")
-        self.gotoPosBtn.setToolTip("Saltar a un minuto:segundo del capítulo")
-        self.gotoChapBtn = QPushButton("≡ Ir a capítulo…")
-        self.gotoChapBtn.setToolTip("Elegir un capítulo de la lista")
+        self.pageUpBtn = QPushButton(_("▲ Página")); self.pageDnBtn = QPushButton(_("Página ▼"))
+        self.pageUpBtn.setToolTip(_("Retroceder una página del texto"))
+        self.pageDnBtn.setToolTip(_("Avanzar una página del texto"))
+        self.gotoPosBtn = QPushButton(_("⤓ Ir a posición…"))
+        self.gotoPosBtn.setToolTip(_("Saltar a un minuto:segundo del capítulo"))
+        self.gotoChapBtn = QPushButton(_("≡ Ir a capítulo…"))
+        self.gotoChapBtn.setToolTip(_("Elegir un capítulo de la lista"))
         for b in (self.pageUpBtn, self.pageDnBtn, self.gotoPosBtn, self.gotoChapBtn):
             b.setObjectName("tb"); b.setCursor(Qt.PointingHandCursor)
         self.pageUpBtn.clicked.connect(lambda: self._page(-1))
@@ -1904,8 +1937,8 @@ class PlayerPage(QWidget):
     def _goto_position(self):
         """Pide minuto:segundo (o segundos) y salta ahí dentro del capítulo."""
         dur = self.player.duration()
-        txt, ok = QInputDialog.getText(self, "Ir a posición",
-                                       f"Minuto:segundo (capítulo de {fmt(dur)}):",
+        txt, ok = QInputDialog.getText(self, _("Ir a posición"),
+                                       _('Minuto:segundo (capítulo de {0}):').format(fmt(dur)),
                                        QLineEdit.Normal, fmt(self.player.position()))
         if not ok or not txt.strip():
             return
@@ -1916,7 +1949,7 @@ class PlayerPage(QWidget):
             else:
                 secs = float(s)
         except ValueError:
-            QMessageBox.warning(self, "Ir a posición", "Escribe el tiempo como «minutos:segundos», p. ej. 3:40.")
+            QMessageBox.warning(self, _("Ir a posición"), _("Escribe el tiempo como «minutos:segundos», p. ej. 3:40."))
             return
         pos = max(0, int(secs * 1000))
         if dur > 0:
@@ -1929,11 +1962,11 @@ class PlayerPage(QWidget):
         if not self.manifest:
             return
         if len(self.manifest) == 1:
-            QMessageBox.information(self, "Ir a capítulo", "Este título tiene un solo capítulo.")
+            QMessageBox.information(self, _("Ir a capítulo"), _("Este título tiene un solo capítulo."))
             return
         items = [chap_label(m) for m in self.manifest]
         cur = self.cap if 0 <= self.cap < len(items) else 0
-        item, ok = QInputDialog.getItem(self, "Ir a capítulo", "Capítulo:", items, cur, False)
+        item, ok = QInputDialog.getItem(self, _("Ir a capítulo"), _("Capítulo:"), items, cur, False)
         if ok and item in items:
             self.load_chap(items.index(item),
                            self.player.playbackState() == QMediaPlayer.PlayingState)
@@ -1954,7 +1987,7 @@ class PlayerPage(QWidget):
         if 0 <= i < len(getattr(self, "_devs", [])):
             self.audio.setDevice(self._devs[i])
 
-    def _out_changed(self, _):
+    def _out_changed(self, _arg):
         self._apply_output()
         i = self.outSel.currentIndex()
         if 0 <= i < len(getattr(self, "_devs", [])):
@@ -1972,8 +2005,8 @@ class PlayerPage(QWidget):
     def _do_regen(self):
         src = self.book_dir / "source.epub"
         if not src.exists(): return
-        r = QMessageBox.question(self, "Regenerar",
-                                 "¿Volver a narrar el libro entero desde cero? Se sobrescribe lo actual.")
+        r = QMessageBox.question(self, _("Regenerar"),
+                                 _("¿Volver a narrar el libro entero desde cero? Se sobrescribe lo actual."))
         if r == QMessageBox.StandardButton.Yes:
             self.regen.emit(str(src))
 
@@ -1987,12 +2020,12 @@ class PlayerPage(QWidget):
         mp3s = [self.book_dir / f"{m['base']}.mp3" for m in self.manifest]
         mp3s = [p for p in mp3s if p.exists()]
         if not mp3s:
-            QMessageBox.warning(self, "Exportar", "No hay audio generado para exportar.")
+            QMessageBox.warning(self, _("Exportar"), _("No hay audio generado para exportar."))
             return
         base = (self.booklbl.text().strip() or self.book_dir.name) or "narracion"
         safe = re.sub(r'[\\/:*?"<>|]+', " ", base).strip() or "narracion"
-        dst, _ = QFileDialog.getSaveFileName(self, "Guardar narración como MP3",
-                                             str(Path.home() / f"{safe}.mp3"), "Audio MP3 (*.mp3)")
+        dst, _filter = QFileDialog.getSaveFileName(self, _("Guardar narración como MP3"),
+                                             str(Path.home() / f"{safe}.mp3"), _("Audio MP3 (*.mp3)"))
         if not dst:
             return
         dst = Path(dst)
@@ -2015,17 +2048,17 @@ class PlayerPage(QWidget):
                 try: os.remove(lst)
                 except OSError: pass
                 if r.returncode != 0 or not os.path.exists(tmp):
-                    raise RuntimeError((r.stderr or b"").decode("utf-8", "replace")[-400:] or "ffmpeg falló")
+                    raise RuntimeError((r.stderr or b"").decode("utf-8", "replace")[-400:] or _("ffmpeg falló"))
                 os.replace(tmp, dst)
         except FileNotFoundError:
-            QMessageBox.critical(self, "Exportar",
-                                 "No se encontró ffmpeg. Hace falta para unir los capítulos.")
+            QMessageBox.critical(self, _("Exportar"),
+                                 _("No se encontró ffmpeg. Hace falta para unir los capítulos."))
             return
         except Exception as e:
-            QMessageBox.critical(self, "Exportar", f"No se pudo exportar:\n{e}")
+            QMessageBox.critical(self, _("Exportar"), _('No se pudo exportar:\n{0}').format(e))
             return
-        QMessageBox.information(self, "Exportar",
-                                f"Guardado:\n{dst}\n\n{len(mp3s)} capítulo(s).")
+        QMessageBox.information(self, _("Exportar"),
+                                _('Guardado:\n{0}\n\n{1} capítulo(s).').format(dst, len(mp3s)))
 
     def load_book(self, folder):
         self.book_dir = Path(folder)
@@ -2149,7 +2182,7 @@ class PlayerPage(QWidget):
             self.scroll.ensureWidgetVisible(active, 0, 140)
             QTimer.singleShot(0, lambda: setattr(self, "_autoscroll", False))
 
-    def on_user_scroll(self, _):
+    def on_user_scroll(self, _arg):
         if not self._autoscroll:
             self._manual_scroll = True            # desplazó a mano: no volver solo
             self._pause_until = time.monotonic() + 4.5
@@ -2182,6 +2215,12 @@ class Cuentacuentos(QMainWindow):
         self.player.resume.connect(self._resume_gen)
         self.models.back.connect(self.show_library)
         self.setStyleSheet(STYLE)
+        QTimer.singleShot(0, self._fit_min_width)
+
+    def _fit_min_width(self):
+        """Window never narrower than what the pages need, so translated buttons are never cut."""
+        need = max(pg.minimumSizeHint().width() for pg in (self.library, self.player, self.models))
+        self.setMinimumWidth(max(560, need))
 
     def show_library(self):
         self.player.stop()
@@ -2195,23 +2234,24 @@ class Cuentacuentos(QMainWindow):
     def open_book(self, folder):
         self.player.load_book(folder)
         self.stack.setCurrentWidget(self.player)
+        self._fit_min_width()
 
     def open_epub(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Elige un EPUB", str(Path.home()),
-                                              "Libros EPUB (*.epub)")
+        path, _filter = QFileDialog.getOpenFileName(self, _("Elige un EPUB"), str(Path.home()),
+                                              _("Libros EPUB (*.epub)"))
         if path: self._generate(path)
 
     def import_audio(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Elige un audiolibro para importar", str(Path.home()),
-            "Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Todos (*.*)")
+        path, _filter = QFileDialog.getOpenFileName(
+            self, _("Elige un audiolibro para importar"), str(Path.home()),
+            _("Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Todos (*.*)"))
         if not path:
             return
         self._start_import(ImportWorker(src=path))
 
     def _start_import(self, worker, resume=False):
         self.imp = worker
-        self.library.set_generating(True, "Reanudando transcripción…" if resume else "Preparando…", -1)
+        self.library.set_generating(True, _("Reanudando transcripción…") if resume else _("Preparando…"), -1)
         self.imp.progress.connect(lambda t, p: self.library.set_generating(True, t, p))
         self.imp.failed.connect(self._import_fail)
         self.imp.done.connect(self._import_done)
@@ -2221,18 +2261,18 @@ class Cuentacuentos(QMainWindow):
         self.imp.start()
 
     def _imp_stop(self):
-        self.library.set_stopping("Deteniendo y guardando lo transcrito…")
+        self.library.set_stopping(_("Deteniendo y guardando lo transcrito…"))
         self.imp.stop(True)
 
     def _imp_cancel(self):
-        self.library.set_stopping("Cancelando…")
+        self.library.set_stopping(_("Cancelando…"))
         self.imp.stop(False)
 
     def _import_fail(self, msg):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
-        QMessageBox.warning(self, "Importar audiolibro", msg)
+        QMessageBox.warning(self, _("Importar audiolibro"), msg)
 
     def _import_canceled(self):
         self._cleanup_gen_conns()
@@ -2257,8 +2297,8 @@ class Cuentacuentos(QMainWindow):
             return
         src = Path(folder) / "source.epub"
         if not src.exists():
-            QMessageBox.warning(self, "Reanudar",
-                                "No encuentro el EPUB original de este libro, no puedo reanudar.")
+            QMessageBox.warning(self, _("Reanudar"),
+                                _("No encuentro el EPUB original de este libro, no puedo reanudar."))
             return
         self.show_library()
         self._generate(str(src), name=Path(folder).name, resume=True)
@@ -2272,8 +2312,8 @@ class Cuentacuentos(QMainWindow):
         # se colaba en ese hueco. La bandera se marca aquí, antes de arrancar nada.
         if getattr(self, "_gen_busy", False):
             QMessageBox.information(self, "Storyteller",
-                "Ya hay una narración en marcha. Espera a que termine o deténla "
-                "antes de empezar otra.")
+                _("Ya hay una narración en marcha. Espera a que termine o deténla "
+                "antes de empezar otra."))
             return
         cfg = load_config()
         if cfg["engine"] == "local":
@@ -2281,18 +2321,18 @@ class Cuentacuentos(QMainWindow):
             ready = xtts_ready() if m.get("backend") == "xtts" else engine_ready()
             if not ready:
                 QMessageBox.information(self, "Storyteller",
-                    "El motor todavía se está instalando. Prueba dentro de un rato, "
-                    "o cambia a «Servidor propio» en Modelos.")
+                    _("El motor todavía se está instalando. Prueba dentro de un rato, "
+                    "o cambia a «Servidor propio» en Modelos."))
                 return
             if not model_installed(m):
                 QMessageBox.information(self, "Storyteller",
-                    f"Antes descarga el modelo «{m['name']}» en Modelos.")
+                    _('Antes descarga el modelo «{0}» en Modelos.').format(m['name']))
                 self.show_models(); return
             self.worker = LocalGenWorker(path, m, active_voice(cfg), name=name, resume=resume)
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
         self._gen_busy = True                             # ya comprometidos: bloquea un 2º disparo
-        self.library.set_generating(True, "Reanudando…" if resume else "Preparando…", -1)
+        self.library.set_generating(True, _("Reanudando…") if resume else _("Preparando…"), -1)
         self.worker.progress.connect(lambda t, p: self.library.set_generating(True, t, p))
         self.worker.failed.connect(self._gen_fail)
         self.worker.done.connect(self._gen_done)
@@ -2302,11 +2342,11 @@ class Cuentacuentos(QMainWindow):
         self.worker.start()
 
     def _on_stop(self):
-        self.library.set_stopping("Deteniendo y guardando lo generado…")
+        self.library.set_stopping(_("Deteniendo y guardando lo generado…"))
         self.worker.stop(True)
 
     def _on_cancel(self):
-        self.library.set_stopping("Cancelando…")
+        self.library.set_stopping(_("Cancelando…"))
         self.worker.stop(False)
 
     def _cleanup_gen_conns(self):
@@ -2362,10 +2402,10 @@ class Cuentacuentos(QMainWindow):
         # Detener y GUARDAR cualquier narración / transcripción en marcha, esperando a que
         # el estado quede escrito (→ el libro aparece «a medias» y se puede reanudar).
         try: self._stop_worker_and_wait(getattr(self, "worker", None),
-                                         "Guardando la narración en curso…")
+                                         _("Guardando la narración en curso…"))
         except Exception: pass
         try: self._stop_worker_and_wait(getattr(self, "imp", None),
-                                         "Guardando la transcripción en curso…")
+                                         _("Guardando la transcripción en curso…"))
         except Exception: pass
         event.accept()
 
@@ -2419,6 +2459,8 @@ def main():
     if _ico.exists(): app.setWindowIcon(QIcon(str(_ico)))
     win = Cuentacuentos(); win.show()
     a = sys.argv[1:]
+    if "--lang" in a:                    # handled by st_lang; drop it and its value
+        i = a.index("--lang"); del a[i:i + 2]
     if len(a) >= 2 and a[0] == "--book":
         QTimer.singleShot(200, lambda: win.open_book(a[1]))
     elif a and a[0].lower().endswith(".epub"):

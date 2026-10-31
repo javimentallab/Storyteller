@@ -1,0 +1,221 @@
+# Nederlands. NN|tekst, NN = positie in st_lang.SOURCE; \n = nieuwe regel; {0}, {1}… behouden
+0|F5 Spaans
+1|Spaans uit Spanje, hoge kwaliteit. Dit is stem A.
+2|F5 Engels (officieel)
+3|Engels (officieel F5-TTS-basismodel). Het best met een Engelse referentiestem.
+4|XTTS v2 (meertalig)
+5|Meertalig: spreekt Engelse termen in Spaanse tekst goed uit. Kloont je stem. Gebruikt meer VRAM dan F5.
+6|Snel; goed genoeg voor ondertitels van luisterboeken.
+7|Betere kwaliteit, iets trager.
+8|Beste kwaliteit; de zwaarste en traagste.
+9|Engels — F5-voorbeeld
+10|Spaans
+11|Automatisch herkennen
+12|Engels
+13|Frans
+14|Duits
+15|Italiaans
+16|Portugees
+17|Catalaans
+18|Galicisch
+19|Baskisch
+20|QC staat aan, maar er is geen Whisper-model gedownload. Download er een bij ‘Modellen’ om de kwaliteit te laten controleren. Ik vertel zonder QC.
+21|Stem A — laag (F5 Spaans)
+22|resterende tijd berekenen…
+23|minder dan 1 min
+24|~{0} min
+25|~{0} u {1} min
+26|morgen {0}
+27|over {0} dagen, {1}
+28|nog {0} (klaar rond {1})
+29|nog {0} ({1})
+30|Sectie {0}
+31|EPUB naar de server sturen…
+32|Kon de EPUB niet naar de server sturen:\n
+33|Spraakengine hervatten…
+34|Spraakengine starten…
+35|Hoofdstuk {0}/{1} vertellen — zin {2}
+36|Kwaliteit controleren (QC) en een zin opnieuw maken…
+37|Hoofdstuk {0} klaar
+38|GPU vrijmaken…
+39|Het gemaakte opslaan…
+40|De opname ophalen…
+41|Gestopt, maar er was nog geen hoofdstuk klaar om op te slaan.
+42|Het maken is klaar, maar ik kon de audio niet ophalen:\n
+43|Onverwachte fout: {0}
+44|Zinnen van het boek tellen…
+45|Het vertellen leverde geen audio op. Misschien heeft de GPU te weinig geheugen (sluit games of apps die hem gebruiken) of is het model onvolledig.
+46|Vertellen hervatten…
+47|Model laden…
+48|De GPU was bezet; maken op de CPU (trager)…
+49|Model geladen, vertellen…
+50|Vertellen in {0} parallelle delen — modellen laden…
+51|Vertellen in {0} delen — hoofdstuk {1}/{2} — zin {3}
+52|De GPU was bezet; één deel draait op de CPU (trager)…
+53|De download liet het model niet compleet achter.
+54|De download van het XTTS-model is niet voltooid.
+55|Ik vind de audio van dit boek niet, hervatten kan niet.
+56|Audio omzetten…
+57|Kon de audio niet omzetten (ondersteund formaat? ffmpeg geïnstalleerd?).
+58|Kon de lengte van de audio niet lezen.
+59|Onverwachte fout bij importeren: {0}
+60|Transcriberen (server)… {0}–{1} van {2}  ·  opgeslagen {3}/{4} min
+61|De transcriptie werd onderbroken (spraakserver offline?). Wat getranscribeerd is, is opgeslagen; je kunt Hervatten.
+62|Download eerst een transcriptiemodel (Whisper) bij ‘Modellen’.
+63|Transcriptiemodel laden…
+64|Transcriberen met Whisper… {0} / {1}
+65|Transcriberen met Whisper…
+66|Kon niet lokaal transcriberen (Whisper-model onvolledig of te weinig geheugen?).
+67| · ⏸ half klaar
+68|{0} hoofdstukken · {1} min{2}
+69|▸ Hervatten
+70|Dit boek verder vertellen waar het stopte
+71|Dit boek verwijderen
+72|je vertelde bibliotheek
+73|↻ Vernieuwen
+74|De boekenmap opnieuw inlezen
+75|Modellen
+76|Luisterboek importeren…
+77|Een bestaand luisterboek/audio toevoegen en transcriberen (Whisper) voor ondertitels
+78|EPUB openen…
+79|Nog geen boeken.\nKlik op ‘EPUB openen…’ en Storyteller vertelt het met stem A.
+80|Stoppen en opslaan
+81|Annuleren
+82|Boek verwijderen
+83|‘{0}’ en de opname verwijderen? Dit kan niet ongedaan worden gemaakt.
+84|‹ Bibliotheek
+85|Modellen en stemmen
+86|Maken op:
+87|Deze computer (lokaal)
+88|Eigen server
+89|Server:
+90|gebruiker@host van je server (SSH)
+91|Zinnen die verkeerd klinken controleren en opnieuw maken (Whisper-QC)
+92|Na elke vertelde zin wordt die met Whisper getranscribeerd en, als hij niet met de tekst overeenkomt, opnieuw gemaakt. Trager, maar vangt hallucinaties af. Gebruikt de Whisper van de plek waar je vertelt: LOKAAL het model dat bij ‘Modellen’ is gedownload; op de server die van de server. (Lokaal is een gedownload Whisper-model nodig.)
+93|Snelheid / GPU-gebruik:
+94|Normaal — 1 deel (belast de GPU niet volledig, trager)
+95|Snel — 2 delen (≈1,8×)
+96|Maximaal — 3 delen (≈2,6×, haalt alles uit de GPU)
+97|Zo vertel je op deze computer:\n• Normaal: één proces, zoals altijd. Belast de GPU niet volledig (je kunt hem blijven gebruiken), maar het traagst.\n• Snel / Maximaal: verdeelt de hoofdstukken over 2 of 3 processen tegelijk. Veel sneller, maar de GPU wordt zwaar belast (met 3 op de grens: niet gamen tijdens het vertellen). Bij een GPU-geheugenfout van 3 naar 2 gaan.
+98|Stemmodellen (EPUB vertellen)
+99|+ Model toevoegen via URL / repo…
+100|Transcriptie van luisterboeken (Whisper)
+101|Taal van de audio:
+102|Referentiestemmen
+103|+ Stem toevoegen (bestand)…
+104|+ Stem laden via URL…
+105|Als je een stem toevoegt, wordt de referentietekst vanzelf getranscribeerd (Whisper); je kunt hem verbeteren.
+106|Downloadbare stemmen
+107|Hoe de stem bepaalde woorden leest: vreemde termen, afkortingen en losse woorden die verkeerd klinken. Verandert de ondertitels niet.
+108|Uitspraakwoordenboek bewerken…
+109|De lokale engine wordt geïnstalleerd (PyTorch + F5). Intussen kun je op een eigen server maken.
+110|Maakt op deze computer met de GPU. Kies model en stem; download het model als dat nodig is.
+111|Maakt via SSH op de opgegeven server (daar moet dezelfde engine geïnstalleerd zijn). Model en stem van hier worden in de lokale modus gebruikt.
+112|✓ Geïnstalleerd
+113|Niet gedownload · {0}
+114|{0}  · Taal: {1}  ({2})
+115|Gebruiken
+116|Verwijderen
+117|Downloaden  ({0})
+118|De XTTS-engine wordt nog geïnstalleerd
+119|Wacht tot de lokale engine klaar is met installeren
+120|Weghalen
+121|Uitspraakwoordenboek
+122|pron: woord → hoe je het zegt · say_letters: gespelde afkortingen · say_word: afkortingen als woord
+123|De JSON is ongeldig; niet opgeslagen.
+124|Uitspraakwoordenboek opgeslagen.
+125|Model ‘{0}’ verwijderd (bestanden).
+126|XTTS v2 downloaden… (kan even duren, ~1,8 GB)
+127|XTTS v2 klaar.
+128|Fout bij downloaden van XTTS:
+129|XTTS-model verwijderd (cache).
+130|Er was geen XTTS-cache.
+131|Model toevoegen
+132|Hugging Face-repo of -URL\n(bijv. gebruiker/model of https://huggingface.co/gebruiker/model):
+133|Naam van het checkpoint in de repo:
+134|Naam van de woordenlijst in de repo:
+135|Architectuur (F5TTS_Base voor de meeste; F5TTS_v1_Base voor de officiële v1):
+136|Taal van het model (code: es, en, fr, de, it, pt…):
+137|Weergavenaam:
+138|Door jou toegevoegd
+139|Model ‘{0}’ toegevoegd. Klik op Downloaden.
+140|‘{0}’ downloaden…
+141|Download voltooid.
+142|Downloadfout:
+143|Transcriptiemodel ‘{0}’ verwijderd.
+144|Transcriptiemodel klaar.
+145|kon de audio niet omzetten (ffmpeg?)
+146|De stem transcriberen met Whisper…
+147|Tekst van de stem
+148|Wat er in de audio wordt gezegd (automatisch herkend; verbeter het zo nodig):
+149|Stem toevoegen
+150|Naam voor de stem:
+151|Mijn stem
+152|Stem ‘{0}’ toegevoegd en gekozen.
+153|Kon de stem niet toevoegen:
+154|Audio van de stem (5-12 s, schoon)
+155|Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Stem laden via URL
+157|Link naar de audio van de stem (http/https, wav/mp3, 5-15 s):
+158|De URL moet beginnen met http:// of https://
+159|De stem downloaden…
+160|Kon de stem niet van die URL downloaden.
+161|Ongeldige stem-URL.
+162|Kon de stem niet downloaden.
+163|Stem ‘{0}’ gedownload.
+164|Fout bij opslaan van de stem:
+165|{0}  · Taal: {1}
+166|✓ Gedownload
+167|Downloaden
+168|↻ Opnieuw maken
+169|Het hele boek opnieuw vertellen vanuit de EPUB
+170|Verder vertellen waar het stopte
+171|⤓ Exporteren
+172|De vertelde audio als MP3 opslaan
+173|Audio-uitvoer
+174|Volume
+175|Snelheid
+176|▲ Pagina
+177|Pagina ▼
+178|Eén tekstpagina terug
+179|Eén tekstpagina vooruit
+180|⤓ Naar positie…
+181|Naar een minuut:seconde van het hoofdstuk springen
+182|≡ Naar hoofdstuk…
+183|Een hoofdstuk uit de lijst kiezen
+184|Naar positie
+185|Minuut:seconde (hoofdstuk van {0}):
+186|Schrijf de tijd als ‘minuten:seconden’, bijv. 3:40.
+187|Naar hoofdstuk
+188|Deze titel heeft maar één hoofdstuk.
+189|Hoofdstuk:
+190|Opnieuw maken
+191|Het hele boek vanaf nul opnieuw vertellen? Het huidige wordt overschreven.
+192|Exporteren
+193|Er is geen gemaakte audio om te exporteren.
+194|Vertelling als MP3 opslaan
+195|MP3-audio (*.mp3)
+196|ffmpeg mislukte
+197|ffmpeg niet gevonden. Het is nodig om de hoofdstukken samen te voegen.
+198|Exporteren mislukt:\n{0}
+199|Opgeslagen:\n{0}\n\n{1} hoofdstuk(ken).
+200|Kies een EPUB
+201|EPUB-boeken (*.epub)
+202|Kies een luisterboek om te importeren
+203|Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Alle (*.*)
+204|Transcriptie hervatten…
+205|Voorbereiden…
+206|Stoppen en het getranscribeerde opslaan…
+207|Annuleren…
+208|Luisterboek importeren
+209|Hervatten
+210|Ik vind de oorspronkelijke EPUB van dit boek niet, hervatten kan niet.
+211|Er loopt al een vertelling. Wacht tot die klaar is of stop hem voordat je een nieuwe begint.
+212|De engine wordt nog geïnstalleerd. Probeer het zo opnieuw, of kies ‘Eigen server’ bij Modellen.
+213|Download eerst het model ‘{0}’ bij Modellen.
+214|Hervatten…
+215|Stoppen en het gemaakte opslaan…
+216|De lopende vertelling opslaan…
+217|De lopende transcriptie opslaan…
+218|actief
+219|Uitspraak
