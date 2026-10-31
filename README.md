@@ -2,6 +2,11 @@
 
 [Versión en español](README.es.md)
 
+<p align="center">
+  <img src="docs/player.png" width="49%" alt="Player: the sentence being read is highlighted">
+  <img src="docs/library.png" width="49%" alt="Library of narrated books">
+</p>
+
 Desktop app (PySide6) that turns an **EPUB into a narrated audiobook** with a neural
 voice and plays it with **synced subtitles** (the sentence being read is highlighted;
 click to jump). It also **imports existing audiobooks** and **transcribes them with
@@ -39,6 +44,8 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
   transcription models (faster-whisper), choose the language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed
   automatically**). Catalogue of downloadable voices.
+
+<p align="center"><img src="docs/models.png" width="70%" alt="Models and voices screen"></p>
 
 ## Requirements
 
