@@ -2,6 +2,11 @@
 
 [English version](README.md)
 
+<p align="center">
+  <img src="docs/player.png" width="49%" alt="Player: the sentence being read is highlighted">
+  <img src="docs/library.png" width="49%" alt="Library of narrated books">
+</p>
+
 Aplicación de escritorio (PySide6) que convierte **EPUB en audiolibro narrado** con
 voz neural y lo reproduce con **subtítulos sincronizados** (la frase que suena se
 resalta; clic para saltar). También **importa audiolibros existentes** y los
@@ -40,6 +45,8 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
   **cargar voces** desde archivo
   o por URL (el texto de referencia se **autotranscribe**). Catálogo de voces
   descargables.
+
+<p align="center"><img src="docs/models.png" width="70%" alt="Models and voices screen"></p>
 
 ## Requisitos
 
