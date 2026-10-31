@@ -1,0 +1,221 @@
+# Português. NN|texto, NN = posição em st_lang.SOURCE; \n = quebra de linha; manter {0}, {1}…
+0|F5 Espanhol
+1|Espanhol peninsular, alta qualidade. É a voz A.
+2|F5 Inglês (oficial)
+3|Inglês (modelo base oficial F5-TTS). Melhor com uma voz de referência em inglês.
+4|XTTS v2 (multilíngue)
+5|Multilíngue: pronuncia bem os termos em inglês dentro do espanhol. Clona sua voz. Usa mais VRAM que o F5.
+6|Rápido; qualidade suficiente para legendas de audiolivros.
+7|Melhor qualidade, um pouco mais lento.
+8|Qualidade máxima; o mais pesado e lento.
+9|Inglês — exemplo F5
+10|Espanhol
+11|Detectar automaticamente
+12|Inglês
+13|Francês
+14|Alemão
+15|Italiano
+16|Português
+17|Catalão
+18|Galego
+19|Basco
+20|O QC está ativado, mas não há modelo Whisper baixado. Baixe um em “Modelos” para revisar a qualidade. Narrando sem QC.
+21|Voz A — grave (F5 Espanhol)
+22|calculando o tempo restante…
+23|menos de 1 min
+24|~{0} min
+25|~{0} h {1} min
+26|amanhã {0}
+27|em {0} dias, {1}
+28|faltam {0} (por volta das {1})
+29|faltam {0} ({1})
+30|Seção {0}
+31|Enviando o EPUB ao servidor…
+32|Não consegui enviar o EPUB ao servidor:\n
+33|Retomando o motor de voz…
+34|Iniciando o motor de voz…
+35|Narrando capítulo {0}/{1} — frase {2}
+36|Revisando a qualidade (QC) e regenerando uma frase…
+37|Capítulo {0} pronto
+38|Liberando a GPU…
+39|Salvando o que foi gerado…
+40|Trazendo a gravação…
+41|Parei, mas ainda não havia nenhum capítulo terminado para salvar.
+42|A geração terminou, mas não consegui trazer o áudio:\n
+43|Erro inesperado: {0}
+44|Contando as frases do livro…
+45|A narração não produziu áudio. Pode faltar memória na GPU (feche jogos ou apps que a usem) ou o modelo pode estar incompleto.
+46|Retomando a narração…
+47|Carregando o modelo…
+48|A GPU estava ocupada; gerando na CPU (mais lento)…
+49|Modelo carregado, narrando…
+50|Narrando em {0} trechos em paralelo — carregando modelos…
+51|Narrando em {0} trechos — capítulo {1}/{2} — frase {3}
+52|A GPU estava ocupada; um trecho roda na CPU (mais lento)…
+53|O download não deixou o modelo completo.
+54|O download do modelo XTTS não terminou.
+55|Não encontro o áudio deste livro; não dá para retomar.
+56|Convertendo o áudio…
+57|Não foi possível converter o áudio (formato suportado? ffmpeg instalado?).
+58|Não consegui ler a duração do áudio.
+59|Erro inesperado ao importar: {0}
+60|Transcrevendo (servidor)… {0}–{1} de {2}  ·  salvo {3}/{4} min
+61|A transcrição foi interrompida (servidor de voz fora do ar?). O que foi transcrito está salvo; você pode Retomar.
+62|Primeiro baixe um modelo de transcrição (Whisper) em “Modelos”.
+63|Carregando o modelo de transcrição…
+64|Transcrevendo com Whisper… {0} / {1}
+65|Transcrevendo com Whisper…
+66|Não foi possível transcrever localmente (modelo Whisper incompleto ou falta de memória?).
+67| · ⏸ pela metade
+68|{0} capítulos · {1} min{2}
+69|▸ Retomar
+70|Continuar narrando este livro de onde parou
+71|Excluir este livro
+72|sua biblioteca narrada
+73|↻ Atualizar
+74|Ler de novo a pasta de livros
+75|Modelos
+76|Importar audiolivro…
+77|Adicionar um audiolivro/áudio existente e transcrevê-lo (Whisper) para legendas
+78|Abrir EPUB…
+79|Ainda não há livros.\nToque em “Abrir EPUB…” e o Storyteller vai narrá-lo com a voz A.
+80|Parar e salvar
+81|Cancelar
+82|Excluir livro
+83|Excluir “{0}” e sua gravação? Não dá para desfazer.
+84|‹ Biblioteca
+85|Modelos e vozes
+86|Gerar em:
+87|Este computador (local)
+88|Servidor próprio
+89|Servidor:
+90|usuário@host do seu servidor (SSH)
+91|Revisar e regenerar frases que soem mal (QC Whisper)
+92|Depois de narrar cada frase, transcreve-a com o Whisper e, se não bater com o texto, regenera-a. Mais lento, mas pega alucinações. Usa o Whisper do lugar onde você narra: em LOCAL, o modelo baixado em “Modelos”; no servidor, o do servidor. (Em local é preciso um modelo Whisper baixado.)
+93|Velocidade / uso da GPU:
+94|Normal — 1 trecho (não satura a GPU, mais lento)
+95|Rápido — 2 trechos (≈1,8×)
+96|Máximo — 3 trechos (≈2,6×, espreme a GPU)
+97|Como narrar neste computador:\n• Normal: um só processo, como sempre. Não satura a GPU (você pode continuar usando-a), mas é o mais lento.\n• Rápido / Máximo: divide os capítulos entre 2 ou 3 processos ao mesmo tempo. Bem mais rápido, mas a GPU fica muito carregada (com 3, no limite: não jogue enquanto narra). Se der erro de memória da GPU, baixe de 3 para 2.
+98|Modelos de voz (narrar EPUB)
+99|+ Adicionar modelo por URL / repo…
+100|Transcrição de audiolivros (Whisper)
+101|Idioma do áudio:
+102|Vozes de referência
+103|+ Adicionar voz (arquivo)…
+104|+ Carregar voz por URL…
+105|Ao adicionar uma voz, o texto de referência é transcrito sozinho (Whisper); você pode corrigi-lo.
+106|Vozes para baixar
+107|Como a voz lê certas palavras: termos estrangeiros, siglas e palavras específicas que soem mal. Não muda as legendas.
+108|Editar dicionário de pronúncia…
+109|O motor local está sendo instalado (PyTorch + F5). Enquanto isso, você pode gerar em um servidor próprio.
+110|Gera neste computador com a GPU. Escolha modelo e voz; baixe o modelo se precisar.
+111|Gera por SSH no servidor que você indicar (precisa ter o mesmo motor instalado). O modelo e a voz daqui são usados no modo local.
+112|✓ Instalado
+113|Não baixado · {0}
+114|{0}  · Idioma: {1}  ({2})
+115|Usar
+116|Apagar
+117|Baixar  ({0})
+118|O motor XTTS ainda está sendo instalado
+119|Espere o motor local terminar de instalar
+120|Remover
+121|Dicionário de pronúncia
+122|pron: palavra → como se diz · say_letters: siglas soletradas · say_word: siglas como palavra
+123|O JSON não é válido; não foi salvo.
+124|Dicionário de pronúncia salvo.
+125|Modelo “{0}” apagado (arquivos).
+126|Baixando XTTS v2… (pode demorar, ~1,8 GB)
+127|XTTS v2 pronto.
+128|Erro ao baixar o XTTS:
+129|Modelo XTTS apagado (cache).
+130|Não havia cache do XTTS.
+131|Adicionar modelo
+132|Repo ou URL do Hugging Face\n(ex.: usuario/modelo ou https://huggingface.co/usuario/modelo):
+133|Nome do checkpoint dentro do repo:
+134|Nome do vocabulário dentro do repo:
+135|Arquitetura (F5TTS_Base para a maioria; F5TTS_v1_Base para o v1 oficial):
+136|Idioma do modelo (código: es, en, fr, de, it, pt…):
+137|Nome a exibir:
+138|Adicionado por você
+139|Modelo “{0}” adicionado. Toque em Baixar.
+140|Baixando “{0}”…
+141|Download concluído.
+142|Erro no download:
+143|Modelo de transcrição “{0}” apagado.
+144|Modelo de transcrição pronto.
+145|não foi possível converter o áudio (ffmpeg?)
+146|Transcrevendo a voz com o Whisper…
+147|Texto da voz
+148|Texto que o áudio diz (detectado automaticamente; corrija se precisar):
+149|Adicionar voz
+150|Nome da voz:
+151|Minha voz
+152|Voz “{0}” adicionada e ativada.
+153|Não consegui adicionar a voz:
+154|Áudio da voz (5-12 s, limpo)
+155|Áudio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Carregar voz por URL
+157|Link para o áudio da voz (http/https, wav/mp3, 5-15 s):
+158|A URL deve começar com http:// ou https://
+159|Baixando a voz…
+160|Não foi possível baixar a voz dessa URL.
+161|URL de voz inválida.
+162|Não foi possível baixar a voz.
+163|Voz “{0}” baixada.
+164|Erro ao salvar a voz:
+165|{0}  · Idioma: {1}
+166|✓ Baixada
+167|Baixar
+168|↻ Regenerar
+169|Narrar de novo o livro inteiro a partir do EPUB
+170|Continuar narrando de onde parou
+171|⤓ Exportar
+172|Salvar o áudio narrado como MP3
+173|Saída de áudio
+174|Volume
+175|Velocidade
+176|▲ Página
+177|Página ▼
+178|Voltar uma página do texto
+179|Avançar uma página do texto
+180|⤓ Ir para a posição…
+181|Pular para um minuto:segundo do capítulo
+182|≡ Ir para o capítulo…
+183|Escolher um capítulo da lista
+184|Ir para a posição
+185|Minuto:segundo (capítulo de {0}):
+186|Escreva o tempo como “minutos:segundos”, ex.: 3:40.
+187|Ir para o capítulo
+188|Este título tem um só capítulo.
+189|Capítulo:
+190|Regenerar
+191|Narrar de novo o livro inteiro do zero? O atual será substituído.
+192|Exportar
+193|Não há áudio gerado para exportar.
+194|Salvar narração como MP3
+195|Áudio MP3 (*.mp3)
+196|o ffmpeg falhou
+197|O ffmpeg não foi encontrado. É necessário para juntar os capítulos.
+198|Não foi possível exportar:\n{0}
+199|Salvo:\n{0}\n\n{1} capítulo(s).
+200|Escolha um EPUB
+201|Livros EPUB (*.epub)
+202|Escolha um audiolivro para importar
+203|Áudio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Todos (*.*)
+204|Retomando a transcrição…
+205|Preparando…
+206|Parando e salvando o que foi transcrito…
+207|Cancelando…
+208|Importar audiolivro
+209|Retomar
+210|Não encontro o EPUB original deste livro; não dá para retomar.
+211|Já há uma narração em andamento. Espere terminar ou pare-a antes de começar outra.
+212|O motor ainda está sendo instalado. Tente daqui a pouco ou mude para “Servidor próprio” em Modelos.
+213|Primeiro baixe o modelo “{0}” em Modelos.
+214|Retomando…
+215|Parando e salvando o que foi gerado…
+216|Salvando a narração em andamento…
+217|Salvando a transcrição em andamento…
+218|ativo
+219|Pronúncia
