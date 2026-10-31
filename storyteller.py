@@ -280,10 +280,101 @@ def book_resumable(d):
         return (Path(d) / "cap01.mp3").exists()          # la transcripción reanuda del propio mp3
     return (Path(d) / "source.epub").exists()            # la narración reanuda del EPUB origen
 
+# Carpetas con una narración EN CURSO en esta app: la biblioteca no las "repara".
+ACTIVE_GEN = set()
+
+def _atomic_write(path, text):
+    tmp = str(path) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f: f.write(text)
+    for i in range(60):                                   # Windows: «Acceso denegado» si alguien lo lee justo ahora
+        try:
+            os.replace(tmp, path); return
+        except PermissionError:
+            if i == 59: raise
+            time.sleep(0.05)
+
+def _stream_parts(d):
+    """{nº de tramo: ruta} de los manifest.pN.json de la carpeta."""
+    out = {}
+    for p in Path(d).glob("manifest.p*.json"):
+        m = re.fullmatch(r"manifest\.p(\d+)\.json", p.name)
+        if m: out[int(m.group(1))] = p
+    return out
+
+def merge_stream_manifests(dest, streams, n, complete_ok=False):
+    """Une los manifest.pN.json de los tramos en manifest.json (ordenado por id) y
+    escribe gen_state.json. complete solo si complete_ok y están los n capítulos.
+    Devuelve la lista fusionada (vacía = nada que fusionar, no escribe)."""
+    dest = Path(dest)
+    best = {}
+    for idx in range(1, streams + 1):
+        try:
+            part = json.loads((dest / f"manifest.p{idx}.json").read_text("utf-8"))
+        except Exception:
+            continue
+        for e in part if isinstance(part, list) else []:
+            if not (isinstance(e, dict) and "id" in e): continue
+            old = best.get(e["id"])                       # duplicado: gana el más avanzado
+            if old is None or (bool(e.get("done")), int(e.get("n") or 0)) > \
+                              (bool(old.get("done")), int(old.get("n") or 0)):
+                best[e["id"]] = e
+    merged = [best[k] for k in sorted(best)]
+    if not merged:
+        return merged
+    complete = complete_ok and sum(1 for e in merged if e.get("done")) >= n
+    _atomic_write(dest / "manifest.json", json.dumps(merged, ensure_ascii=False, indent=2))
+    _atomic_write(dest / "gen_state.json",
+                  json.dumps({"total": n, "complete": bool(complete), "streams": streams},
+                             ensure_ascii=False))
+    if complete:                                          # ya no hacen falta los parciales
+        for idx in range(1, streams + 1):
+            try: (dest / f"manifest.p{idx}.json").unlink()
+            except Exception: pass
+    return merged
+
+def recover_interrupted(d):
+    """Repara un libro narrado en tramos que se cortó de golpe (cuelgue, apagón,
+    proceso matado): los tramos dejaron su manifest.pN.json pero no se llegó a
+    fusionar, así que no salía en la biblioteca o salía con menos capítulos.
+    Lo deja a medias y reanudable. True si ha reparado algo."""
+    d = Path(d)
+    if str(d) in ACTIVE_GEN:
+        return False
+    parts = _stream_parts(d)
+    if not parts:
+        return False
+    st = read_gen_state(d) or {}
+    if st.get("complete"):
+        return False
+    mf = d / "manifest.json"
+    try:
+        newest = max(p.stat().st_mtime for p in parts.values())
+        if mf.exists() and mf.stat().st_mtime >= newest and st:
+            return False                                  # ya al día
+    except OSError:
+        return False
+    log = ""
+    try: log = (d / "gen.log").read_text("utf-8", errors="replace")
+    except Exception: pass
+    # Nº de tramos: el gen_state (se escribe al empezar) o, en libros antiguos, el log.
+    streams = int(st.get("streams") or 0)
+    if not streams:
+        ts = [int(x) for x in re.findall(r"^\[t(\d+)\]", log, re.M)]
+        streams = max(ts + list(parts))
+    n = int(st.get("total") or 0)
+    if not n:
+        m = re.search(r"capitulos:\s*(\d+)", log)
+        n = int(m.group(1)) if m else 0
+    # Sin total conocido da igual: complete_ok=False y al reanudar se recuenta del EPUB.
+    return bool(merge_stream_manifests(d, streams, n, complete_ok=False))
+
 def list_books():
     LOCAL_BOOKS.mkdir(parents=True, exist_ok=True)
     out = []
     for d in sorted(LOCAL_BOOKS.iterdir()):
+        if d.is_dir():
+            try: recover_interrupted(d)                   # narración cortada de golpe → reanudable
+            except Exception: pass
         mf = d / "manifest.json"
         if not (d.is_dir() and mf.exists()):
             continue
@@ -446,6 +537,7 @@ class LocalGenWorker(QThread):
         tmp_epub = None
         try:
             dest = LOCAL_BOOKS / self.name
+            ACTIVE_GEN.add(str(dest))                     # la biblioteca no la "repara" mientras narra
             epub = self.epub
             # Al REGENERAR, el EPUB de entrada es el propio dest/source.epub: ponerlo a
             # salvo en un temporal ANTES de vaciar dest, o rmtree lo borraría y la
@@ -532,6 +624,7 @@ class LocalGenWorker(QThread):
         except Exception as e:
             self.failed.emit(f"Error inesperado: {e}")
         finally:
+            ACTIVE_GEN.discard(str(LOCAL_BOOKS / self.name))
             if tmp_epub:
                 try: os.remove(tmp_epub)
                 except Exception: pass
@@ -606,6 +699,15 @@ class LocalGenWorker(QThread):
         self._lock = threading.Lock()
         self._tot_fr = 0; self._done_fr = 0; self._caps_seen = set()
         self.procs = []
+        # Guardar YA el reparto y el total: si el PC se cuelga, la biblioteca sabe
+        # reconstruir el libro y reanudar con los mismos tramos (recover_interrupted).
+        st0 = read_gen_state(dest) or {}
+        if not st0.get("streams"):
+            try:
+                _atomic_write(dest / "gen_state.json", json.dumps(
+                    {"total": n, "complete": False, "streams": streams}, ensure_ascii=False))
+            except Exception: pass
+        self._last_merge = time.monotonic()
         logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
         self.progress.emit(f"Narrando en {streams} tramos en paralelo — cargando modelos…", -1)
 
@@ -638,6 +740,12 @@ class LocalGenWorker(QThread):
                         self.progress.emit("Revisando calidad (QC) y regenerando una frase…", -1)
                     elif "reintento en CPU" in line:
                         self.progress.emit("La GPU estaba ocupada; un tramo va en CPU (más lento)…", -1)
+                    # Fusión periódica: ante un cuelgue el libro queda en la biblioteca
+                    # (a medias, reanudable) con lo narrado hasta hace unos segundos.
+                    if time.monotonic() - self._last_merge > 20:
+                        self._last_merge = time.monotonic()
+                        try: merge_stream_manifests(dest, streams, n, complete_ok=False)
+                        except Exception: pass
             p.wait()
 
         ths = [threading.Thread(target=worker, args=(i, r), daemon=True)
@@ -650,30 +758,9 @@ class LocalGenWorker(QThread):
 
     def _merge_manifests(self, dest, streams, n):
         """Une los manifest.pN.json de los tramos en un manifest.json ordenado y
-        escribe gen_state.json (complete solo si están TODOS los capítulos)."""
-        merged = []
-        for idx in range(1, streams + 1):
-            try:
-                part = json.loads((dest / f"manifest.p{idx}.json").read_text("utf-8"))
-                if isinstance(part, list): merged += part
-            except Exception: pass
-        merged = [e for e in merged if isinstance(e, dict) and "id" in e]
-        merged.sort(key=lambda e: e["id"])
-        if not merged:
-            return                                        # nada terminado: el post-bloque decide
-        complete = (self.mode == "run") and sum(1 for e in merged if e.get("done")) >= n
-        def _atomic(path, text):
-            tmp = str(path) + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f: f.write(text)
-            os.replace(tmp, path)
-        _atomic(dest / "manifest.json", json.dumps(merged, ensure_ascii=False, indent=2))
-        _atomic(dest / "gen_state.json",
-                json.dumps({"total": n, "complete": bool(complete), "streams": streams},
-                           ensure_ascii=False))
-        if complete:                                      # ya no hacen falta los parciales
-            for idx in range(1, streams + 1):
-                try: (dest / f"manifest.p{idx}.json").unlink()
-                except Exception: pass
+        escribe gen_state.json (complete solo si están TODOS los capítulos).
+        Si no hay nada terminado no escribe nada: el post-bloque decide."""
+        merge_stream_manifests(dest, streams, n, complete_ok=(self.mode == "run"))
 
 
 class DownloadWorker(QThread):
