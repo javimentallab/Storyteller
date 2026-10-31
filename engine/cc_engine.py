@@ -9,7 +9,7 @@ La generacion escribe INCREMENTAL y ATOMICA (cada 6 frases): mp3+cues+manifest,
 para poder detener y conservar lo hecho. No depende de ningun servidor.
 """
 import warnings; warnings.filterwarnings("ignore")
-import argparse, os, re, json, html, subprocess, tempfile, sys
+import argparse, os, re, json, html, subprocess, tempfile, sys, time
 
 # La consola de Windows va en cp1252: un título con caracteres fuera de cp1252
 # (p. ej. ⟪ ⟪) hacía que print() reventara y tumbaba toda la generación.
@@ -376,10 +376,21 @@ def split_sentences(text, target=180, hard=240, soft=170):
         if buf.strip(): out.append(buf.strip())
     return [c for c in out if re.search(r"[A-Za-zÀ-ɏ0-9]", c)]
 
+def replace_retry(src, dst, tries=60, wait=0.05):
+    """os.replace que aguanta lectores: en Windows falla con «Acceso denegado» si
+    otro proceso tiene `dst` abierto en ese instante (la app fusionando manifests,
+    el reproductor, un antivirus…). Reintenta ~3 s antes de rendirse."""
+    for i in range(tries):
+        try:
+            os.replace(src, dst); return
+        except PermissionError:
+            if i == tries - 1: raise
+            time.sleep(wait)
+
 def write_atomic(path, text):
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
     with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(text)
-    os.replace(tmp, path)
+    replace_retry(tmp, path)
 
 def _encode_mp3(src_wav, dst_mp3, append=False):
     """WAV->MP3 con libmp3lame CBR 128k. append=True escribe a stdout y añade
@@ -394,7 +405,7 @@ def _encode_mp3(src_wav, dst_mp3, append=False):
         subprocess.run(["ffmpeg", "-y", "-i", src_wav, "-codec:a", "libmp3lame",
                         "-b:a", "128k", "-f", "mp3", tmp],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.exists(tmp): os.replace(tmp, dst_mp3)
+        if os.path.exists(tmp): replace_retry(tmp, dst_mp3)
 
 def write_cues(outdir, base, title, cues, dur):
     write_atomic(os.path.join(outdir, base + ".json"),
