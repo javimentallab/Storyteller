@@ -129,7 +129,7 @@ def cmd_generate(a):
     def infer(gen_text):
         # cerrar con punto si no acaba en signo de fin: XTTS necesita el "stop" para
         # no desbarrar al final (principal causa de la alucinación final).
-        t = (gen_text or "").strip()
+        t = (gen_text or "").strip().rstrip(",;: ")          # ",." al final le hacía comerse la cola
         if t and t[-1] not in ".?!…":
             t += "."
         w = tts.tts(text=t, speaker_wav=a.voice, language=a.lang or "es")

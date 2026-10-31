@@ -47,6 +47,9 @@ def normalize_numbers(text):
         import num2words  # noqa: F401
     except Exception:
         return text
+    # precios: "$74.99" -> "74 dólares con 99"; "$140" -> "140 dólares" (XTTS decía "dólar ciento…")
+    text = re.sub(r"\$\s?(\d+)\.(\d{2})\b", r"\1 dólares con \2", text)
+    text = re.sub(r"\$\s?(\d[\d.,]*\d|\d)", r"\1 dólares", text)
     text = re.sub(r"(?<=\d)[   ](?=\d{3}\b)", "", text)  # 3 000 / 3<nbsp>000 -> 3000
     text = re.sub(r"(?<=\d)\.(?=\d{3}\b)", "", text)      # 1.000 -> 1000
     # miles al estilo inglés que dejan las traducciones: 3,000 / 21,000 -> 3000
@@ -103,6 +106,11 @@ _ABBR = [(r"\bEE\.?\s?UU\.?(?!\w)", "Estados Unidos"),
          (r"\b[Ss][Rr][Aa]\.(?=\s)", "señora"), (r"\b[Ss][Rr][Tt][Aa]\.(?=\s)", "señorita"),
          (r"\b[Ss][Rr]\.(?=\s)", "señor"), (r"\b[Dd][Rr][Aa]\.(?=\s)", "doctora"),
          (r"\b[Dd][Rr]\.(?=\s)", "doctor"), (r"\b[Jj][Rr]\.?(?!\w)", "júnior")]
+# (?!\w) y no (?=\s): "DOROTHY SR.: hola" también es "señor" (antes se deletreaba "ese erre")
+_ABBR = [(p.replace(r"\.(?=\s)", r"\.(?!\w)"), r) for p, r in _ABBR]
+# tras un nombre propio, Sr./Jr. es "sénior"/"júnior" (Dorothy Sr. = la madre), no "señor"
+_ABBR.insert(0, (r"\b(?!(?:El|EL|Al|AL|Del|DEL|Un|UN|Y|Pero|Que|Dijo|Con|Para|Por)\b)"
+                 r"([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ']+) [Ss][Rr]\.?(?!\w)", r"\1 sénior"))
 _V = "AEIOUÁÉÍÓÚÜ"
 
 def _pronounceable(w):
@@ -141,15 +149,32 @@ def _fix_caps(token):
 
 def normalize_punct(text):
     """Puntuación rara -> estándar, para que las pausas (comas) se respeten."""
+    text = re.sub(r"\[\[\\?/?[^\]]{0,20}\]\]", "", text)   # marcas de nota/maquetación [[1]]..[[/1]]
+    text = text.replace("\xad", "")                       # guion blando invisible
+    text = re.sub(r"_{2,}", ", ", text)                    # huecos para rellenar ____
     text = text.replace("—", ", ").replace("–", ", ").replace("―", ", ")
+    text = re.sub(r"(?<!\w)-+(?!\w)|(?<=\s)-|-(?=\s)", ", ", text)   # guion suelto (no jiu-jitsu)
     text = text.replace("…", ". ")
-    text = re.sub(r"[“”«»\"]", "", text)
+    text = re.sub(r"(?<=\w)[’'](?=\w)", "'", text)          # O’Donnell, McDonald’s: apóstrofo dentro de palabra
+    text = re.sub(r"[“”«»\"‘’‚„‹›]", "", text)              # comillas fuera
+    text = re.sub(r"[()\[\]{}]", ", ", text)                # paréntesis/corchetes: XTTS los lee raro -> pausa
+    text = re.sub(r"(?<!\d):|:(?!\d)", ", ", text)          # "Yo: hola" -> pausa (10:30 se queda)
+    text = re.sub(r"(?<!\d)\s*/\s*(?!\d)", ", ", text)      # "lujo/caro", versos "a / b" (1/2 se queda)
+    text = re.sub(r"\s*=\s*", " igual a ", text)
+    text = re.sub(r"(?<=[A-Za-z])\+", " más", text)         # A+
+    text = text.replace("©", "").replace("®", "").replace("™", "").replace("*", " ")
     text = text.replace("；", ";").replace("，", ",")
     text = re.sub(r"\s*;\s*", ", ", text)        # ; como pausa de coma
     text = re.sub(r"(\d),(\d)", "\\1\x00\\2", text)   # proteger la coma decimal (3,14)
     text = re.sub(r"\s*,\s*", ", ", text)        # espacio tras coma
     text = text.replace("\x00", ",")
     text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"(?:,\s*){2,}", ", ", text)              # ", , " que dejan los cambios de arriba
+    text = re.sub(r"\s*,\s*([\.\?\!])", r"\1", text)        # ",." -> "."
+    text = re.sub(r"([\.\?\!])\s*,\s*", r"\1 ", text)       # "monitoreo., Sin" -> "monitoreo. Sin"
+    text = re.sub(r"([¿¡])\s*,\s*", r"\1", text)
+    text = re.sub(r"^[\s,\.]+", "", text)
+    text = re.sub(r"[\s,]+$", "", text)                      # sin coma colgando al final: XTTS hacía ",." y comía la cola
     return text.strip()
 
 def _apply_pron(text):
@@ -172,9 +197,10 @@ def _lower_initial(text):
 
 def normalize_text(text):
     """Pipeline completo para el audio (no toca el subtítulo)."""
-    text = normalize_punct(text)
-    for pat, rep in _ABBR:
+    for pat, rep in _ABBR:                    # antes que la puntuación: el punto de "Sr." no es fin
         text = re.sub(pat, rep, text)
+    text = re.sub(r"\b(\d{1,2}):(\d{2})\b", r"\1 \2", text)   # 10:30 -> "diez treinta"
+    text = normalize_punct(text)
     text = " ".join(_fix_caps(t) for t in text.split(" "))
     text = _lower_initial(text)
     text = _apply_pron(text)
@@ -209,13 +235,41 @@ def _qc_eval(ref_text, hyp_text, threshold=0.85):
     cr, ch = Counter(rf), Counter(rh)
     extra_rep = max((ch[w] - cr.get(w, 0) for w in ch), default=0)   # palabra repetida de más
     too_long = len(rh) > len(rf) * 1.5 + 5                           # parrafada / cola alucinada
-    halluc = (extra_rep >= 4) or too_long
-    ok = (recall >= threshold) and not halluc
+    cola, sin_final = _qc_tail(rf, rh)
+    halluc = (extra_rep >= 4) or too_long or cola >= 3
+    ok = (recall >= threshold) and not halluc and not sin_final
     # score para quedarse con el mejor intento cuando ninguno pasa: recall, castigando alucinar
-    score = recall - (0.6 if halluc else 0.0) - 0.02 * max(0, extra_rep - 1)
+    score = (recall - (0.6 if halluc else 0.0) - (0.3 if sin_final else 0.0)
+             - 0.02 * max(0, extra_rep - 1) - 0.03 * cola)
     motivo = (f"repite x{extra_rep}" if extra_rep >= 4
-              else (f"texto x{len(rh)/len(rf):.1f}" if too_long else ""))
+              else f"texto x{len(rh)/len(rf):.1f}" if too_long
+              else f"coletilla de {cola} palabras" if cola >= 3
+              else "se come el final" if sin_final else "")
     return recall, ok, score, motivo
+
+def _qc_tail(rf, rh):
+    """Mira el FINAL de la frase, que es donde falla XTTS: (palabras inventadas
+    después de la última del texto, ¿falta el final?). Medido en «Gracias por
+    discutir» cap. 6: 12 de 244 frases acababan con coletilla ("…menor resistencia.
+    ¡O no te sigo muerto, ponte!") y el recall/longitud no lo veía."""
+    import difflib
+    if not rf or not rh:
+        return 0, False
+    def close(a, b):
+        return a == b or (len(a) >= 4 and len(b) >= 4
+                          and difflib.SequenceMatcher(None, a, b).ratio() >= 0.75)
+    for back, w in enumerate(reversed(rf[-2:])):          # última palabra; si no, penúltima
+        for j in range(len(rh) - 1, max(-1, len(rh) - 12), -1):
+            if close(rh[j], w):
+                # solo aparece la penúltima y no hay nada detrás: la última se la comió
+                eaten = (back == 1 and j == len(rh) - 1 and len(rf[-1]) > 3
+                         and not any(c.isdigit() for c in rh[-1]))
+                return max(0, len(rh) - 1 - j - back), eaten
+    # no aparece: Whisper a veces junta/parte ("enojo"/"en ojo") o pone cifras
+    tail = "".join(rh[-4:])
+    if rf[-1] in tail or len(rf[-1]) <= 3 or any(c.isdigit() for c in tail):
+        return 0, False
+    return 0, True
 
 def qc_transcribe(wav, sr, url, timeout=60):
     """Sube un fragmento WAV al voz-server (Whisper) y devuelve el texto, o None."""
@@ -321,6 +375,32 @@ def cmd_whisper(a):
                                   ensure_ascii=False), flush=True)
     print("WH-DONE", flush=True)
 
+_BLOCK_TAGS = ["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "td", "th",
+               "dt", "dd", "pre", "figcaption", "caption", "section", "aside", "header", "footer", "tr"]
+_END_PUNCT = ".?!…:;,»\"”’)]"
+
+def _blocks_text(soup):
+    """Texto por BLOQUES: cada párrafo/título/recuadro en su línea y, si no acaba en
+    signo, se le pone punto. Antes los títulos de recuadro ("Alerta de Persuasión",
+    "INTENTA ESTO EN…") se pegaban a la frase siguiente y XTTS lo leía de un tirón."""
+    SEP = " "
+    for br in soup.find_all("br"):
+        br.replace_with(SEP)
+    for b in soup.find_all(_BLOCK_TAGS):
+        b.insert_before(SEP); b.append(SEP)
+    raw = html.unescape(soup.get_text(" "))
+    lines = []
+    for ln in raw.split(SEP):
+        ln = re.sub(r"\s+", " ", ln).strip()
+        if not ln:
+            continue
+        ln = re.sub(r"\s+([,\.;:\!\?\)\]»”])", r"\1", ln)     # "palabra ," que dejan <i>/<span>
+        ln = re.sub(r"([\(\[«“¿¡])\s+", r"\1", ln)
+        if re.search(r"[A-Za-zÀ-ɏ0-9]", ln) and ln[-1] not in _END_PUNCT:
+            ln += "."
+        lines.append(ln)
+    return "\n".join(lines)
+
 def chapters_from_epub(path, min_chars=25):
     from ebooklib import epub, ITEM_DOCUMENT
     from bs4 import BeautifulSoup
@@ -341,17 +421,26 @@ def chapters_from_epub(path, min_chars=25):
         h = soup.find(["h1", "h2", "h3"])
         title = (h.get_text(" ", strip=True) if h else "").strip()
         if h: h.extract()
-        text = html.unescape(soup.get_text("\n", strip=True))
-        text = re.sub(r"[ \t]+", " ", text); text = re.sub(r"\n{2,}", "\n", text).strip()
+        text = _blocks_text(soup)
         if len(text) >= min_chars:
             out.append({"title": title or f"Capitulo {len(out)+1}", "text": text})
     return out
+
+_ABBR_END = re.compile(r"(?:\b(?:[Ss]r|[Ss]ra|[Ss]rta|[Dd]r|[Dd]ra|[Mm]r|[Mm]rs|[Mm]s|[Ss]t|[Pp]rof|"
+                       r"[Ll]ic|[Ii]ng|EE|vs|[Pp]ág|[Nn]úm|aprox)|(?<![\w.])[A-ZÁÉÍÓÚÑ])\.$")
 
 def split_sentences(text, target=180, hard=240, soft=170):
     """Una frase por trozo (mejor prosodia/sincronía). Las frases LARGAS se
     parten en las comas/; y los trozos se reagrupan hasta ~target, de modo que
     cada corte cae en una pausa real (lo que ayuda a "respetar las comas")."""
-    raw = re.split(r"(?<=[\.\!\?…])\s+", text.replace("\n", " "))
+    raw = []
+    for s in re.split(r"(?<=[\.\!\?…])\s+", text.replace("\n", " ")):
+        # no cortar tras abreviatura o inicial ("el Sr. Smith", "EE. UU.", "John F. Kennedy"):
+        # "el Sr." suelto lo leía XTTS como una frase entera y luego el nombre aparte
+        if raw and _ABBR_END.search(raw[-1]):
+            raw[-1] += " " + s
+        else:
+            raw.append(s)
     out = []
     for s in raw:
         s = s.strip()
