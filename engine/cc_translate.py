@@ -359,10 +359,9 @@ class Translator:
             out = self.b.generate(prompt, mx).strip()
             if _looks_broken(chunk, out):
                 out2 = self.b.generate(prompt, mx, temperature=0.4).strip()
-                if not _looks_broken(chunk, out2):
-                    out = out2
-                elif not out.strip():
-                    out = chunk
+                # Sigue rota: el original. Con una palabra suelta, el modelo pequeño puede
+                # responder con sus propias instrucciones, y eso no debe acabar en el documento.
+                out = chunk if _looks_broken(chunk, out2) else out2
             parts.append(out)
         return " ".join(parts)
 
