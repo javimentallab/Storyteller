@@ -276,8 +276,16 @@
 274|Save the translation as
 275|Choose another name: the original won’t be overwritten.
 276|Stopping and saving what has been translated…
-277|Stopped. What has been translated is saved: press “Resume translation” to continue where you left off.
-278|Done:
-279|Translate…
-280|Translate a book or document into another language (EPUB, PDF, Word, subtitles…)
-281|Saving the translation in progress…
+277|Stopped. What has been translated is saved in:\n{0}\nThe rest stays in the original language. Press “Resume translation” to continue where you left off.
+278|Stopped. Nothing had been translated yet.
+279|Unfinished translations
+280|{0} of {1} segments ({2}%)
+281|{0} segments
+282|Discard what has been translated so far
+283|Can’t find the original file:\n{0}
+284|Discard translation
+285|Discard what has been translated of “{0}”? The file already saved is not deleted.
+286|Done:
+287|Translate…
+288|Translate a book or document into another language (EPUB, PDF, Word, subtitles…)
+289|Saving the translation in progress…

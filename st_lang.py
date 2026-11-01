@@ -293,11 +293,19 @@ SOURCE = [
     'Guardar la traducción como',  # 274
     'Elige otro nombre: no voy a sobrescribir el original.',  # 275
     'Deteniendo y guardando lo traducido…',  # 276
-    'Detenido. Lo traducido está guardado: pulsa «Reanudar traducción» para seguir donde lo dejaste.',  # 277
-    'Listo:',  # 278
-    'Traducir…',  # 279
-    'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 280
-    'Guardando la traducción en curso…',  # 281
+    'Detenido. Lo traducido está guardado en:\n{0}\nLo que falta sigue en el idioma original. Pulsa «Reanudar traducción» para seguir donde lo dejaste.',  # 277
+    'Detenido. Todavía no había nada traducido.',  # 278
+    'Traducciones a medias',  # 279
+    '{0} de {1} trozos ({2} %)',  # 280
+    '{0} trozos',  # 281
+    'Descartar lo traducido hasta ahora',  # 282
+    'No encuentro el archivo original:\n{0}',  # 283
+    'Descartar traducción',  # 284
+    '¿Descartar lo traducido de «{0}»? El archivo que ya se guardó no se borra.',  # 285
+    'Listo:',  # 286
+    'Traducir…',  # 287
+    'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 288
+    'Guardando la traducción en curso…',  # 289
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

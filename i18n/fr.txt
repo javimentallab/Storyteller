@@ -276,8 +276,16 @@
 274|Enregistrer la traduction sous
 275|Choisissez un autre nom : l’original ne sera pas écrasé.
 276|Arrêt et enregistrement de ce qui a été traduit…
-277|Arrêté. Ce qui a été traduit est enregistré : cliquez sur « Reprendre la traduction » pour continuer là où vous en étiez.
-278|Terminé :
-279|Traduire…
-280|Traduire un livre ou un document dans une autre langue (EPUB, PDF, Word, sous-titres…)
-281|Enregistrement de la traduction en cours…
+277|Arrêté. Ce qui a été traduit est enregistré dans :\n{0}\nLe reste demeure dans la langue d’origine. Cliquez sur « Reprendre la traduction » pour continuer là où vous en étiez.
+278|Arrêté. Rien n’avait encore été traduit.
+279|Traductions inachevées
+280|{0} segments sur {1} ({2} %)
+281|{0} segments
+282|Abandonner ce qui a été traduit jusqu’ici
+283|Fichier d’origine introuvable :\n{0}
+284|Abandonner la traduction
+285|Abandonner ce qui a été traduit de « {0} » ? Le fichier déjà enregistré n’est pas supprimé.
+286|Terminé :
+287|Traduire…
+288|Traduire un livre ou un document dans une autre langue (EPUB, PDF, Word, sous-titres…)
+289|Enregistrement de la traduction en cours…

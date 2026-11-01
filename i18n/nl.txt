@@ -276,8 +276,16 @@
 274|Vertaling opslaan als
 275|Kies een andere naam: het origineel wordt niet overschreven.
 276|Stoppen en het vertaalde opslaan…
-277|Gestopt. Het vertaalde is opgeslagen: klik op “Vertaling hervatten” om verder te gaan waar je gebleven was.
-278|Klaar:
-279|Vertalen…
-280|Een boek of document naar een andere taal vertalen (EPUB, PDF, Word, ondertitels…)
-281|Lopende vertaling opslaan…
+277|Gestopt. Het vertaalde is opgeslagen in:\n{0}\nDe rest blijft in de oorspronkelijke taal. Klik op “Vertaling hervatten” om verder te gaan waar je gebleven was.
+278|Gestopt. Er was nog niets vertaald.
+279|Onvoltooide vertalingen
+280|{0} van {1} segmenten ({2}%)
+281|{0} segmenten
+282|Het tot nu toe vertaalde weggooien
+283|Het oorspronkelijke bestand is niet gevonden:\n{0}
+284|Vertaling weggooien
+285|Het vertaalde van “{0}” weggooien? Het al opgeslagen bestand wordt niet verwijderd.
+286|Klaar:
+287|Vertalen…
+288|Een boek of document naar een andere taal vertalen (EPUB, PDF, Word, ondertitels…)
+289|Lopende vertaling opslaan…

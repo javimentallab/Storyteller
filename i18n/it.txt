@@ -276,8 +276,16 @@
 274|Salva la traduzione come
 275|Scegli un altro nome: l’originale non verrà sovrascritto.
 276|Arresto e salvataggio di quanto tradotto…
-277|Fermato. Quanto tradotto è salvato: premi «Riprendi traduzione» per continuare da dove eri rimasto.
-278|Fatto:
-279|Traduci…
-280|Traduci un libro o un documento in un’altra lingua (EPUB, PDF, Word, sottotitoli…)
-281|Salvataggio della traduzione in corso…
+277|Fermato. Quanto tradotto è salvato in:\n{0}\nIl resto rimane nella lingua originale. Premi «Riprendi traduzione» per continuare da dove eri rimasto.
+278|Fermato. Non era ancora stato tradotto nulla.
+279|Traduzioni a metà
+280|{0} di {1} segmenti ({2}%)
+281|{0} segmenti
+282|Scarta quanto tradotto finora
+283|File originale non trovato:\n{0}
+284|Scarta traduzione
+285|Scartare quanto tradotto di «{0}»? Il file già salvato non viene eliminato.
+286|Fatto:
+287|Traduci…
+288|Traduci un libro o un documento in un’altra lingua (EPUB, PDF, Word, sottotitoli…)
+289|Salvataggio della traduzione in corso…

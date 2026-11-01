@@ -276,8 +276,16 @@
 274|Übersetzung speichern unter
 275|Wähle einen anderen Namen: Das Original wird nicht überschrieben.
 276|Stoppe und speichere das Übersetzte…
-277|Gestoppt. Das Übersetzte ist gespeichert: Klicke auf „Übersetzung fortsetzen“, um dort weiterzumachen, wo du aufgehört hast.
-278|Fertig:
-279|Übersetzen…
-280|Ein Buch oder Dokument in eine andere Sprache übersetzen (EPUB, PDF, Word, Untertitel…)
-281|Speichere die laufende Übersetzung…
+277|Gestoppt. Das Übersetzte ist gespeichert unter:\n{0}\nDer Rest bleibt in der Originalsprache. Klicke auf „Übersetzung fortsetzen“, um dort weiterzumachen, wo du aufgehört hast.
+278|Gestoppt. Es war noch nichts übersetzt.
+279|Angefangene Übersetzungen
+280|{0} von {1} Abschnitten ({2} %)
+281|{0} Abschnitte
+282|Das bisher Übersetzte verwerfen
+283|Die Originaldatei wurde nicht gefunden:\n{0}
+284|Übersetzung verwerfen
+285|Das Übersetzte von „{0}“ verwerfen? Die bereits gespeicherte Datei wird nicht gelöscht.
+286|Fertig:
+287|Übersetzen…
+288|Ein Buch oder Dokument in eine andere Sprache übersetzen (EPUB, PDF, Word, Untertitel…)
+289|Speichere die laufende Übersetzung…

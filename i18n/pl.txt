@@ -276,8 +276,16 @@
 274|Zapisz tłumaczenie jako
 275|Wybierz inną nazwę: oryginał nie zostanie nadpisany.
 276|Zatrzymuję i zapisuję przetłumaczoną część…
-277|Zatrzymano. Przetłumaczona część jest zapisana: naciśnij „Wznów tłumaczenie”, aby kontynuować od miejsca przerwania.
-278|Gotowe:
-279|Tłumacz…
-280|Przetłumacz książkę lub dokument na inny język (EPUB, PDF, Word, napisy…)
-281|Zapisuję trwające tłumaczenie…
+277|Zatrzymano. Przetłumaczona część jest zapisana w:\n{0}\nReszta pozostaje w języku oryginału. Naciśnij „Wznów tłumaczenie”, aby kontynuować od miejsca przerwania.
+278|Zatrzymano. Nic jeszcze nie przetłumaczono.
+279|Niedokończone tłumaczenia
+280|{0} z {1} fragmentów ({2} %)
+281|{0} fragmentów
+282|Odrzuć dotychczasowe tłumaczenie
+283|Nie znaleziono oryginalnego pliku:\n{0}
+284|Odrzuć tłumaczenie
+285|Odrzucić tłumaczenie „{0}”? Zapisany już plik nie zostanie usunięty.
+286|Gotowe:
+287|Tłumacz…
+288|Przetłumacz książkę lub dokument na inny język (EPUB, PDF, Word, napisy…)
+289|Zapisuję trwające tłumaczenie…

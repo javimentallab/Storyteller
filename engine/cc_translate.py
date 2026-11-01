@@ -1133,20 +1133,28 @@ def cmd_translate(a):
         backend = LlamaBackend(a.llama_dir, a.gguf, workers=a.workers)
         mid = "gguf:" + Path(a.gguf).name
         workers = a.workers
+    translator = Translator(backend, a.src, a.tgt, mid, a.cache, a.stop_file, workers)
     try:
-        tr = Translator(backend, a.src, a.tgt, mid, a.cache, a.stop_file, workers).run(texts)
+        tr = translator.run(texts)
     finally:
         backend.close()
+
+    def write(result):
+        say("INFO", "guardando")
+        for u in doc.units:
+            u.apply(result.get(u.text, u.text))
+        if isinstance(doc, PdfDoc):
+            doc.title = a.title or ""
+        doc.save(a.out)
+        say("OUT", a.out)
+
     if tr is None:
+        # Detener y guardar: el documento con lo traducido hasta ahora; lo demás, en el original.
+        if translator.cache:
+            write({t: translator.cache.get(translator.key(t), t) for t in texts})
         say("STOPPED")
         return
-    say("INFO", "guardando")
-    for u in doc.units:
-        u.apply(tr.get(u.text, u.text))
-    if isinstance(doc, PdfDoc):
-        doc.title = a.title or ""
-    doc.save(a.out)
-    say("OUT", a.out)
+    write(tr)
     if a.cache and Path(a.cache).exists():
         Path(a.cache).unlink()
     say("DONE")
