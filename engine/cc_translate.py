@@ -184,7 +184,10 @@ class LlamaBackend:
             self.log = Path(gguf).with_suffix(".server.log")
             lf = open(self.log, "w", encoding="utf-8", errors="replace")
             cmd = [str(exe), "-m", str(gguf), "--host", "127.0.0.1", "--port", str(self.port),
-                   "-c", str(ctx * workers), "-np", str(workers), "--no-webui", "-lv", "2"] + mode
+                   "-c", str(ctx * workers), "-np", str(workers), "--no-webui", "-lv", "2",
+                   # Frases sueltas: sin caché de prompts ni checkpoints (por defecto crecen ~5 GB por
+                   # minuto en RAM), sin hilos girando en espera y sin mapear el modelo (ya está en la GPU).
+                   "--cache-ram", "0", "--ctx-checkpoints", "0", "--poll", "0", "-lm", "none"] + mode
             self.proc = spawn(cmd, stdout=lf, stderr=subprocess.STDOUT, cwd=str(llama_dir))
             say("INFO", "arrancando el modelo" + (" (en CPU)" if mode else ""))
             ok = self._wait_ready(300)
