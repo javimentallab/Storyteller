@@ -39,7 +39,8 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
 - **Listen while it narrates**: *Listen* in the narration bar opens the book in progress;
   the player adds new sentences and chapters by itself and, when it catches up, waits
   and carries on from the exact spot.
-- **Stop and save / Resume** both narration and transcription (they work in blocks and
+- **Stop and save / Resume** both narration and transcription, even with another model
+  (what is already done is kept; they work in blocks and
   save progress; they carry on from the same sentence). Closing the app during a
   narration is the same as *Stop and save*.
 - **Library**: resume half-done books, **regenerate** one from its original EPUB, and
@@ -50,7 +51,8 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
   inside a sentence are lost); a PDF becomes a translated EPUB, without its layout. On
   this computer (llama.cpp, loaded only
   while translating) or on your own server (Ollama over SSH). It can be stopped and
-  resumed, and the translated EPUB can be sent to narration with one click.
+  resumed, even with another model, and the translated EPUB can be sent to narration
+  with one click.
 - **Model manager** (*Models* screen): download/delete voice models (XTTS v2, F5) and
   transcription models (faster-whisper), choose the language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed

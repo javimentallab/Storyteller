@@ -407,6 +407,16 @@ def list_books():
 # narrado hasta ahora en esta carpeta temporal, que se renueva al llegar al final.
 LISTEN_DIR = Path(tempfile.gettempdir()) / "storyteller-listen"
 
+def resume_model_name(d):
+    """Con qué modelo seguiría un libro a medias: el activo ahora, lo ya hecho se conserva."""
+    cfg = load_config()
+    if cfg.get("engine", "local") != "local":
+        return _("Servidor propio")
+    if (read_gen_state(d) or {}).get("kind") == "import":
+        return whisper_by_id(active_whisper_id(cfg))["name"]
+    return model_by_id(cfg["model"], cfg)["name"]
+
+
 def is_generating(d):
     """True si ESTA app está narrando ahora mismo el libro de la carpeta d."""
     return d is not None and str(Path(d)) in ACTIVE_GEN
@@ -552,6 +562,12 @@ class GenWorker(QThread):
         try:
             dest = LOCAL_BOOKS / self.name
             epub = self.epub
+            # Reanudar en el servidor un libro empezado en este equipo: allí no está lo narrado,
+            # empezaría de cero y al traerlo (rmtree de abajo) se perdería lo de aquí.
+            if self.resume and self._run(SSH + [self.host, f"test -f '{REMOTE_DIR}/out/{self.name}/manifest.json'"]).returncode == 1:
+                self.failed.emit(_("Este libro se empezó en este equipo y el servidor no tiene lo narrado: si siguiera "
+                                   "allí, se perdería. Cámbialo a este equipo en «Modelos» para reanudarlo."))
+                return
             # Al REGENERAR, el EPUB de entrada es dest/source.epub; ponerlo a salvo en un
             # temporal antes de que el rmtree de abajo vacíe la carpeta.
             try:
@@ -747,7 +763,8 @@ class LocalGenWorker(QThread):
 
     # ---- un solo proceso (camino clásico) --------------------------------
     def _run_single(self, cmd, dest, sents=None):
-        self.progress.emit(_("Reanudando la narración…") if self.resume else _("Cargando el modelo…"), -1)
+        self.progress.emit(_("Reanudando con {0}…").format(self.model["name"]) if self.resume
+                           else _("Cargando el modelo…"), -1)
         eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                              text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
@@ -1246,7 +1263,8 @@ class BookCard(QFrame):
             return
         if book.get("resumable"):
             self.resumeBtn = QPushButton(_("▸ Reanudar")); self.resumeBtn.setObjectName("tb")
-            self.resumeBtn.setToolTip(_("Seguir narrando este libro desde donde se detuvo"))
+            self.resumeBtn.setToolTip(_("Seguir desde donde se detuvo con {0}. Si cambias de modelo en «Modelos», "
+                                        "lo ya hecho se conserva.").format(resume_model_name(book["dir"])))
             self.resumeBtn.setCursor(Qt.PointingHandCursor)
             self.resumeBtn.clicked.connect(lambda: self.resumed.emit(self.dir))
             row.addWidget(self.resumeBtn, 0, Qt.AlignTop)
@@ -2675,7 +2693,11 @@ class Cuentacuentos(QMainWindow):
 
     def _start_import(self, worker, resume=False):
         self.imp = worker
-        self.library.set_generating(True, _("Reanudando transcripción…") if resume else _("Preparando…"), -1)
+        local = load_config().get("engine", "local") == "local"
+        first = _("Preparando…") if not resume else (
+            _("Reanudando transcripción con {0}…").format(whisper_by_id(active_whisper_id())["name"]) if local
+            else _("Reanudando transcripción…"))
+        self.library.set_generating(True, first, -1)
         self.imp.progress.connect(lambda t, p: self.library.set_generating(True, t, p))
         self.imp.failed.connect(self._import_fail)
         self.imp.done.connect(self._import_done)
@@ -2756,7 +2778,8 @@ class Cuentacuentos(QMainWindow):
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
         self._gen_busy = True                             # ya comprometidos: bloquea un 2º disparo
-        first = _("Reanudando…") if resume else _("Preparando…")
+        first = _("Preparando…") if not resume else (
+            _("Reanudando con {0}…").format(m["name"]) if cfg["engine"] == "local" else _("Reanudando…"))
         self.library.set_generating(True, first, -1)
         self.player.set_gen_progress(True, first, -1)
         self.worker.progress.connect(self._gen_progress)

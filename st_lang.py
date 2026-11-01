@@ -302,10 +302,16 @@ SOURCE = [
     'No encuentro el archivo original:\n{0}',  # 283
     'Descartar traducción',  # 284
     '¿Descartar lo traducido de «{0}»? El archivo que ya se guardó no se borra.',  # 285
-    'Listo:',  # 286
-    'Traducir…',  # 287
-    'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 288
-    'Guardando la traducción en curso…',  # 289
+    'Seguir con:',  # 286
+    'Antes descarga {0}: pulsa «Descargar» en esta pantalla.',  # 287
+    'Seguir desde donde se detuvo con {0}. Si cambias de modelo en «Modelos», lo ya hecho se conserva.',  # 288
+    'Reanudando con {0}…',  # 289
+    'Reanudando transcripción con {0}…',  # 290
+    'Este libro se empezó en este equipo y el servidor no tiene lo narrado: si siguiera allí, se perdería. Cámbialo a este equipo en «Modelos» para reanudarlo.',  # 291
+    'Listo:',  # 292
+    'Traducir…',  # 293
+    'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 294
+    'Guardando la traducción en curso…',  # 295
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

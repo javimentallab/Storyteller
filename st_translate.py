@@ -162,12 +162,32 @@ def unfinished_jobs():
         try:
             meta, done = json.loads(mf.read_text("utf-8")), len(json.loads(cache.read_text("utf-8")))
         except Exception:
-            done, meta = 0, {}
+            continue                       # sin leer (se está escribiendo, aún no existe…): NO se toca
         if done:
             jobs.append({**meta, "cache": str(cache), "done": done})
         else:
-            forget_job(cache)              # sin nada traducido no hay nada que reanudar
+            forget_job(cache)              # leído y vacío: nada traducido, nada que reanudar
     return jobs
+
+
+def model_tag(where, model_id):
+    m = model_by_id(model_id)
+    return ("ollama:" + m["ollama"]) if where == "remote" else ("gguf:" + m["file"])
+
+
+def find_job(inp, src, tgt):
+    """La traducción a medias de este documento e idiomas, con el modelo que sea."""
+    if not WORK.exists():
+        return None
+    want = os.path.normcase(os.path.abspath(inp))
+    for mf in WORK.glob("*.meta.json"):
+        try:
+            meta = json.loads(mf.read_text("utf-8"))
+            if os.path.normcase(os.path.abspath(meta["inp"])) == want and meta["src"] == src and meta["tgt"] == tgt:
+                return {**meta, "cache": str(WORK / (mf.name[:-len(".meta.json")] + ".json"))}
+        except Exception:
+            continue
+    return None
 
 
 def base_python():
@@ -543,33 +563,47 @@ class TranslatePage(QWidget):
         total, done = j.get("total") or 0, j["done"]
         count = _("{0} de {1} trozos ({2} %)").format(done, total, round(100 * done / total)) if total \
             else _("{0} trozos").format(done)
-        sub = QLabel(f'{names.get(j.get("src"), "?")} → {names.get(j.get("tgt"), "?")} · '
-                     f'{model_by_id(j.get("model")).get("name")} · {count}')
+        sub = QLabel(f'{names.get(j.get("src"), "?")} → {names.get(j.get("tgt"), "?")} · {count}')
         sub.setObjectName("booksub"); sub.setWordWrap(True); sub.setStyleSheet("background: transparent;")
         tx.addWidget(name); tx.addWidget(sub)
-        row.addLayout(tx, 1)
+        # Seguir con el mismo modelo o con otro: lo ya traducido se aprovecha igual.
+        ctl = QHBoxLayout(); ctl.setSpacing(8)
+        lab = QLabel(_("Seguir con:")); lab.setObjectName("booksub"); lab.setStyleSheet("background: transparent;")
+        sel = QComboBox()
+        places = [("local", _("Este equipo (local)"))] + ([("remote", _("Servidor propio"))] if server() else [])
+        for where, label in places:
+            for m in TR_MODELS:
+                sel.addItem(f'{label} · {m["name"]}', f'{where}|{m["id"]}')
+        sel.setCurrentIndex(max(0, sel.findData(f'{j.get("where")}|{j.get("model")}')))
         go = QPushButton(_("▸ Reanudar")); go.setObjectName("tb"); go.setCursor(Qt.PointingHandCursor)
-        go.clicked.connect(lambda _c=False, j=j: self._resume_job(j))
+        go.clicked.connect(lambda _c=False, j=j, sel=sel: self._resume_job(j, *sel.currentData().split("|")))
+        ctl.addWidget(lab); ctl.addWidget(sel); ctl.addWidget(go); ctl.addStretch(1)
+        tx.addLayout(ctl)
+        row.addLayout(tx, 1)
         bin_ = QPushButton("🗑"); bin_.setObjectName("trash"); bin_.setCursor(Qt.PointingHandCursor)
         bin_.setToolTip(_("Descartar lo traducido hasta ahora"))
         bin_.clicked.connect(lambda _c=False, j=j: self._discard_job(j))
-        row.addWidget(go); row.addWidget(bin_)
+        row.addWidget(bin_, 0, Qt.AlignTop)
         return f
 
-    def _resume_job(self, j):
+    def _resume_job(self, j, where=None, model=None):
         if self.busy():
             return
+        where, model = where or j.get("where"), model or j.get("model")
         if not os.path.exists(j.get("inp", "")):
             QMessageBox.warning(self, _("Traducir"), _("No encuentro el archivo original:\n{0}").format(j.get("inp", "")))
             return
-        for sel, key in ((self.srcSel, "src"), (self.tgtSel, "tgt"), (self.whereSel, "where"), (self.modelSel, "model")):
-            sel.setCurrentIndex(max(0, sel.findData(j.get(key))))
+        for sel, val in ((self.srcSel, j.get("src")), (self.tgtSel, j.get("tgt")), (self.whereSel, where), (self.modelSel, model)):
+            sel.setCurrentIndex(max(0, sel.findData(val)))
         self.inp = j["inp"]
         self.fileLbl.setText(Path(self.inp).name)
         self.resCard.hide()
         self.refresh()
-        if self.goBtn.isEnabled():         # si no (modelo sin descargar), la tarjeta del modelo lo indica
+        if self.goBtn.isEnabled():
             self._go(job=j)
+        else:                              # modelo sin descargar: la pantalla ya enseña «Descargar»
+            QMessageBox.information(self, _("Traducir"),
+                                    _("Antes descarga {0}: pulsa «Descargar» en esta pantalla.").format(self._model()["name"]))
 
     def _discard_job(self, j):
         r = QMessageBox.question(self, _("Descartar traducción"),
@@ -590,14 +624,14 @@ class TranslatePage(QWidget):
         self.srcSel.setCurrentIndex(b); self.tgtSel.setCurrentIndex(a)
 
     def _model_tag(self):
-        m = self._model()
-        return ("ollama:" + m["ollama"]) if self._remote() else ("gguf:" + m["file"])
+        return model_tag(self.whereSel.currentData(), self.modelSel.currentData())
 
     def _cache(self):
         if not self.inp or not os.path.exists(self.inp):
             return WORK / "_none.json"
-        return WORK / (job_key(self.inp, self.srcSel.currentData(), self.tgtSel.currentData(),
-                               self._model_tag()) + ".json")
+        src, tgt = self.srcSel.currentData(), self.tgtSel.currentData()
+        job = find_job(self.inp, src, tgt)  # a medias con cualquier modelo: se aprovecha
+        return Path(job["cache"]) if job else WORK / (job_key(self.inp, src, tgt, self._model_tag()) + ".json")
 
     # ---- acciones
     def _pick(self):
@@ -657,8 +691,13 @@ class TranslatePage(QWidget):
             args += ["--llama-dir", str(find_llama_server().parent), "--gguf", str(gguf_path(m)), "--workers", "2"]
         if is_pdf:
             args += ["--title", stem]
+        # El identificador del progreso es el del primer modelo y no cambia aunque cambie el modelo.
+        cache_id = meta.get("cache_id") or (model_tag(meta["where"], meta["model"]) if meta.get("model")
+                                            else self._model_tag())
+        args += ["--cache-id", cache_id]
         write_meta(cache, {"inp": str(src_p), "out": out, "src": self.srcSel.currentData(), "tgt": tgt,
-                           "where": self.whereSel.currentData(), "model": m["id"], "total": meta.get("total")})
+                           "where": self.whereSel.currentData(), "model": m["id"], "total": meta.get("total"),
+                           "cache_id": cache_id})
         self._start(TranslateWorker(args, cache, WORK / (cache.stem + ".stop")))
 
     def _start(self, w, install=False):

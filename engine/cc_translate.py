@@ -14,7 +14,7 @@ habla con el modelo por HTTP:
 Uso (lo lanza la app; imprime líneas de estado en stdout):
   python -I cc_translate.py translate --in F --out F --src en --tgt es
          (--llama-dir DIR --gguf FILE | --ssh user@host --ollama-model NAME)
-         [--cache F] [--stop-file F] [--title T] [--workers N]
+         [--cache F] [--cache-id ID] [--stop-file F] [--title T] [--workers N]
   python -I cc_translate.py download --url URL --dest FILE
   python -I cc_translate.py unzip --zip FILE --dest DIR
 
@@ -1133,7 +1133,8 @@ def cmd_translate(a):
         backend = LlamaBackend(a.llama_dir, a.gguf, workers=a.workers)
         mid = "gguf:" + Path(a.gguf).name
         workers = a.workers
-    translator = Translator(backend, a.src, a.tgt, mid, a.cache, a.stop_file, workers)
+    # --cache-id: el progreso es del documento, no del modelo; al cambiar de modelo se aprovecha.
+    translator = Translator(backend, a.src, a.tgt, a.cache_id or mid, a.cache, a.stop_file, workers)
     try:
         tr = translator.run(texts)
     finally:
@@ -1225,6 +1226,7 @@ def main():
     t.add_argument("--ollama-url")
     t.add_argument("--ollama-model", default="translategemma:4b")
     t.add_argument("--cache")
+    t.add_argument("--cache-id")
     t.add_argument("--stop-file")
     t.add_argument("--title")
     t.add_argument("--workers", type=int, default=2)

@@ -39,7 +39,8 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
 - **Escuchar mientras narra**: *Escuchar* en la barra de narración abre el libro en curso;
   el reproductor añade solo las frases y capítulos nuevos y, cuando alcanza lo narrado,
   espera y sigue en el punto exacto.
-- **Detener y guardar / Reanudar** tanto la narración como la transcripción (van por
+- **Detener y guardar / Reanudar** tanto la narración como la transcripción, también con
+  otro modelo (lo ya hecho se conserva; van por
   bloques y guardan el progreso; se continúan desde la misma frase). Cerrar la app
   durante una narración equivale a «Detener y guardar».
 - **Biblioteca**: reanudar libros a medias, **regenerar** uno desde su EPUB original y
@@ -49,8 +50,8 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
   interfaz. Conserva párrafos, títulos, tablas y los tiempos de los subtítulos (las
   cursivas o negritas sueltas dentro de una frase se pierden); un PDF se convierte en un
   EPUB traducido, sin su maquetación. En este equipo (llama.cpp, cargado solo mientras traduce) o en el servidor propio
-  (Ollama por SSH). Se puede detener y reanudar, y el EPUB traducido se manda a narrar
-  con un clic.
+  (Ollama por SSH). Se puede detener y reanudar, también con otro modelo, y el EPUB
+  traducido se manda a narrar con un clic.
 - **Gestor de modelos** (pantalla *Modelos*): descargar/borrar modelos de voz (XTTS v2,
   F5) y de transcripción (faster-whisper), elegir idioma, tramos en paralelo y QC, y
   **cargar voces** desde archivo
