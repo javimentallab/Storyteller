@@ -295,3 +295,10 @@
 293|Translate…
 294|Translate a book or document into another language (EPUB, PDF, Word, subtitles…)
 295|Saving the translation in progress…
+296|{0} of {1} GB ({2}%)
+297|{0} GB
+298|{0} MB/s
+299|Downloading…
+300|A download is already in progress.
+301|Download cancelled. If you download it again, it starts from the beginning.
+302|The transcription model download did not finish.

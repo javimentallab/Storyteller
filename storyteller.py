@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
 from st_lang import _  # interface texts in the user's language
-from st_translate import TranslatePage  # pantalla «Traducir documentos»
+from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 
 __version__ = "1.0"
 
@@ -127,13 +127,23 @@ def model_dir(mid): return MODELS_DIR / mid
 def xtts_ready():
     """El venv de XTTS está instalado (lo crea el bootstrap/instalación de XTTS)."""
     return VPY_XTTS.exists()
+def xtts_hf_dir():
+    """coqui-tts guarda XTTS en la caché de Hugging Face; su carpeta propia es un marcador vacío."""
+    home = os.environ.get("HF_HOME") or str(Path.home() / ".cache" / "huggingface")
+    return Path(home) / "hub" / "models--tts-hub--XTTS-v2"
+def xtts_dirs():
+    """Carpetas de instalaciones antiguas de coqui-tts (y su marcador en las actuales)."""
+    name = "tts_models--multilingual--multi-dataset--xtts_v2"
+    return [Path.home() / "AppData/Local/tts" / name, Path.home() / ".local/share/tts" / name]
 def xtts_model_cached():
     """El modelo XTTS v2 ya está descargado en la caché de coqui-tts."""
-    import glob
-    pats = [Path.home() / "AppData/Local/tts", Path.home() / ".local/share/tts"]
-    for base in pats:
-        if list(base.glob("*xtts_v2*")) if base.exists() else []:
-            return True
+    # Una descarga a medias no cuenta: hace falta el modelo entero.
+    for m in list(xtts_hf_dir().glob("snapshots/*/model.pth")) + [d / "model.pth" for d in xtts_dirs()]:
+        try:
+            if m.stat().st_size > 1_500_000_000 and (m.parent / "config.json").exists():
+                return True
+        except OSError:
+            pass
     return False
 def model_installed(m):
     if m.get("backend") == "xtts":
@@ -897,80 +907,185 @@ class LocalGenWorker(QThread):
         merge_stream_manifests(dest, streams, n, complete_ok=(self.mode == "run"))
 
 
-class DownloadWorker(QThread):
-    progress = Signal(str)
+def hf_repo_bytes(repo, keep):
+    """Bytes a descargar de un repo de Hugging Face (para dar un porcentaje). None si no se sabe."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"https://huggingface.co/api/models/{repo}/tree/main?recursive=1",
+                                     headers={"User-Agent": "Storyteller"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            items = json.load(r)
+        return sum(i.get("size", 0) for i in items if i.get("type") == "file" and keep(i["path"])) or None
+    except Exception:
+        return None
+
+
+def folder_bytes(d):
+    """Lo que ocupa una carpeta, incluidos los ficheros a medias de la descarga."""
+    total = 0
+    for root, _dirs, files in os.walk(d):
+        for f in files:
+            try:
+                st = os.lstat(os.path.join(root, f))     # lstat: un enlace no cuenta dos veces
+                total += st.st_size
+            except OSError:
+                pass
+    return total
+
+
+class ModelDownload(QThread):
+    """Descarga un modelo en un proceso aparte. El avance se mide por lo que ocupa en disco: la
+    salida de las librerías de descarga no sirve sin terminal y no da porcentaje ni velocidad."""
+    progress = Signal(str, int)       # texto, % (-1 = no se sabe)
     done     = Signal()
     failed   = Signal(str)
+    canceled = Signal()
 
-    def __init__(self, model):
-        super().__init__(); self.model = model
+    def __init__(self, name):
+        super().__init__()
+        self.name, self.proc, self._cancel = name, None, False
+
+    def command(self): raise NotImplementedError
+    def folder(self): raise NotImplementedError
+    def total_bytes(self): return None
+    def installed(self): raise NotImplementedError
+    def fail_text(self): return _("La descarga no dejó el modelo completo.")
+
+    @staticmethod
+    def _remove_partials(folder):
+        """huggingface_hub no reanuda: cada intento usa un temporal nuevo y, si se corta, el anterior
+        se queda ocupando disco e inflaría el porcentaje."""
+        for _try in range(4):
+            left = False
+            for f in Path(folder).rglob("*.incomplete"):
+                try:
+                    f.unlink()
+                except OSError:
+                    left = True      # el proceso cortado aún lo tiene abierto un instante
+            if not left:
+                return
+            time.sleep(0.4)
+
+    def stop(self):
+        self._cancel = True
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+
+    def _text(self, got, total, samples):
+        num = lambda v: _sz(f"{v:.2f}".replace(".", ","))
+        parts = [_('Descargando «{0}»…').format(self.name)]
+        if total:
+            parts[0] += " " + _("{0} de {1} GB ({2} %)").format(num(got / 1e9), num(total / 1e9), self._pct(got, total))
+        elif got:
+            parts[0] += " " + _("{0} GB").format(num(got / 1e9))
+        dt = samples[-1][0] - samples[0][0]
+        rate = (samples[-1][1] - samples[0][1]) / dt if dt >= 2 else 0
+        if rate > 0:
+            parts.append(_("{0} MB/s").format(_sz(f"{rate / 1e6:.1f}".replace(".", ","))))
+            if total and total > got:
+                parts.append(fmt_eta((total - got) / rate))
+        return " · ".join(parts)
+
+    @staticmethod
+    def _pct(got, total):
+        return min(99, int(got * 100 / total))
 
     def run(self):
         try:
-            md = model_dir(self.model["id"]); md.mkdir(parents=True, exist_ok=True)
-            cmd = [str(VPY), "-I", str(CC_ENGINE), "download",
-                   "--repo", self.model["repo"], "--ckpt-name", self.model["ckpt"],
-                   "--vocab-name", self.model["vocab"], "--dest", str(md)]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                 text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
-            for line in p.stdout:
-                line = line.rstrip()
-                if line: self.progress.emit(line)
-            p.wait()
-            if model_installed(self.model): self.done.emit()
-            else: self.failed.emit(_("La descarga no dejó el modelo completo."))
+            self.progress.emit(_('Descargando «{0}»…').format(self.name), -1)
+            total = self.total_bytes()
+            folder = self.folder()
+            self._remove_partials(folder)
+            self.proc = subprocess.Popen(self.command(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                         text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
+            tail = []
+
+            def drain():
+                for line in self.proc.stdout:
+                    if line.strip():
+                        tail[:] = (tail + [line.strip()])[-4:]
+            th = threading.Thread(target=drain, daemon=True); th.start()
+            samples = []
+            while self.proc.poll() is None:
+                got = folder_bytes(folder)
+                samples = (samples + [(time.monotonic(), got)])[-20:]        # los últimos ~10 s
+                if got:
+                    self.progress.emit(self._text(got, total, samples), self._pct(got, total) if total else -1)
+                time.sleep(0.5)
+            th.join(2)
+            if self._cancel:
+                self._remove_partials(folder); self.canceled.emit()
+            elif self.installed():
+                self.done.emit()
+            else:
+                self.failed.emit(self.fail_text() + ("\n\n" + tail[-1][:300] if tail else ""))
         except Exception as e:
             self.failed.emit(str(e))
 
 
-class WhisperDownloadWorker(QThread):
+class DownloadWorker(ModelDownload):
+    def __init__(self, model):
+        super().__init__(model["name"]); self.model = model
+
+    def folder(self):
+        md = model_dir(self.model["id"]); md.mkdir(parents=True, exist_ok=True); return md
+
+    def command(self):
+        return [str(VPY), "-I", str(CC_ENGINE), "download", "--repo", self.model["repo"],
+                "--ckpt-name", self.model["ckpt"], "--vocab-name", self.model["vocab"], "--dest", str(self.folder())]
+
+    def total_bytes(self):
+        names = (self.model["ckpt"], self.model["vocab"])
+        return hf_repo_bytes(self.model["repo"], lambda p: p in names)
+
+    def installed(self):
+        return model_installed(self.model)
+
+
+class WhisperDownloadWorker(ModelDownload):
     """Descarga un modelo faster-whisper para transcribir audiolibros en local."""
-    progress = Signal(str)
-    done     = Signal()
-    failed   = Signal(str)
-
     def __init__(self, model):
-        super().__init__(); self.model = model
+        super().__init__(model["name"]); self.model = model
 
-    def run(self):
-        try:
-            md = model_dir(self.model["id"]); md.mkdir(parents=True, exist_ok=True)
-            cmd = [str(VPY), "-I", str(CC_ENGINE), "whisper-download",
-                   "--repo", self.model["repo"], "--dest", str(md)]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                 text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
-            for line in p.stdout:
-                line = line.rstrip()
-                if line: self.progress.emit(line)
-            p.wait()
-            if whisper_installed(self.model): self.done.emit()
-            else: self.failed.emit("La descarga del modelo de transcripción no se completó.")
-        except Exception as e:
-            self.failed.emit(str(e))
+    def folder(self):
+        md = model_dir(self.model["id"]); md.mkdir(parents=True, exist_ok=True); return md
+
+    def command(self):
+        return [str(VPY), "-I", str(CC_ENGINE), "whisper-download", "--repo", self.model["repo"], "--dest", str(self.folder())]
+
+    def total_bytes(self):
+        return hf_repo_bytes(self.model["repo"], lambda p: p.endswith((".bin", ".json", ".txt", ".model")))
+
+    def installed(self):
+        return whisper_installed(self.model)
+
+    def fail_text(self):
+        return _("La descarga del modelo de transcripción no se completó.")
 
 
-class XttsDownloadWorker(QThread):
-    """Descarga el modelo XTTS v2 a la caché de coqui-tts (en el venv de XTTS)."""
-    progress = Signal(str)
-    done     = Signal()
-    failed   = Signal(str)
+class XttsDownloadWorker(ModelDownload):
+    """Descarga el modelo XTTS v2 con coqui-tts (en el venv de XTTS)."""
+    def __init__(self, name="XTTS v2"):
+        super().__init__(name)
 
-    def run(self):
-        try:
-            code = ("import os; os.environ['COQUI_TOS_AGREED']='1'; "
-                    "from TTS.api import TTS; TTS('tts_models/multilingual/multi-dataset/xtts_v2'); "
-                    "print('XTTS-DL-DONE')")
-            p = subprocess.Popen([str(VPY_XTTS), "-c", code], stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT, text=True, encoding="utf-8",
-                                 errors="replace", creationflags=NOWIN)
-            for line in p.stdout:
-                line = line.rstrip()
-                if line and "warning" not in line.lower(): self.progress.emit(line[:120])
-            p.wait()
-            if xtts_model_cached(): self.done.emit()
-            else: self.failed.emit(_("La descarga del modelo XTTS no se completó."))
-        except Exception as e:
-            self.failed.emit(str(e))
+    def folder(self):
+        return xtts_hf_dir()
+
+    def command(self):
+        code = ("import os; os.environ['COQUI_TOS_AGREED']='1'; "
+                "from TTS.api import TTS; TTS('tts_models/multilingual/multi-dataset/xtts_v2'); "
+                "print('XTTS-DL-DONE')")
+        return [str(VPY_XTTS), "-c", code]
+
+    def total_bytes(self):
+        names = ("model.pth", "config.json", "vocab.json", "hash.md5", "speakers_xtts.pth", "mel_stats.pth")
+        return hf_repo_bytes("tts-hub/XTTS-v2", lambda p: p in names)
+
+    def installed(self):
+        return xtts_model_cached()
+
+    def fail_text(self):
+        return _("La descarga del modelo XTTS no se completó.")
 
 
 def voz_http_url():
@@ -1444,10 +1559,12 @@ class LibraryPage(QWidget):
 # ------------------------------------------------------------------- modelos
 class ModelsScreen(QWidget):
     back = Signal()
+    dlState = Signal(str)             # % de la descarga en curso para la biblioteca ("" = ninguna)
 
     def __init__(self):
         super().__init__()
         self.dl = None
+        self._dl_key = None           # modelo que se está descargando (candado síncrono)
         root = QVBoxLayout(self); root.setContentsMargins(0, 0, 0, 0); root.setSpacing(0)
 
         head = QWidget(); head.setObjectName("head")
@@ -1552,8 +1669,92 @@ class ModelsScreen(QWidget):
         self.col.addWidget(self.progLabel)
         self.col.addStretch(1)
         self.scroll.setWidget(inner); root.addWidget(self.scroll, 1)
+
+        # Avance de la descarga: fijo abajo, a la vista aunque se haya bajado por la pantalla.
+        self.dlWrap = QWidget(); self.dlWrap.setObjectName("progwrap")
+        pv = QVBoxLayout(self.dlWrap); pv.setContentsMargins(16, 10, 16, 12); pv.setSpacing(7)
+        self.dlLabel = QLabel(""); self.dlLabel.setObjectName("proglabel"); self.dlLabel.setWordWrap(True)
+        self.dlLabel.setTextFormat(Qt.PlainText)
+        self.dlBar = QProgressBar(); self.dlBar.setTextVisible(False); self.dlBar.setFixedHeight(6)
+        pv.addWidget(self.dlLabel); pv.addWidget(self.dlBar)
+        drow = QHBoxLayout(); drow.addStretch(1)
+        self.dlCancel = QPushButton(_("Cancelar")); self.dlCancel.setObjectName("tb")
+        self.dlCancel.setCursor(Qt.PointingHandCursor); self.dlCancel.clicked.connect(self._dl_cancel)
+        drow.addWidget(self.dlCancel); pv.addLayout(drow)
+        self.dlWrap.hide(); root.addWidget(self.dlWrap)
         self.setStyleSheet(STYLE)
         self.refresh()
+
+    # --- descargas
+    def _start_download(self, worker, key, ok_text, after=None):
+        if self._dl_key is not None:
+            return
+        self._dl_key, self.dl = key, worker
+        self.dlCancel.show(); self.dlCancel.setEnabled(True)
+        self._dl_progress(_('Descargando «{0}»…').format(worker.name), -1)
+        self.dlWrap.show()
+        worker.progress.connect(self._dl_progress)
+        worker.done.connect(lambda: self._dl_end(ok_text, after))
+        worker.failed.connect(self._dl_failed)
+        worker.canceled.connect(self._dl_canceled)
+        worker.start()
+        self.refresh()
+
+    def _dl_progress(self, text, pct):
+        self.dlLabel.setText(text)
+        if pct < 0:
+            self.dlBar.setRange(0, 0)
+        else:
+            self.dlBar.setRange(0, 100); self.dlBar.setValue(pct)
+        self.dlState.emit(f"{pct} %" if pct >= 0 else "…")
+
+    def _dl_finish(self, text):
+        self._dl_key = None
+        self.dlCancel.hide()
+        self.dlBar.setRange(0, 100)
+        self.dlLabel.setText(text)
+        self.dlState.emit("")
+        self.refresh()
+        QTimer.singleShot(8000, self._dl_hide)
+
+    def _dl_hide(self):
+        if self._dl_key is None:
+            self.dlWrap.hide()
+
+    def _dl_end(self, text, after):
+        self.dlBar.setValue(100)
+        if after:
+            after()
+        self._dl_finish(text)
+
+    def _dl_failed(self, e):
+        self.dlBar.setValue(0)
+        self._dl_finish(_("Error en la descarga: ") + e.split("\n")[0])
+        QMessageBox.warning(self, "Storyteller", _("Error en la descarga: ") + e)
+
+    def _dl_canceled(self):
+        self.dlBar.setValue(0)
+        self._dl_finish(_("Descarga cancelada. Si vuelves a descargar, empezará de cero."))
+
+    def _dl_cancel(self):
+        self.dlCancel.setEnabled(False)
+        self.dlLabel.setText(_("Cancelando…"))
+        self.dl.stop()
+
+    def stop_download(self, wait_ms=4000):
+        """Al cerrar la app: que no se quede una descarga huérfana en segundo plano."""
+        if self.dl is not None and self.dl.isRunning():
+            self.dl.stop()
+            self.dl.wait(wait_ms)
+
+    def _mark_dl_button(self, btn, key):
+        if self._dl_key is None:
+            return
+        btn.setEnabled(False)
+        if key == self._dl_key:
+            btn.setText(_("Descargando…"))
+        else:
+            btn.setToolTip(_("Ya hay una descarga en marcha."))
 
     def _apply_engine_view(self, cfg):
         """Parte de la pantalla que depende de local/remoto. Se puede llamar sola
@@ -1626,6 +1827,7 @@ class ModelsScreen(QWidget):
                               else _("Espera a que termine de instalarse el motor local"))
             dl.clicked.connect((lambda _checked, m=mdl: self._download_xtts(m)) if is_xtts
                                else (lambda _checked, m=mdl: self._download(m)))
+            self._mark_dl_button(dl, mdl["id"])
             btns.addWidget(dl)
         if mdl.get("custom"):
             rm = QPushButton(_("Quitar")); rm.setObjectName("tb")
@@ -1661,6 +1863,7 @@ class ModelsScreen(QWidget):
             dl.setEnabled(engine_ready())
             if not engine_ready(): dl.setToolTip(_("Espera a que termine de instalarse el motor local"))
             dl.clicked.connect(lambda _checked, m=wm: self._download_whisper(m))
+            self._mark_dl_button(dl, wm["id"])
             btns.addWidget(dl)
         for i in range(btns.count()):
             w = btns.itemAt(i).widget()
@@ -1728,13 +1931,7 @@ class ModelsScreen(QWidget):
         self.progLabel.setText(_('Modelo «{0}» borrado (archivos).').format(mdl['name'])); self.refresh()
 
     def _download_xtts(self, mdl):
-        if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText(_("Descargando XTTS v2… (puede tardar, ~1,8 GB)"))
-        self.dl = XttsDownloadWorker()
-        self.dl.progress.connect(lambda t: self.progLabel.setText(t))
-        self.dl.done.connect(lambda: (self.progLabel.setText(_("XTTS v2 listo.")), self.refresh()))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error descargando XTTS: ") + e), self.refresh()))
-        self.dl.start(); self.refresh()
+        self._start_download(XttsDownloadWorker(mdl["name"]), mdl["id"], _("XTTS v2 listo."))
 
     def _delete_xtts(self, mdl):
         """Borra el modelo XTTS de la caché de coqui-tts (deja el venv)."""
@@ -1744,6 +1941,8 @@ class ModelsScreen(QWidget):
             if base.exists():
                 for d in base.glob("*xtts_v2*"):
                     shutil.rmtree(d, ignore_errors=True); removed = True
+        if xtts_hf_dir().exists():                   # aquí está el modelo de verdad (1,8 GB)
+            shutil.rmtree(xtts_hf_dir(), ignore_errors=True); removed = True
         cfg = load_config()
         if cfg.get("model") == mdl["id"]: cfg["model"] = MODELS[0]["id"]; save_config(cfg)
         self.progLabel.setText(_("Modelo XTTS borrado (caché).") if removed else _("No había caché de XTTS."))
@@ -1789,13 +1988,7 @@ class ModelsScreen(QWidget):
         self.refresh()
 
     def _download(self, mdl):
-        if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText(_('Descargando «{0}»…').format(mdl['name']))
-        self.dl = DownloadWorker(mdl)
-        self.dl.progress.connect(lambda t: self.progLabel.setText(t))
-        self.dl.done.connect(lambda: (self.progLabel.setText(_("Descarga completada.")), self.refresh()))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error en la descarga: ") + e), self.refresh()))
-        self.dl.start(); self.refresh()
+        self._start_download(DownloadWorker(mdl), mdl["id"], _("Descarga completada."))
 
     # --- whisper (transcripción de audiolibros)
     def _use_whisper(self, wid):
@@ -1807,14 +2000,8 @@ class ModelsScreen(QWidget):
         self.progLabel.setText(_('Modelo de transcripción «{0}» borrado.').format(wm['name'])); self.refresh()
 
     def _download_whisper(self, wm):
-        if self.dl and self.dl.isRunning(): return
-        self.progLabel.setText(_('Descargando «{0}»…').format(wm['name']))
-        self.dl = WhisperDownloadWorker(wm)
-        self.dl.progress.connect(lambda t: self.progLabel.setText(t))
-        self.dl.done.connect(lambda i=wm["id"]: (self._use_whisper(i),
-                             self.progLabel.setText(_("Modelo de transcripción listo."))))
-        self.dl.failed.connect(lambda e: (self.progLabel.setText(_("Error en la descarga: ") + e), self.refresh()))
-        self.dl.start(); self.refresh()
+        self._start_download(WhisperDownloadWorker(wm), wm["id"], _("Modelo de transcripción listo."),
+                             after=lambda i=wm["id"]: self._use_whisper(i))
 
     # --- voces
     def _use_voice(self, vid):
@@ -2631,6 +2818,7 @@ class Cuentacuentos(QMainWindow):
         self.player.regen.connect(self._regen)
         self.player.resume.connect(self._resume_gen)
         self.models.back.connect(self.show_library)
+        self.models.dlState.connect(self._dl_state)
         self.setStyleSheet(STYLE)
         QTimer.singleShot(0, self._fit_min_width)
 
@@ -2644,6 +2832,11 @@ class Cuentacuentos(QMainWindow):
         self.player.stop()
         self.library.refresh()
         self.stack.setCurrentWidget(self.library)
+
+    def _dl_state(self, t):
+        """La biblioteca también enseña cómo va la descarga."""
+        self.library.voicesBtn.setText(_("Modelos") + (f" · {t}" if t else ""))
+        self._fit_min_width()
 
     def show_models(self):
         self.models.refresh()
@@ -2872,6 +3065,8 @@ class Cuentacuentos(QMainWindow):
                                          _("Guardando la transcripción en curso…"))
         except Exception: pass
         try: self._stop_worker_and_wait(self.translate.worker, _("Guardando la traducción en curso…"))
+        except Exception: pass
+        try: self.models.stop_download()
         except Exception: pass
         event.accept()
 

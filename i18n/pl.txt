@@ -295,3 +295,10 @@
 293|Tłumacz…
 294|Przetłumacz książkę lub dokument na inny język (EPUB, PDF, Word, napisy…)
 295|Zapisuję trwające tłumaczenie…
+296|{0} z {1} GB ({2} %)
+297|{0} GB
+298|{0} MB/s
+299|Pobieram…
+300|Pobieranie już trwa.
+301|Anulowano pobieranie. Ponowne pobieranie zacznie się od początku.
+302|Pobieranie modelu transkrypcji nie zostało ukończone.

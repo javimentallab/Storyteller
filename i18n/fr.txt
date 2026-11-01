@@ -295,3 +295,10 @@
 293|Traduire…
 294|Traduire un livre ou un document dans une autre langue (EPUB, PDF, Word, sous-titres…)
 295|Enregistrement de la traduction en cours…
+296|{0} sur {1} Go ({2} %)
+297|{0} Go
+298|{0} Mo/s
+299|Téléchargement…
+300|Un téléchargement est déjà en cours.
+301|Téléchargement annulé. Si vous le relancez, il repartira de zéro.
+302|Le téléchargement du modèle de transcription n’a pas abouti.

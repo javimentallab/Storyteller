@@ -295,3 +295,10 @@
 293|Traduzir…
 294|Traduzir um livro ou documento para outro idioma (EPUB, PDF, Word, legendas…)
 295|Salvando a tradução em andamento…
+296|{0} de {1} GB ({2}%)
+297|{0} GB
+298|{0} MB/s
+299|Baixando…
+300|Já há um download em andamento.
+301|Download cancelado. Se baixar novamente, começará do zero.
+302|O download do modelo de transcrição não foi concluído.

@@ -295,3 +295,10 @@
 293|Vertalen…
 294|Een boek of document naar een andere taal vertalen (EPUB, PDF, Word, ondertitels…)
 295|Lopende vertaling opslaan…
+296|{0} van {1} GB ({2}%)
+297|{0} GB
+298|{0} MB/s
+299|Downloaden…
+300|Er loopt al een download.
+301|Download geannuleerd. Als je opnieuw downloadt, begint hij weer vanaf het begin.
+302|Het downloaden van het transcriptiemodel is niet voltooid.

@@ -295,3 +295,10 @@
 293|Übersetzen…
 294|Ein Buch oder Dokument in eine andere Sprache übersetzen (EPUB, PDF, Word, Untertitel…)
 295|Speichere die laufende Übersetzung…
+296|{0} von {1} GB ({2} %)
+297|{0} GB
+298|{0} MB/s
+299|Lade herunter…
+300|Es läuft bereits ein Download.
+301|Download abgebrochen. Beim nächsten Download beginnt er von vorn.
+302|Der Download des Transkriptionsmodells wurde nicht abgeschlossen.

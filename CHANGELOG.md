@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### New
+- **Download progress**: a bar fixed at the bottom of the *Models* screen shows size, percentage,
+  speed and time left, with a *Cancel* button, for every model. The *Models* button in the library
+  shows the percentage too.
+
+### Fixed
+- *Delete* on XTTS v2 only removed an empty folder and left the 1.8 GB model on disk.
+- A cut-off XTTS download could look installed. Closing the app during a download now stops it.
+
 ## 1.0 (2026-11-01)
 
 First tagged version.

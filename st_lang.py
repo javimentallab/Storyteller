@@ -312,6 +312,13 @@ SOURCE = [
     'Traducir…',  # 293
     'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 294
     'Guardando la traducción en curso…',  # 295
+    '{0} de {1} GB ({2} %)',  # 296
+    '{0} GB',  # 297
+    '{0} MB/s',  # 298
+    'Descargando…',  # 299
+    'Ya hay una descarga en marcha.',  # 300
+    'Descarga cancelada. Si vuelves a descargar, empezará de cero.',  # 301
+    'La descarga del modelo de transcripción no se completó.',  # 302
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

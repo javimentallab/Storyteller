@@ -295,3 +295,10 @@
 293|Traduci…
 294|Traduci un libro o un documento in un’altra lingua (EPUB, PDF, Word, sottotitoli…)
 295|Salvataggio della traduzione in corso…
+296|{0} di {1} GB ({2}%)
+297|{0} GB
+298|{0} MB/s
+299|Download…
+300|C’è già un download in corso.
+301|Download annullato. Se lo riscarichi, ripartirà da zero.
+302|Il download del modello di trascrizione non è stato completato.
