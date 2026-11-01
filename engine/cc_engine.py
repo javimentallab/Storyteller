@@ -154,7 +154,7 @@ def normalize_punct(text):
     text = re.sub(r"_{2,}", ", ", text)                    # huecos para rellenar ____
     text = text.replace("—", ", ").replace("–", ", ").replace("―", ", ")
     text = re.sub(r"(?<!\w)-+(?!\w)|(?<=\s)-|-(?=\s)", ", ", text)   # guion suelto (no jiu-jitsu)
-    text = text.replace("…", ". ")
+    text = re.sub(r"\.{2,}", "…", text).replace("…", ". ")  # "y..." escrito a mano: XTTS alucinaba
     text = re.sub(r"(?<=\w)[’'](?=\w)", "'", text)          # O’Donnell, McDonald’s: apóstrofo dentro de palabra
     text = re.sub(r"[“”«»\"‘’‚„‹›]", "", text)              # comillas fuera
     text = re.sub(r"[()\[\]{}]", ", ", text)                # paréntesis/corchetes: XTTS los lee raro -> pausa
@@ -173,6 +173,7 @@ def normalize_punct(text):
     text = re.sub(r"\s*,\s*([\.\?\!])", r"\1", text)        # ",." -> "."
     text = re.sub(r"([\.\?\!])\s*,\s*", r"\1 ", text)       # "monitoreo., Sin" -> "monitoreo. Sin"
     text = re.sub(r"([¿¡])\s*,\s*", r"\1", text)
+    text = re.sub(r"([.?!])(?:\s*\.)+", r"\1", text)        # 'y...".' -> "y. ." sin comillas -> "y."
     text = re.sub(r"^[\s,\.]+", "", text)
     text = re.sub(r"[\s,]+$", "", text)                      # sin coma colgando al final: XTTS hacía ",." y comía la cola
     return text.strip()
@@ -221,12 +222,49 @@ def _recall(ref_text, hyp_text):
     hyp = set(_words(hyp_text))
     return sum(1 for w in ref if w in hyp) / len(ref)
 
-def _qc_eval(ref_text, hyp_text, threshold=0.85):
+_QC_RATES = []                # letras/s de los clips buenos de este proceso
+QC_TAIL_MAX = 0.30            # voz tolerada tras la última palabra reconocida, en s
+
+def _letters(text):
+    return len(re.findall(r"[^\W\d_]", text))
+
+def qc_note_rate(text, wav, sr):
+    """Apunta la velocidad de un clip bueno: con ella se juzga si otro dura de más."""
+    dur = len(wav) / sr
+    if dur > 0 and _letters(text) >= 15:
+        _QC_RATES.append(_letters(text) / dur)
+        del _QC_RATES[:-200]
+
+def qc_audio_fault(text, wav, sr, last_end=None):
+    """Lo que el texto de Whisper no ve: XTTS a veces sigue balbuceando sin formar
+    palabras y la transcripción sale perfecta. Mide en el audio la voz tras la última
+    palabra y si el clip dura demasiado para sus letras. Devuelve el motivo o ""."""
+    import numpy as np, statistics
+    if wav is None or len(wav) == 0:
+        return ""
+    if last_end is not None:
+        fr = max(1, int(0.01 * sr))
+        tail = wav[int(last_end * sr):]
+        nf = tail.size // fr
+        if nf:
+            env = np.sqrt(np.mean(tail[:nf * fr].reshape(nf, fr) ** 2, axis=1) + 1e-12)
+            voz = float(np.sum(env > np.sqrt(np.mean(wav ** 2)) * 10 ** (-18 / 20))) * 0.01
+            if voz > QC_TAIL_MAX:
+                return f"{voz:.1f} s de voz sin palabras al final"
+    if len(_QC_RATES) >= 8:
+        esperado = _letters(text) / statistics.median(_QC_RATES)
+        dur = len(wav) / sr
+        if dur > esperado * 1.25 + 0.4:
+            return f"dura {dur:.1f} s y deberían ser {esperado:.1f} s"
+    return ""
+
+def _qc_eval(ref_text, hyp_text, threshold=0.85, fault=""):
     """Evalúa una frase contra su transcripción Whisper. Además del recall (palabras
     del texto presentes), detecta las ALUCINACIONES típicas de XTTS/F5, que el recall
     por conjuntos NO ve: inserciones (transcripción mucho más larga que el texto) y
     bucles de repetición (una palabra dicha muchas más veces de las debidas, p. ej.
-    «volumen volumen volumen…»). Devuelve (recall, ok, score, motivo)."""
+    «volumen volumen volumen…»). `fault` = lo que haya visto qc_audio_fault.
+    Devuelve (recall, ok, score, motivo)."""
     from collections import Counter
     rf = _words(ref_text); rh = _words(hyp_text)
     if not rf:
@@ -236,12 +274,13 @@ def _qc_eval(ref_text, hyp_text, threshold=0.85):
     extra_rep = max((ch[w] - cr.get(w, 0) for w in ch), default=0)   # palabra repetida de más
     too_long = len(rh) > len(rf) * 1.5 + 5                           # parrafada / cola alucinada
     cola, sin_final = _qc_tail(rf, rh)
-    halluc = (extra_rep >= 4) or too_long or cola >= 3
+    halluc = (extra_rep >= 4) or too_long or cola >= 3 or bool(fault)
     ok = (recall >= threshold) and not halluc and not sin_final
     # score para quedarse con el mejor intento cuando ninguno pasa: recall, castigando alucinar
     score = (recall - (0.6 if halluc else 0.0) - (0.3 if sin_final else 0.0)
              - 0.02 * max(0, extra_rep - 1) - 0.03 * cola)
-    motivo = (f"repite x{extra_rep}" if extra_rep >= 4
+    motivo = (fault if fault
+              else f"repite x{extra_rep}" if extra_rep >= 4
               else f"texto x{len(rh)/len(rf):.1f}" if too_long
               else f"coletilla de {cola} palabras" if cola >= 3
               else "se come el final" if sin_final else "")
@@ -271,19 +310,25 @@ def _qc_tail(rf, rh):
         return 0, False
     return 0, True
 
-def qc_transcribe(wav, sr, url, timeout=60):
-    """Sube un fragmento WAV al voz-server (Whisper) y devuelve el texto, o None."""
+def qc_transcribe(wav, sr, url, timeout=60, lang="es"):
+    """Sube un fragmento WAV a un Whisper por HTTP (voz-server). Devuelve (texto, instante en
+    que acaba la última palabra, si el servidor lo da); (None, None) si no hay respuesta."""
     import numpy as np, soundfile as sf
     fd, tmp = tempfile.mkstemp(suffix=".wav"); os.close(fd)
     try:
         sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
+        # El prompt evita el del servidor, que es vocabulario de su dictado, no de un libro.
         p = subprocess.run(["curl", "-s", "-m", str(timeout), "-F", f"file=@{tmp}",
-                            "-F", "response_format=json", "-F", "language=es", url],
+                            "-F", "response_format=verbose_json", "-F", f"language={lang or 'es'}",
+                            "-F", "prompt=Lectura de un libro.", url],
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        if p.returncode != 0: return None
-        return (json.loads(p.stdout.decode("utf-8", "replace")) or {}).get("text", "")
+        if p.returncode != 0: return None, None
+        d = json.loads(p.stdout.decode("utf-8", "replace")) or {}
+        if "text" not in d: return None, None             # p. ej. 503 sin memoria: no es que suene mal
+        words = d.get("words") or []
+        return d["text"], (words[-1].get("end") if words else None)
     except Exception:
-        return None
+        return None, None
     finally:
         try: os.remove(tmp)
         except OSError: pass
@@ -300,17 +345,21 @@ def qc_load_local(model_dir):
     return _QC_LOCAL_MODEL
 
 def qc_transcribe_local(wav, sr, model_dir, lang=None):
-    """Transcribe la frase con un Whisper LOCAL (sin red). Devuelve el texto o None."""
+    """Transcribe la frase con un Whisper LOCAL (sin red). Devuelve (texto, instante en
+    que acaba la última palabra); (None, None) si falla."""
     import numpy as np, soundfile as sf
     fd, tmp = tempfile.mkstemp(suffix=".wav"); os.close(fd)
     try:
         sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
         model = qc_load_local(model_dir)
-        segs, _ = model.transcribe(tmp, language=(lang or None), vad_filter=True, beam_size=1)
-        return " ".join(s.text for s in segs)
+        segs, _ = model.transcribe(tmp, language=(lang or None), vad_filter=True, beam_size=1,
+                                   word_timestamps=True)
+        segs = list(segs)
+        words = [w for s in segs for w in (s.words or [])]
+        return " ".join(s.text for s in segs), (words[-1].end if words else None)
     except Exception as e:
         print(f"  QC local falló: {type(e).__name__}", flush=True)
-        return None
+        return None, None
     finally:
         try: os.remove(tmp)
         except OSError: pass
@@ -320,13 +369,14 @@ def qc_on(a):
     return bool(getattr(a, "qc_whisper_dir", "") or getattr(a, "qc_url", ""))
 
 def qc_hyp(wav, sr, a):
-    """Transcribe para QC donde toque: LOCAL si hay --qc-whisper-dir, si no por HTTP."""
+    """Transcribe para QC donde toque: LOCAL si hay --qc-whisper-dir, si no por HTTP.
+    Devuelve (texto o None, fin de la última palabra o None)."""
     wd = getattr(a, "qc_whisper_dir", "")
     if wd:
         return qc_transcribe_local(wav, sr, wd, getattr(a, "lang", None))
     if getattr(a, "qc_url", ""):
-        return qc_transcribe(wav, sr, a.qc_url)
-    return None
+        return qc_transcribe(wav, sr, a.qc_url, lang=getattr(a, "lang", "es"))
+    return None, None
 
 def cmd_download(a):
     from huggingface_hub import hf_hub_download
@@ -459,12 +509,21 @@ def chapters_from_epub(path, min_chars=25):
 _ABBR_END = re.compile(r"(?:\b(?:[Ss]r|[Ss]ra|[Ss]rta|[Dd]r|[Dd]ra|[Mm]r|[Mm]rs|[Mm]s|[Ss]t|[Pp]rof|"
                        r"[Ll]ic|[Ii]ng|EE|vs|[Pp]ág|[Nn]úm|aprox)|(?<![\w.])[A-ZÁÉÍÓÚÑ])\.$")
 
-def split_sentences(text, target=180, hard=240, soft=170):
-    """Una frase por trozo (mejor prosodia/sincronía). Las frases LARGAS se
-    parten en las comas/; y los trozos se reagrupan hasta ~target, de modo que
-    cada corte cae en una pausa real (lo que ayuda a "respetar las comas")."""
+# Fin de frase: signo, quizá una comilla o un paréntesis que cierra, y espacio. Si sigue
+# minúscula no es fin ("¿Qué hora es? —dijo él", "etc. y", "Bueno… quizá").
+_SENT_SPLIT = re.compile(r"(?:(?<=[.!?…])|(?<=[.!?…][»”\"’)\]]))\s+(?![—–-]?\s*[a-záéíóúüñ])")
+_SENT_END = re.compile(r"[.!?…][»”\"’)\]]*$")
+
+# Silencio que se añade tras cada trozo según cómo acabe; lo marca la puntuación del
+# libro, no el modelo. trim_clip deja además 40 ms por lado: se oyen 0,30 / 0,63 / 0,98 s.
+PAUSES = {"coma": 0.22, "frase": 0.55, "parrafo": 0.90}
+
+def _split_paragraph(text, hard=240, short=20):
+    """Un trozo por cláusula: se corta en cada fin de frase y en cada coma/;/:, para
+    que la pausa la ponga PAUSES y no el modelo (XTTS deja en una coma entre 0 y 0,8 s).
+    Una cláusula de menos de `short` caracteres va con la siguiente («Además, vivimos…»)."""
     raw = []
-    for s in re.split(r"(?<=[\.\!\?…])\s+", text.replace("\n", " ")):
+    for s in _SENT_SPLIT.split(text):
         # no cortar tras abreviatura o inicial ("el Sr. Smith", "EE. UU.", "John F. Kennedy"):
         # "el Sr." suelto lo leía XTTS como una frase entera y luego el nombre aparte
         if raw and _ABBR_END.search(raw[-1]):
@@ -475,25 +534,103 @@ def split_sentences(text, target=180, hard=240, soft=170):
     for s in raw:
         s = s.strip()
         if not s: continue
-        if len(s) <= soft:
-            out.append(s); continue
-        parts = re.split(r"(?<=[,;:])\s+", s)        # trocear por comas/;/:
-        buf = ""
-        for p in parts:
-            p = p.strip()
-            if not p: continue
-            while len(p) > hard:                      # cláusula monstruosa: corte duro
-                cut = max(p.rfind(", ", 0, hard), p.rfind("; ", 0, hard))
-                if cut < 60: cut = hard
-                if buf: out.append(buf.strip()); buf = ""
-                out.append(p[:cut+1].strip()); p = p[cut+1:].strip()
-            if len(buf) + len(p) + 1 <= target:
-                buf = (buf + " " + p).strip()
+        clauses = []
+        for p in re.split(r"(?<=[,;:])\s+", s):
+            if clauses and len(clauses[-1]) < short:
+                clauses[-1] += " " + p
             else:
-                if buf: out.append(buf.strip())
-                buf = p
-        if buf.strip(): out.append(buf.strip())
+                clauses.append(p)
+        for p in clauses:
+            while len(p) > hard:                      # cláusula monstruosa: corte en un espacio
+                cut = p.rfind(" ", 60, hard)
+                if cut < 0: cut = hard
+                out.append(p[:cut].strip()); p = p[cut:].strip()
+            out.append(p)
     return [c for c in out if re.search(r"[A-Za-zÀ-ɏ0-9]", c)]
+
+def split_chunks(text):
+    """[(trozo, clave de PAUSES)]. Cada línea del texto es un párrafo (_blocks_text)."""
+    out = []
+    for para in text.split("\n"):
+        parts = _split_paragraph(para)
+        for i, c in enumerate(parts):
+            kind = "parrafo" if i == len(parts) - 1 else ("frase" if _SENT_END.search(c) else "coma")
+            out.append((c, kind))
+    return out
+
+def split_sentences(text):
+    return [c for c, _ in split_chunks(text)]
+
+def same_cues(cues, sents):
+    """¿Lo ya narrado de un capítulo cuadra con su troceo actual? Si no (lo narró otra
+    versión), reanudar por posición saltaría o repetiría frases: se rehace el capítulo."""
+    return [c.get("text") for c in cues] == sents[:len(cues)]
+
+def trim_clip(w, sr=24000, drop_island=True):
+    """Recorta el silencio de los dos extremos del clip (deja 40 ms de margen). Con
+    drop_island, si el último tramo de voz es corto y está separado del cuerpo por un
+    silencio largo, lo descarta: es la alucinación final de XTTS, no voz."""
+    import numpy as np
+    if w is None or w.size == 0:
+        return w
+    fr = max(1, int(0.02 * sr))                     # ventana de 20 ms
+    nf = w.size // fr
+    if nf < 3:
+        return w
+    env = np.sqrt(np.mean(w[:nf * fr].reshape(nf, fr) ** 2, axis=1) + 1e-9)
+    peak = float(env.max())
+    if peak <= 0:
+        return w
+    thr = peak * (10 ** (-40.0 / 20.0))             # −40 dB rel. pico = hay voz
+    idx = np.where(env >= thr)[0]
+    if idx.size == 0:
+        return w
+    first, last = int(idx[0]), int(idx[-1])
+    # tramos contiguos de voz
+    segs, run = [], [idx[0], idx[0]]
+    for k in idx[1:]:
+        if k == run[1] + 1:
+            run[1] = k
+        else:
+            segs.append(tuple(run)); run = [k, k]
+    segs.append(tuple(run))
+    SIL = int(0.22 / 0.02)                           # hueco "largo" >= 220 ms
+    SHORT = int(0.35 / 0.02)                          # isla "corta" <= 350 ms
+    if drop_island and len(segs) >= 2:
+        (_s0, e0), (s1, e1) = segs[-2], segs[-1]
+        if (s1 - e0) >= SIL and (e1 - s1) <= SHORT:   # isla final separada = alucinación
+            last = e0
+    pad = int(0.04 * sr)
+    a0 = max(0, first * fr - pad)
+    b0 = min(w.size, (last + 1) * fr + pad)
+    return w[a0:b0]
+
+def cap_silences(w, sr=24000, over=0.40, keep=0.32, db=-40.0):
+    """Acorta a `keep` segundos los silencios internos de más de `over`. XTTS deja en
+    una coma entre 0 y 0,8 s: sin tope, una coma puede durar más que un punto."""
+    import numpy as np
+    if w is None or w.size == 0:
+        return w
+    fr = max(1, int(0.01 * sr))                     # ventana de 10 ms
+    nf = w.size // fr
+    if nf < 3:
+        return w
+    env = np.sqrt(np.mean(w[:nf * fr].reshape(nf, fr) ** 2, axis=1) + 1e-9)
+    quiet = env < float(env.max()) * (10 ** (db / 20.0))
+    k = int(keep * sr)
+    parts, pos, i = [], 0, 0
+    while i < nf:
+        if not quiet[i]:
+            i += 1
+            continue
+        j = i
+        while j < nf and quiet[j]:
+            j += 1
+        if i > 0 and j < nf and (j - i) * fr >= int(over * sr):   # solo los internos
+            parts.append(w[pos:i * fr + k // 2])
+            pos = j * fr - (k - k // 2)
+        i = j
+    return np.concatenate(parts + [w[pos:]]) if parts else w
 
 def replace_retry(src, dst, tries=60, wait=0.05):
     """os.replace que aguanta lectores: en Windows falla con «Acceso denegado» si
@@ -610,7 +747,8 @@ def cmd_generate(a):
             manifest.append(pe); save_manifest()
             print(f"[cap {ci}] ya hecho, lo mantengo", flush=True)
             continue
-        sents = split_sentences(ch["text"])
+        chunks = split_chunks(ch["text"])
+        sents = [c for c, _ in chunks]
         entry = {"id": ci, "base": base, "title": ch["title"], "n": 0, "duration": 0.0, "done": False}
         manifest.append(entry)
         sr = None; cues = []; t = 0.0; pending = []          # pending = audio aún no volcado
@@ -626,7 +764,7 @@ def cmd_generate(a):
             except Exception:
                 ex_cues = []; ex_t = 0.0
             srp = pe.get("sr"); frames = pe.get("frames")
-            if ex_cues and srp and frames and os.path.exists(wav_path):
+            if ex_cues and srp and frames and os.path.exists(wav_path) and same_cues(ex_cues, sents):
                 try:
                     data, _sr = sf.read(wav_path, dtype="float32")
                     if _sr == srp and len(data) >= frames:
@@ -689,25 +827,28 @@ def cmd_generate(a):
                 nfe = a.nfe + 6 * att                         # variar para que el reintento difiera
                 wav, sr, _ = m.infer(ref_file=a.voice, ref_text=ref_text, gen_text=gen_text,
                                      remove_silence=True, nfe_step=nfe)
-                wav = np.asarray(wav, dtype="float32")
+                wav = cap_silences(trim_clip(np.asarray(wav, dtype="float32"), sr, drop_island=False), sr)
                 if not qc_on(a):
                     best_wav = wav; break
-                hyp = qc_hyp(wav, sr, a)
+                hyp, last_end = qc_hyp(wav, sr, a)
                 if hyp is None:
                     if best_wav is None: best_wav = wav
                     print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
                     break
-                rec, ok, score, motivo = _qc_eval(gen_text, hyp, a.qc_threshold)
+                rec, ok, score, motivo = _qc_eval(gen_text, hyp, a.qc_threshold,
+                                                  qc_audio_fault(gen_text, wav, sr, last_end))
                 if score > best_score: best_score, best_wav = score, wav
                 if ok:
+                    qc_note_rate(gen_text, wav, sr)
                     if att > 0: print(f"  QC frase {si+1}: OK recall={rec:.2f} (intento {att+1})", flush=True)
                     break
                 det = f"recall={rec:.2f}" + (f", alucina ({motivo})" if motivo else f" < {a.qc_threshold:.2f}")
                 print(f"  QC frase {si+1}: {det}, regenerando ({att+1}/{attempts})", flush=True)
             wav = best_wav; dur = len(wav) / sr
             cues.append({"i": si, "start": round(t, 3), "end": round(t + dur, 3), "text": s})
-            pending.append(wav); pending.append(np.zeros(int(a.gap * sr), dtype="float32"))
-            t += dur + a.gap
+            gap = int(PAUSES[chunks[si][1]] * sr)
+            pending.append(wav); pending.append(np.zeros(gap, dtype="float32"))
+            t += dur + gap / sr
             print(f"  frase {si+1}/{len(sents)} {dur:.1f}s", flush=True)
             if (si + 1) % FLUSH_EVERY == 0:
                 flush_partial()
@@ -742,7 +883,7 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     g.add_argument("--voice", default=os.path.join(here, "voices", "narrator.wav"))
     g.add_argument("--voice-text", default=os.path.join(here, "voices", "narrator.txt"))
-    g.add_argument("--gap", type=float, default=0.28); g.add_argument("--nfe", type=int, default=40)
+    g.add_argument("--nfe", type=int, default=40)
     g.add_argument("--device", default="auto")
     g.add_argument("--qc-url", default="")                   # endpoint Whisper HTTP (voz-server)
     g.add_argument("--qc-whisper-dir", default="")           # modelo Whisper LOCAL (sin red); uno u otro activa el QC
