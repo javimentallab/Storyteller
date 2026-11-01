@@ -110,7 +110,7 @@
 108|Aussprachewörterbuch bearbeiten…
 109|Die lokale Engine wird gerade installiert (PyTorch + F5). In der Zwischenzeit kannst du auf einem eigenen Server erzeugen.
 110|Erzeugt auf diesem Computer mit der GPU. Wähle Modell und Stimme; lade das Modell herunter, falls nötig.
-111|Erzeugt per SSH auf dem angegebenen Server (dort muss dieselbe Engine installiert sein). Modell und Stimme von hier werden im lokalen Modus genutzt.
+111|Wird per SSH auf dem angegebenen Server erzeugt. Mit XTTS werden Engine und Stimme dieses Computers verwendet, und auf dem Server muss XTTS installiert sein. Mit F5 sind Engine und Stimme die des Servers.
 112|✓ Installiert
 113|Nicht heruntergeladen · {0}
 114|{0}  · Sprache: {1}  ({2})
@@ -302,3 +302,35 @@
 300|Es läuft bereits ein Download.
 301|Download abgebrochen. Beim nächsten Download beginnt er von vorn.
 302|Der Download des Transkriptionsmodells wurde nicht abgeschlossen.
+303|Ein Dienst per URL
+304|URL:
+305|Zugangsschlüssel:
+306|Leer lassen, wenn der Dienst keinen verlangt
+307|Modell:
+308|Stimme:
+309|Standard des Dienstes
+310|Testen
+311|Wird getestet…
+312|Es funktioniert: Der Testsatz dauerte {0} s.
+313|Jeder Satz wird beim Dienst unter dieser URL angefordert: deinem eigenen (st_server.py) oder einem öffentlichen mit seinem Schlüssel. Hier brauchst du weder Grafikkarte noch Stimmmodell. Die Transkription von Hörbüchern bleibt auf diesem Computer.
+314|Diese Adresse ist ungültig.
+315|Diese Adresse ist nicht verschlüsselt: Schlüssel und Buchtext würden im Klartext übertragen. Verwende außerhalb deines Heimnetzes https.
+316|Gib zuerst die URL des Dienstes unter Modelle an.
+317|Der Dienst hat den Zugangsschlüssel abgelehnt.
+318|Der Dienst findet diese Adresse oder dieses Modell nicht. Prüfe URL und Modell.
+319|Der Dienst hat die Anfrage abgelehnt.
+320|Der Dienst ist auch nach mehreren Versuchen noch ausgelastet. Versuche es später noch einmal.
+321|Keine Antwort vom Dienst. Prüfe die URL und ob er eingeschaltet ist.
+322|Der Dienst hat kein lesbares Audio geliefert.
+323|Der Dienst antwortet nicht; neuer Versuch in {0} s…
+324|Verbindung zu {0}…
+325|Das bereits Erzählte ist gespeichert; du kannst das Buch in der Bibliothek fortsetzen.
+326|Ein Abschnitt brach auf dem Server ab; vielleicht fehlt seiner GPU Speicher. Das Erzählte ist gespeichert: Verringere die Zahl der Abschnitte unter „Modelle“ und klicke auf Fortsetzen.
+327|Der Server konnte nicht so viele Abschnitte starten; vielleicht fehlt seiner GPU Speicher. Verringere die Zahl der Abschnitte unter „Modelle“ und versuche es erneut.
+328|1 Abschnitt
+329|2 Abschnitte
+330|3 Abschnitte
+331|Wie viele Abschnitte gleichzeitig auf der GPU des Servers erzählt werden. Jeder belegt etwa 2 GB ihres Speichers: Passen sie nicht hinein, meldet die Erzählung das, und du musst die Zahl verringern. Mehr Abschnitte sind nicht immer schneller: Mit F5 auf einer RTX 2060 dauern 1 und 2 gleich lang.
+332|Auf dem Server ist XTTS nicht installiert. Wähle unter „Modelle“ ein anderes Modell oder installiere es auf dem Server.
+333|Das Erzählte wird an den Server gesendet…
+334|Die Verbindung zum Server ist abgebrochen. Das dort Erzählte bleibt erhalten: Klicke auf Fortsetzen, um weiterzumachen.

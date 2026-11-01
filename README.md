@@ -14,6 +14,7 @@ Whisper** to make those subtitles, and **translates books and documents** betwee
 languages with TranslateGemma.
 
 Everything runs **locally** (GPU or CPU) or, if you like, on **your own server** over SSH.
+Narration can also use **any voice service by URL**: your own or a public one with its key.
 **Models and voices are not bundled**: they are **downloaded from inside the app**.
 
 ## Features
@@ -100,6 +101,10 @@ the system language (English if it is not in the list); to force one, use
   `whisper` (streaming transcription) and the text preparation shared by the engines.
 - `engine/cc_xtts.py` — XTTS v2 engine: `generate` / `count`, same output format
   (mp3 + subtitles + manifest, incremental and resumable).
+- `engine/cc_service.py` — narrates by asking a voice service for each sentence, through the
+  standard API, same output format. No graphics card or voice model needed on this computer.
+- `st_server.py` — that service with your own XTTS and voices, for this app on another computer,
+  the mobile app or any other client ([API](docs/server-api.md)).
 - `st_translate.py` + `engine/cc_translate.py` — document translation screen and engine
   (one reader/writer per format; saves progress and resumes).
 

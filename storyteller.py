@@ -6,7 +6,7 @@ Lee un EPUB, lo manda a Mint para narrarlo con la voz neural (F5, voz A),
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
 resaltada, clic para saltar). La generacion corre en Mint (GPU) por SSH.
 """
-import sys, os, re, json, shutil, subprocess, time, unicodedata, tempfile, threading, wave
+import sys, os, re, json, shutil, subprocess, time, tempfile, threading
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer
@@ -14,12 +14,15 @@ from PySide6.QtGui import QShortcut, QKeySequence, QIcon
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QSlider, QScrollArea, QFileDialog, QProgressBar,
-    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog, QSizePolicy,
+    QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog, QSizePolicy, QGridLayout,
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
 from st_lang import _  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
+from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, live_manifest,
+                     merge_stream_manifests, read_gen_state, recover_interrupted, slug,
+                     split_ranges, snapshot_chapter as core_snapshot_chapter)
 
 __version__ = "1.0"
 
@@ -35,6 +38,8 @@ CC_ENGINE  = HOME_CC / "engine" / "cc_engine.py"
 _VENV_XTTS = HOME_CC / "engine" / ".venv-xtts"
 VPY_XTTS   = _VENV_XTTS / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 CC_XTTS    = HOME_CC / "engine" / "cc_xtts.py"
+CC_SERVICE = HOME_CC / "engine" / "cc_service.py"   # narrar con un servicio por URL
+SERVICE_KEY = HOME_CC / "service.key"
 MODELS_DIR = HOME_CC / "models"
 CONFIG     = HOME_CC / "config.json"
 PRON_FILE  = HOME_CC / "pron.json"   # diccionario de pronunciación (para el motor)
@@ -194,14 +199,56 @@ def active_voice(cfg=None):
     if not vs: return None
     return next((v for v in vs if v["id"] == cfg.get("voice", "narrator")), vs[0])
 
+# ---- narrar con un servicio por URL (engine/cc_service.py)
+_service_mod = None
+
+def service_module():
+    """cc_service sin tocar sys.path. Solo usa la biblioteca estándar: se carga también aquí,
+    en la interfaz, para probar un servicio y entender lo que se escribe como dirección."""
+    global _service_mod
+    if _service_mod is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("cc_service", CC_SERVICE)
+        _service_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_service_mod)
+    return _service_mod
+
+def service_cfg(cfg=None):
+    s = (cfg or load_config()).get("service") or {}
+    return {"url": s.get("url", ""), "model": s.get("model", ""), "voice": s.get("voice", "")}
+
+def service_key():
+    try: return SERVICE_KEY.read_text("utf-8").strip()
+    except OSError: return ""
+
+def save_service_key(key):
+    """Aparte de config.json y legible solo por el usuario."""
+    try:
+        if key:
+            fd = os.open(SERVICE_KEY, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(key)
+        else:
+            SERVICE_KEY.unlink(missing_ok=True)
+    except OSError: pass
+
+def service_python():
+    """El Python que lee el EPUB para el servicio: el de un motor instalado."""
+    return VPY if engine_ready() else (VPY_XTTS if xtts_ready() else None)
+
+def service_error_text(kind, detail=""):
+    """Lo que le pasa al servicio, para el usuario. El mensaje del propio servicio, si dio alguno, detrás."""
+    text = {"url": _("Esa dirección no es válida."),
+            "auth": _("El servicio rechazó la clave de acceso."),
+            "notfound": _("El servicio no encuentra esa dirección o ese modelo. Revisa la URL y el modelo."),
+            "refused": _("El servicio rechazó la petición."),
+            "busy": _("El servicio sigue ocupado tras varios intentos. Prueba más tarde."),
+            "noaudio": _("El servicio no devolvió un audio que se pueda leer."),
+            }.get(kind, _("No hay respuesta del servicio. Comprueba la URL y que esté encendido."))
+    return f"{text}\n\n{detail}" if detail and kind in ("auth", "notfound", "refused", "busy") else text
+
 def is_http_url(u):
     """Solo http/https (evita file://, ftp:// u otros esquemas al descargar)."""
     return isinstance(u, str) and u.strip().lower().startswith(("http://", "https://"))
-
-def slug(name):
-    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    s = re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-").lower()
-    return s or "libro"
 
 def fmt(ms):
     s = max(0, int(ms // 1000))
@@ -220,168 +267,6 @@ def fmt_eta(sec):
     when = time.strftime("%H:%M", end)
     when = when if days <= 0 else (_('mañana {0}').format(when) if days == 1 else _('en {0} días, {1}').format(int(days), when))
     return _('quedan {0} (hacia las {1})').format(dur, when) if days <= 0 else _('quedan {0} ({1})').format(dur, when)
-
-class EtaTracker:
-    """Tiempo restante de una narración. Lleva las frases pendientes de CADA capítulo
-    (idempotente: lo que diga el motor sobrescribe) y el ritmo reciente de cada tramo
-    (1, 2 o 3 procesos; últimas WIN frases, incluye QC y cambios de capítulo). El libro
-    acaba cuando acaba el tramo MÁS LENTO."""
-    WIN = 40
-
-    def __init__(self, sents, ranges, dest=None):
-        self.sents = list(sents)                          # frases por capítulo (1-based → [i-1])
-        self.total = sum(self.sents)
-        self.left = {i: n for i, n in enumerate(self.sents, 1)}
-        self.caps = {k: range(cs, ce + 1) for k, (cs, ce) in ranges.items()}
-        self.cur = {}; self.ts = {k: [] for k in ranges}
-        if dest:                                          # reanudar: descontar lo ya narrado
-            for f in Path(dest).glob("manifest*.json"):
-                try: man = json.loads(f.read_text("utf-8"))
-                except Exception: continue
-                for e in man if isinstance(man, list) else []:
-                    if isinstance(e, dict) and e.get("id") in self.left:
-                        done = self.left[e["id"]] if e.get("done") else int(e.get("n") or 0)
-                        self.left[e["id"]] = max(0, min(self.left[e["id"]],
-                                                         self.sents[e["id"] - 1] - done))
-
-    def line(self, k, line):
-        """Actualiza con una línea del motor del tramo k."""
-        m = re.search(r"\[cap (\d+)\]", line)
-        if m:
-            cap = int(m.group(1))
-            if "ya hecho" in line: self.left[cap] = 0
-            elif (q := re.search(r"quedan (\d+)", line)): self.left[cap] = int(q.group(1))
-            elif (q := re.search(r"->\s*(\d+) frases", line)): self.left[cap] = int(q.group(1))
-            else: return
-            self.cur[k] = cap
-            return
-        m = re.match(r"\s*frase (\d+)/(\d+)", line)
-        if m and k in self.cur:
-            self.left[self.cur[k]] = int(m.group(2)) - int(m.group(1))
-            ts = self.ts[k]; ts.append(time.monotonic())
-            if len(ts) > self.WIN: del ts[0]
-
-    def _rem(self, k): return sum(self.left.get(c, 0) for c in self.caps[k])
-
-    def pct(self):
-        left = sum(self._rem(k) for k in self.caps)
-        return min(99, int((self.total - left) / self.total * 100)) if self.total else -1
-
-    def seconds(self):
-        """Segundos que faltan (None = aún sin ritmo medido en algún tramo vivo)."""
-        worst = 0.0; now = time.monotonic()
-        for k in self.caps:
-            r = self._rem(k)
-            if r <= 0: continue
-            ts = self.ts[k]
-            if len(ts) < 4 or ts[-1] <= ts[0]: return None
-            per = (ts[-1] - ts[0]) / (len(ts) - 1)        # s por frase en este tramo
-            worst = max(worst, r * per - min(now - ts[-1], per))
-        return max(0.0, worst)
-
-def read_gen_state(d):
-    try:
-        return json.loads((Path(d) / "gen_state.json").read_text("utf-8"))
-    except Exception:
-        return None
-
-def book_resumable(d):
-    """True si el libro quedó a medias (narración F5 o transcripción) y se puede reanudar."""
-    st = read_gen_state(d)
-    if not st or st.get("complete", True):
-        return False
-    kind = st.get("kind", "narrate")
-    if kind == "import":
-        return (Path(d) / "cap01.mp3").exists()          # la transcripción reanuda del propio mp3
-    return (Path(d) / "source.epub").exists()            # la narración reanuda del EPUB origen
-
-# Carpetas con una narración EN CURSO en esta app: la biblioteca no las "repara".
-ACTIVE_GEN = set()
-
-def _atomic_write(path, text):
-    tmp = str(path) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f: f.write(text)
-    for i in range(60):                                   # Windows: «Acceso denegado» si alguien lo lee justo ahora
-        try:
-            os.replace(tmp, path); return
-        except PermissionError:
-            if i == 59: raise
-            time.sleep(0.05)
-
-def _stream_parts(d):
-    """{nº de tramo: ruta} de los manifest.pN.json de la carpeta."""
-    out = {}
-    for p in Path(d).glob("manifest.p*.json"):
-        m = re.fullmatch(r"manifest\.p(\d+)\.json", p.name)
-        if m: out[int(m.group(1))] = p
-    return out
-
-def merge_stream_manifests(dest, streams, n, complete_ok=False):
-    """Une los manifest.pN.json de los tramos en manifest.json (ordenado por id) y
-    escribe gen_state.json. complete solo si complete_ok y están los n capítulos.
-    Devuelve la lista fusionada (vacía = nada que fusionar, no escribe)."""
-    dest = Path(dest)
-    best = {}
-    for idx in range(1, streams + 1):
-        try:
-            part = json.loads((dest / f"manifest.p{idx}.json").read_text("utf-8"))
-        except Exception:
-            continue
-        for e in part if isinstance(part, list) else []:
-            if not (isinstance(e, dict) and "id" in e): continue
-            old = best.get(e["id"])                       # duplicado: gana el más avanzado
-            if old is None or (bool(e.get("done")), int(e.get("n") or 0)) > \
-                              (bool(old.get("done")), int(old.get("n") or 0)):
-                best[e["id"]] = e
-    merged = [best[k] for k in sorted(best)]
-    if not merged:
-        return merged
-    complete = complete_ok and sum(1 for e in merged if e.get("done")) >= n
-    _atomic_write(dest / "manifest.json", json.dumps(merged, ensure_ascii=False, indent=2))
-    _atomic_write(dest / "gen_state.json",
-                  json.dumps({"total": n, "complete": bool(complete), "streams": streams},
-                             ensure_ascii=False))
-    if complete:                                          # ya no hacen falta los parciales
-        for idx in range(1, streams + 1):
-            try: (dest / f"manifest.p{idx}.json").unlink()
-            except Exception: pass
-    return merged
-
-def recover_interrupted(d):
-    """Repara un libro narrado en tramos que se cortó de golpe (cuelgue, apagón,
-    proceso matado): los tramos dejaron su manifest.pN.json pero no se llegó a
-    fusionar, así que no salía en la biblioteca o salía con menos capítulos.
-    Lo deja a medias y reanudable. True si ha reparado algo."""
-    d = Path(d)
-    if str(d) in ACTIVE_GEN:
-        return False
-    parts = _stream_parts(d)
-    if not parts:
-        return False
-    st = read_gen_state(d) or {}
-    if st.get("complete"):
-        return False
-    mf = d / "manifest.json"
-    try:
-        newest = max(p.stat().st_mtime for p in parts.values())
-        if mf.exists() and mf.stat().st_mtime >= newest and st:
-            return False                                  # ya al día
-    except OSError:
-        return False
-    log = ""
-    try: log = (d / "gen.log").read_text("utf-8", errors="replace")
-    except Exception: pass
-    # Nº de tramos: el gen_state (se escribe al empezar) o, en libros antiguos, el log.
-    streams = int(st.get("streams") or 0)
-    if not streams:
-        ts = [int(x) for x in re.findall(r"^\[t(\d+)\]", log, re.M)]
-        streams = max(ts + list(parts))
-    n = int(st.get("total") or 0)
-    if not n:
-        m = re.search(r"capitulos:\s*(\d+)", log)
-        n = int(m.group(1)) if m else 0
-    # Sin total conocido da igual: complete_ok=False y al reanudar se recuenta del EPUB.
-    return bool(merge_stream_manifests(d, streams, n, complete_ok=False))
 
 def list_books():
     LOCAL_BOOKS.mkdir(parents=True, exist_ok=True)
@@ -422,64 +307,18 @@ LISTEN_DIR = Path(tempfile.gettempdir()) / "storyteller-listen"
 def resume_model_name(d):
     """Con qué modelo seguiría un libro a medias: el activo ahora, lo ya hecho se conserva."""
     cfg = load_config()
-    if cfg.get("engine", "local") != "local":
+    if cfg.get("engine", "local") == "remote":
         return _("Servidor propio")
     if (read_gen_state(d) or {}).get("kind") == "import":
         return whisper_by_id(active_whisper_id(cfg))["name"]
+    if cfg.get("engine") == "service":
+        return service_module().host_of(service_cfg(cfg)["url"]) or _("Un servicio por URL")
     return model_by_id(cfg["model"], cfg)["name"]
 
 
 def is_generating(d):
-    """True si ESTA app está narrando ahora mismo el libro de la carpeta d."""
+    """True si esta app está narrando ahora mismo el libro de la carpeta d."""
     return d is not None and str(Path(d)) in ACTIVE_GEN
-
-def _progress_key(e):
-    return (bool(e.get("done")), int(e.get("n") or 0), int(e.get("frames") or 0))
-
-def live_manifest(d):
-    """Capítulos del libro tal como están AHORA en disco: manifest.json más los
-    manifest.pN.json de los tramos en paralelo. Por capítulo gana el más avanzado."""
-    d = Path(d)
-    best = {}
-    for f in [d / "manifest.json"] + [p for _k, p in sorted(_stream_parts(d).items())]:
-        try:
-            part = json.loads(f.read_text("utf-8"))
-        except Exception:
-            continue
-        for e in part if isinstance(part, list) else []:
-            if not (isinstance(e, dict) and "id" in e and "base" in e):
-                continue
-            old = best.get(e["id"])
-            if old is None or _progress_key(e) > _progress_key(old):
-                best[e["id"]] = e
-    return [best[k] for k in sorted(best)]
-
-def chapter_is_partial(d, e):
-    """Capítulo narrado a medias: su audio aún crece (o se reescribirá al reanudar).
-    Las transcripciones de audiolibros traen el audio entero desde el principio."""
-    if e.get("done", True):
-        return False
-    return (read_gen_state(d) or {}).get("kind") != "import"
-
-def _wav_layout(path):
-    """(inicio de los datos, canales, bytes por muestra, frecuencia) de un WAV PCM.
-    No se fía del tamaño que declara la cabecera: mientras se escribe no está al día."""
-    with open(path, "rb") as f:
-        head = f.read(65536)
-    if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
-        return None
-    pos = 12; fmt = None
-    while pos + 8 <= len(head):
-        cid = head[pos:pos + 4]; size = int.from_bytes(head[pos + 4:pos + 8], "little")
-        if cid == b"fmt ":
-            ch = int.from_bytes(head[pos + 10:pos + 12], "little")
-            sr = int.from_bytes(head[pos + 12:pos + 16], "little")
-            bits = int.from_bytes(head[pos + 22:pos + 24], "little")
-            fmt = (ch, bits // 8, sr)
-        elif cid == b"data":
-            return ((pos + 8,) + fmt) if fmt else None
-        pos += 8 + size + (size & 1)
-    return None
 
 def clean_listen_dir(keep=None):
     """Borra las copias viejas (la que está sonando sigue abierta y se salta sola)."""
@@ -492,40 +331,7 @@ def clean_listen_dir(keep=None):
         pass
 
 def snapshot_chapter(d, e):
-    """Copia reproducible de lo narrado hasta ahora de un capítulo a medias.
-    Sale del WAV del motor (los tiempos cuadran al ms con los subtítulos) cortado
-    en las muestras que el manifest da por guardadas; si no hay WAV (motor remoto),
-    del mp3 parcial. None si todavía no hay audio."""
-    d = Path(d)
-    LISTEN_DIR.mkdir(parents=True, exist_ok=True)
-    frames = int(e.get("frames") or 0); sr = int(e.get("sr") or 0)
-    tag = f"{slug(d.name)[:40]}-{e['base']}-{frames}-{int(time.time() * 1000)}"
-    src = d / f"{e['base']}.wav"
-    if frames > 0 and src.exists():
-        try:
-            lay = _wav_layout(src)
-            if lay and lay[2] in (1, 2, 3, 4) and (not sr or lay[3] == sr):
-                off, ch, bps, wsr = lay
-                with open(src, "rb") as f:
-                    f.seek(off); data = f.read(frames * ch * bps)
-                data = data[:len(data) - len(data) % (ch * bps)]
-                if data:
-                    out = LISTEN_DIR / f"{tag}.wav"
-                    with wave.open(str(out), "wb") as w:
-                        w.setnchannels(ch); w.setsampwidth(bps); w.setframerate(wsr)
-                        w.writeframes(data)
-                    return out
-        except Exception:
-            pass
-    mp3 = d / f"{e['base']}.mp3"
-    try:
-        if mp3.exists() and mp3.stat().st_size > 0:
-            out = LISTEN_DIR / f"{tag}.mp3"
-            shutil.copyfile(mp3, out)
-            return out
-    except Exception:
-        pass
-    return None
+    return core_snapshot_chapter(d, e, LISTEN_DIR)
 
 
 def chap_label(m):
@@ -550,7 +356,13 @@ class GenWorker(QThread):
         super().__init__()
         self.epub = Path(epub_path)
         self.name = name or slug(self.epub.stem)
-        self.host = load_config().get("server") or MINT
+        cfg = load_config()
+        self.host = cfg.get("server") or MINT
+        self.streams = max(1, int(cfg.get("parallel_streams", 1) or 1))
+        self.model = model_by_id(cfg.get("model"), cfg)
+        self.xtts = self.model.get("backend") == "xtts"
+        self.voice = active_voice(cfg)
+        self.qc_model = active_whisper_id(cfg).replace("whisper-", "") if cfg.get("qc_auto") else ""
         self.mode = "run"        # run | stopsave | cancel
         self.proc = None
         self.resume = resume
@@ -563,20 +375,68 @@ class GenWorker(QThread):
         """Detiene la narración en Mint. save=True conserva lo hecho; False descarta."""
         self.mode = "stopsave" if save else "cancel"
         try:
-            # matar solo el python de narración; run_epub.sh sigue y rearranca el voz-server
-            subprocess.run(SSH + [self.host, "pkill -f epub2audio.py"],
+            # matar solo el python de narración; el script sigue y rearranca el voz-server
+            subprocess.run(SSH + [self.host, "pkill -f 'epub2audio.py|xtts_tramos.py|cc_xtts.py'"],
                            capture_output=True, text=True, timeout=20, creationflags=NOWIN)
         except Exception:
             pass
+
+    def _narrated(self, text):
+        """Frases narradas según un manifest.json; -1 si no se puede leer."""
+        try:
+            return sum(int(e.get("n") or 0) for e in json.loads(text))
+        except Exception:
+            return -1
+
+    def _send_xtts(self, dest):
+        """Deja en el servidor el motor, la voz y el diccionario de este equipo, para que suene
+        igual que aquí; al reanudar, también lo narrado si aquí va más avanzado."""
+        rdir = f"{REMOTE_DIR}/out/{self.name}"
+        r = self._run(SSH + [self.host, f"mkdir -p {REMOTE_DIR}/engine-xtts {REMOTE_DIR}/voices-xtts '{rdir}'"])
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip())
+        for src, dst in ((CC_ENGINE, "engine-xtts/cc_engine.py"), (CC_XTTS, "engine-xtts/cc_xtts.py"),
+                         (ensure_pron(), "engine-xtts/pron.json"),
+                         (self.voice["wav"], f"voices-xtts/{self.voice['id']}.wav")):
+            r = self._run(SCP + [str(src), f"{self.host}:{REMOTE_DIR}/{dst}"])
+            if r.returncode != 0:
+                raise RuntimeError(r.stderr.strip())
+        if not self.resume:                        # desde cero: que no quede nada de otra tirada
+            self._run(SSH + [self.host, f"rm -rf '{rdir}' && mkdir -p '{rdir}'"])
+            return
+        try:
+            here = self._narrated((dest / "manifest.json").read_text("utf-8"))
+        except OSError:
+            here = -1
+        r = self._run(SSH + [self.host, f"cat '{rdir}/manifest.json'"])
+        if r.returncode == 255:                    # 255 = no hay conexión (1 = aún no existe)
+            raise RuntimeError(r.stderr.strip())
+        there = self._narrated(r.stdout) if r.returncode == 0 else -1
+        if here < 0 or there > here:               # el servidor siguió narrando y no llegó a traerse
+            return
+        self.progress.emit(_("Enviando lo narrado al servidor…"), -1)
+        files = [str(p) for p in dest.iterdir() if p.is_file() and p.suffix != ".tmp"]
+        self._run(SSH + [self.host, f"rm -rf '{rdir}' && mkdir -p '{rdir}'"])
+        r = self._run(SCP + files + [f"{self.host}:{rdir}/"])
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip())
 
     def run(self):
         tmp_epub = None
         try:
             dest = LOCAL_BOOKS / self.name
             epub = self.epub
-            # Reanudar en el servidor un libro empezado en este equipo: allí no está lo narrado,
-            # empezaría de cero y al traerlo (rmtree de abajo) se perdería lo de aquí.
-            if self.resume and self._run(SSH + [self.host, f"test -f '{REMOTE_DIR}/out/{self.name}/manifest.json'"]).returncode == 1:
+            if self.xtts:
+                r = self._run(SSH + [self.host, f"test -x {REMOTE_DIR}/.venv-xtts/bin/python && test -x {REMOTE_DIR}/run_xtts.sh"])
+                if r.returncode == 255:                    # 255 = no hay conexión
+                    self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + r.stderr.strip())
+                    return
+                if r.returncode != 0 or not self.voice:
+                    self.failed.emit(_("El servidor no tiene instalado XTTS. Elige otro modelo en «Modelos» o instálalo en el servidor."))
+                    return
+            # Reanudar con F5 en el servidor un libro empezado en este equipo: su motor es otro y allí
+            # no está lo narrado, empezaría de cero y al traerlo se perdería lo de aquí.
+            elif self.resume and self._run(SSH + [self.host, f"test -f '{REMOTE_DIR}/out/{self.name}/manifest.json'"]).returncode == 1:
                 self.failed.emit(_("Este libro se empezó en este equipo y el servidor no tiene lo narrado: si siguiera "
                                    "allí, se perdería. Cámbialo a este equipo en «Modelos» para reanudarlo."))
                 return
@@ -592,35 +452,74 @@ class GenWorker(QThread):
             r = self._run(SCP + [str(epub), f"{self.host}:{remote_epub}"])
             if r.returncode != 0:
                 self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + r.stderr.strip()); return
+            if self.xtts:
+                try:
+                    self._send_xtts(dest)
+                except RuntimeError as e:
+                    self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + str(e)); return
 
             self.progress.emit(_("Reanudando el motor de voz…") if self.resume
                                else _("Arrancando el motor de voz…"), -1)
-            qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
             rs = "CC_RESUME=1 " if self.resume else ""
-            cmd = f"cd {REMOTE_DIR} && {qc}{rs}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
+            st = f"CC_STREAMS={self.streams} " if self.streams > 1 else ""
+            if self.xtts:
+                qc = f"CC_QC_MODEL={self.qc_model} " if self.qc_model else ""
+                cmd = (f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_xtts.sh 'inbox/{self.name}.epub' 'out/{self.name}' "
+                       f"'voices-xtts/{self.voice['id']}.wav' '{self.model.get('lang', 'es')}'")
+            else:
+                qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
+                cmd = f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
             p = subprocess.Popen(SSH + [self.host, cmd], stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, text=True,
                                  encoding="utf-8", errors="replace", creationflags=NOWIN)
             self.proc = p
             total = done = 0
             cap_cur = cap_tot = 0
+            tramos = 1                 # los que de verdad lanza el servidor (lo dice él)
+            caps_seen = set()          # en tramos no hay un único capítulo actual
+            tramo_failed = False
+            finished = False           # el script del servidor acaba siempre con RUN-RC
             for line in p.stdout:
                 line = line.rstrip()
+                if "RUN-RC=" in line: finished = True
                 m = re.search(r"capitulos:\s*(\d+)", line)
                 if m: cap_tot = int(m.group(1))
+                m = re.match(r"tramos:\s*(\d+)", line)
+                if m:
+                    tramos = int(m.group(1))
+                    if tramos > 1:
+                        self.progress.emit(_('Narrando en {0} tramos en paralelo — cargando modelos…').format(tramos), -1)
+                    else:
+                        self.progress.emit(_("Cargando el modelo…"), -1)
+                if "TRAMO-ERROR" in line: tramo_failed = True
+                m = re.search(r"\[cap (\d+)\]", line)
+                if m: caps_seen.add(int(m.group(1)))
                 m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
                 if m:
                     cap_cur = int(m.group(1)); total += int(m.group(2))
-                if re.match(r"\s*frase \d+/\d+", line):
+                m = re.search(r"\[cap (\d+)\].*quedan (\d+)", line)
+                if m:
+                    cap_cur = int(m.group(1)); total += int(m.group(2))
+                # search y no match: con varios tramos, la barra de progreso a medias de
+                # uno puede quedar pegada delante de la línea de otro.
+                if re.search(r"(?<!\S)frase \d+/\d+\s+[\d.]+s", line):
                     done += 1
-                    pct = int(done / total * 100) if total else -1
-                    self.progress.emit(_('Narrando capítulo {0}/{1} — frase {2}').format(cap_cur, cap_tot, done), pct)
+                    pct = min(99, int(done / total * 100)) if total else -1
+                    if tramos > 1:
+                        txt = _('Narrando en {0} tramos — capítulo {1}/{2} — frase {3}').format(tramos, len(caps_seen), cap_tot, done)
+                    else:
+                        txt = _('Narrando capítulo {0}/{1} — frase {2}').format(cap_cur, cap_tot, done)
+                    self.progress.emit(txt, pct)
                 elif "regenerando" in line:
                     self.progress.emit(_("Revisando calidad (QC) y regenerando una frase…"), -1)
                 elif "LISTO" in line:
                     self.progress.emit(_('Capítulo {0} listo').format(cap_cur), -1)
                 elif "voz-server parado" in line:
                     self.progress.emit(_("Liberando la GPU…"), -1)
+                elif "reintento en CPU" in line:
+                    self.progress.emit(_("La GPU estaba ocupada; un tramo va en CPU (más lento)…"), -1)
+                elif "modelo cargado" in line and tramos == 1:
+                    self.progress.emit(_("Modelo cargado, narrando…"), -1)
             p.wait()
 
             if self.mode == "cancel":
@@ -628,22 +527,55 @@ class GenWorker(QThread):
                     self._run(SSH + [self.host, f"rm -rf '{REMOTE_DIR}/out/{self.name}'"])
                 self.canceled.emit(); return
 
+            # Sin RUN-RC se ha cortado la conexión: no ha terminado, aunque lo parezca. El servidor
+            # conserva lo narrado y al reanudar se sigue desde allí, así que lo de aquí no se toca.
+            lost = not finished and self.mode == "run"
+            lost_msg = _("Se perdió la conexión con el servidor. Lo narrado allí se conserva: pulsa Reanudar para seguir.")
+            if lost and (dest / "manifest.json").exists():
+                self.failed.emit(lost_msg)
+                return
+            tramo_msg = _("Un tramo se cortó en el servidor; puede faltar memoria en su GPU. Lo narrado "
+                          "está guardado: baja el número de tramos en «Modelos» y pulsa Reanudar.")
+            # Si ningún tramo llegó a narrar, en el servidor no hay nada que traer: no tocar lo de aquí.
+            if tramo_failed and self._run(SSH + [self.host, f"test -f '{REMOTE_DIR}/out/{self.name}/manifest.json'"]).returncode != 0:
+                self.failed.emit(_("El servidor no pudo arrancar tantos tramos; puede faltar memoria en su GPU. "
+                                   "Baja el número de tramos en «Modelos» y vuelve a intentarlo."))
+                return
             msg = _("Guardando lo generado…") if self.mode == "stopsave" else _("Trayendo la grabación…")
             self.progress.emit(msg, -1)
-            if dest.exists(): shutil.rmtree(dest, ignore_errors=True)
-            dest.mkdir(parents=True, exist_ok=True)
-            r = self._run(SCP + ["-r", f"{self.host}:{REMOTE_DIR}/out/{self.name}/.", str(dest)])
-            if r.returncode != 0 or not (dest / "manifest.json").exists():
+            # Traerlo a una carpeta aparte y cambiarla solo si ha llegado bien: si falla la
+            # copia, lo que ya había aquí sigue intacto.
+            incoming = LOCAL_BOOKS.parent / f".incoming-{self.name}"
+            shutil.rmtree(incoming, ignore_errors=True)
+            incoming.mkdir(parents=True, exist_ok=True)
+            r = self._run(SCP + ["-r", f"{self.host}:{REMOTE_DIR}/out/{self.name}/.", str(incoming)])
+            if r.returncode != 0 or not (incoming / "manifest.json").exists():
+                shutil.rmtree(incoming, ignore_errors=True)
                 if self.mode == "stopsave":
                     self.failed.emit(_("Lo detuve, pero aún no había ningún capítulo terminado que guardar."))
                 else:
                     self.failed.emit(_("La generación terminó pero no pude traerme el audio:\n") + r.stderr.strip())
                 return
-            for junk in list(dest.glob("*.wav")) + list(dest.glob("*.tmp")):
-                try: junk.unlink()
+            # Los WAV de capítulos a medias hacen falta para reanudar en la misma frase.
+            junk = list(incoming.glob("*.tmp"))
+            if self.mode == "run" and not tramo_failed and not lost:
+                junk += list(incoming.glob("*.wav"))
+            for f in junk:
+                try: f.unlink()
                 except Exception: pass
+            if (dest / "playback.json").exists():              # por dónde iba escuchando
+                try: shutil.copyfile(dest / "playback.json", incoming / "playback.json")
+                except Exception: pass
+            if dest.exists(): shutil.rmtree(dest, ignore_errors=True)
+            os.replace(incoming, dest)
             try: shutil.copyfile(epub, dest / "source.epub")   # para poder regenerar
             except Exception: pass
+            if lost:
+                self.failed.emit(lost_msg)
+                return
+            if tramo_failed and self.mode == "run":
+                self.failed.emit(tramo_msg)
+                return
             self.done.emit(str(dest))
         except Exception as e:
             self.failed.emit(_('Error inesperado: {0}').format(e))
@@ -667,6 +599,8 @@ class LocalGenWorker(QThread):
         self.resume = resume
         self.procs = []                                   # procesos de los tramos (modo paralelo)
         self._plock = threading.Lock()
+        self.service = model.get("backend") == "service"
+        self.error = None                                 # por qué lo dejó el servicio
 
     def stop(self, save):
         self.mode = "stopsave" if save else "cancel"
@@ -699,7 +633,17 @@ class LocalGenWorker(QThread):
             else:
                 dest.mkdir(parents=True, exist_ok=True)
             pron = ensure_pron()
-            if self.model.get("backend") == "xtts":
+            if self.service:
+                # La voz la hace el servicio; aquí se lee el EPUB y se guarda lo que llega.
+                cmd = [str(self.model["python"]), "-I", str(CC_SERVICE), "generate",
+                       "--epub", str(epub), "--out", str(dest), "--url", self.model["url"],
+                       "--model", self.model["model"], "--voice", self.model["voice"],
+                       "--lang", self.model.get("lang", "es")]
+                if self.resume:
+                    cmd += ["--resume"]
+                if pron.exists():
+                    cmd += ["--pron", str(pron)]
+            elif self.model.get("backend") == "xtts":
                 # Motor XTTS (multilingüe), su propio venv. Lee la frase entera; la voz
                 # de referencia la clona del wav de la voz activa.
                 cmd = [str(VPY_XTTS), "-I", str(CC_XTTS), "generate",
@@ -736,6 +680,8 @@ class LocalGenWorker(QThread):
             st0 = read_gen_state(dest) or {}
             if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
                 streams = int(st0["streams"] or 1)
+            if self.service:                                  # el servicio ya reparte su trabajo
+                streams = 1
             self.progress.emit(_("Contando las frases del libro…"), -1)
             n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
             if streams > 1 and n > 1:
@@ -748,6 +694,13 @@ class LocalGenWorker(QThread):
                 if not self.resume:
                     shutil.rmtree(dest, ignore_errors=True)
                 self.canceled.emit(); return
+            if self.error and self.mode == "run":
+                # Lo que llegó queda guardado y el libro, a medias.
+                if (dest / "manifest.json").exists():
+                    self.error += "\n\n" + _("Lo ya narrado está guardado; puedes reanudar el libro desde la biblioteca.")
+                elif not self.resume:
+                    shutil.rmtree(dest, ignore_errors=True)
+                self.failed.emit(self.error); return
             # Al detener y guardar se conserva el WAV del capítulo en curso para poder
             # reanudar; en una generación completa no queda ninguno.
             junk = list(dest.glob("*.tmp"))
@@ -774,19 +727,35 @@ class LocalGenWorker(QThread):
                 except Exception: pass
 
     # ---- un solo proceso (camino clásico) --------------------------------
+    def _service_line(self, line):
+        """Lo que cuenta cc_service de cómo le va con el servicio."""
+        word, _sep, rest = line.partition(" ")
+        if word == "SERVICE-RETRY":
+            self.progress.emit(_('El servicio no responde; reintentando en {0} s…').format(rest), -1)
+        elif word == "SERVICE-ERROR":
+            e = json.loads(rest)
+            self.error = service_error_text(e.get("kind"), e.get("detail", ""))
+
     def _run_single(self, cmd, dest, sents=None):
         self.progress.emit(_("Reanudando con {0}…").format(self.model["name"]) if self.resume
+                           else _('Conectando con {0}…').format(self.model["name"]) if self.service
                            else _("Cargando el modelo…"), -1)
         eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        # La clave, nunca en la línea de órdenes: se vería en la lista de procesos.
+        env = dict(os.environ, ST_SERVICE_KEY=service_key()) if self.service else None
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
                              text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
         self.proc = p
         logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
         total = done = 0; cap_cur = cap_tot = 0
+        last = ""
         for line in p.stdout:
             line = line.rstrip()
             try: logf.write(line + "\n"); logf.flush()
             except Exception: pass
+            if line.startswith("SERVICE-"):
+                self._service_line(line); continue
+            last = line or last
             m = re.search(r"capitulos:\s*(\d+)", line)
             if m: cap_tot = int(m.group(1))
             m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
@@ -806,6 +775,8 @@ class LocalGenWorker(QThread):
         p.wait()
         try: logf.close()
         except Exception: pass
+        if self.service and p.returncode and not self.error:   # se cayó sin llegar a contar por qué
+            self.error = _('Error inesperado: {0}').format(last)
 
     # ---- varios tramos en paralelo ---------------------------------------
     def _count_chapters(self, base_cmd):
@@ -828,14 +799,7 @@ class LocalGenWorker(QThread):
 
     @staticmethod
     def _split_ranges(n, streams):
-        """Reparte 1..n en `streams` tramos contiguos lo más equilibrados posible."""
-        base, extra = divmod(n, streams)
-        ranges = []; start = 1
-        for i in range(streams):
-            size = base + (1 if i < extra else 0)
-            if size <= 0: continue
-            ranges.append((start, start + size - 1)); start += size
-        return ranges
+        return split_ranges(n, streams)
 
     def _run_parallel(self, base_cmd, dest, streams, n, sents=None):
         ranges = self._split_ranges(n, streams)
@@ -1231,7 +1195,7 @@ class ImportWorker(QThread):
 
             # LOCAL = Whisper en este equipo (sin servidor); REMOTO = voz-server por SSH.
             lang = active_language()
-            if load_config().get("engine", "local") == "local":
+            if load_config().get("engine", "local") != "remote":
                 ok, msg, covered = self._transcribe_local(dest, mp3, title, dur, cues, covered, lang)
             else:
                 ok, msg, covered = self._transcribe_remote(dest, mp3, title, dur, cues, covered, lang)
@@ -1560,6 +1524,7 @@ class LibraryPage(QWidget):
 class ModelsScreen(QWidget):
     back = Signal()
     dlState = Signal(str)             # % de la descarga en curso para la biblioteca ("" = ninguna)
+    serviceTested = Signal(object)    # lo que dijo la prueba del servicio: dict si fue bien, texto si no
 
     def __init__(self):
         super().__init__()
@@ -1584,6 +1549,7 @@ class ModelsScreen(QWidget):
         self.engineSel = QComboBox()
         self.engineSel.addItem(_("Este equipo (local)"), "local")
         self.engineSel.addItem(_("Servidor propio"), "remote")
+        self.engineSel.addItem(_("Un servicio por URL"), "service")
         self.engineSel.currentIndexChanged.connect(self._engine_changed)
         erow.addWidget(el); erow.addWidget(self.engineSel); erow.addStretch(1)
         self.col.addLayout(erow)
@@ -1595,6 +1561,8 @@ class ModelsScreen(QWidget):
         self.serverEdit.editingFinished.connect(self._server_changed)
         sr.addWidget(slb); sr.addWidget(self.serverEdit, 1)
         self.col.addWidget(self.serverRow)
+        self.serviceBox = self._service_box()
+        self.col.addWidget(self.serviceBox)
 
         self.qcChk = QCheckBox(_("Revisar y regenerar frases que suenen mal (QC Whisper)"))
         self.qcChk.setToolTip(_("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
@@ -1609,16 +1577,9 @@ class ModelsScreen(QWidget):
         pr2 = QHBoxLayout(self.parRow); pr2.setContentsMargins(0, 0, 0, 0); pr2.setSpacing(10)
         plb = QLabel(_("Velocidad / uso de GPU:")); plb.setObjectName("booksub")
         self.streamsSel = QComboBox()
-        self.streamsSel.addItem(_("Normal — 1 tramo (no satura la GPU, más lento)"), 1)
-        self.streamsSel.addItem(_("Rápido — 2 tramos (≈1,8×)"), 2)
-        self.streamsSel.addItem(_("Máximo — 3 tramos (≈2,6×, exprime la GPU)"), 3)
-        self.streamsSel.setToolTip(_("Cómo narrar en este equipo:\n"
-                                   "• Normal: un solo proceso, como siempre. No satura la GPU "
-                                   "(puedes seguir usándola), pero es lo más lento.\n"
-                                   "• Rápido / Máximo: reparte los capítulos entre 2 o 3 procesos "
-                                   "a la vez. Mucho más rápido, pero la GPU queda muy cargada "
-                                   "(con 3, al límite: no juegues mientras narra). Si diera error "
-                                   "de memoria de la GPU, baja de 3 a 2."))
+        for n in (1, 2, 3):
+            self.streamsSel.addItem("", n)
+        self._streams_texts(True)
         self.streamsSel.currentIndexChanged.connect(self._streams_changed)
         pr2.addWidget(plb); pr2.addWidget(self.streamsSel); pr2.addStretch(1)
         self.col.addWidget(self.parRow)
@@ -1756,24 +1717,56 @@ class ModelsScreen(QWidget):
         else:
             btn.setToolTip(_("Ya hay una descarga en marcha."))
 
+    def _streams_texts(self, local):
+        """Las velocidades del selector se midieron con XTTS en este equipo; en un servidor
+        la GPU y el motor son otros, así que allí solo se dice el número de tramos."""
+        if local:
+            texts = (_("Normal — 1 tramo (no satura la GPU, más lento)"),
+                     _("Rápido — 2 tramos (≈1,8×)"),
+                     _("Máximo — 3 tramos (≈2,6×, exprime la GPU)"))
+            tip = _("Cómo narrar en este equipo:\n"
+                    "• Normal: un solo proceso, como siempre. No satura la GPU "
+                    "(puedes seguir usándola), pero es lo más lento.\n"
+                    "• Rápido / Máximo: reparte los capítulos entre 2 o 3 procesos "
+                    "a la vez. Mucho más rápido, pero la GPU queda muy cargada "
+                    "(con 3, al límite: no juegues mientras narra). Si diera error "
+                    "de memoria de la GPU, baja de 3 a 2.")
+        else:
+            texts = (_("1 tramo"), _("2 tramos"), _("3 tramos"))
+            tip = _("Cuántos tramos narran a la vez en la GPU del servidor. Cada uno ocupa unos 2 GB de "
+                    "su memoria: si no caben, la narración avisa y hay que bajar el número. Más tramos "
+                    "no siempre es más rápido: con F5 en una RTX 2060 se tarda lo mismo con 1 que con 2.")
+        for i, t in enumerate(texts):
+            self.streamsSel.setItemText(i, t)
+        self.streamsSel.setToolTip(tip)
+
     def _apply_engine_view(self, cfg):
         """Parte de la pantalla que depende de local/remoto. Se puede llamar sola
         (al cambiar el motor) sin reconstruir la lista de modelos/voces ni perder scroll."""
-        self.serverRow.setVisible(cfg["engine"] != "local")
-        self.parRow.setVisible(cfg["engine"] == "local")   # los tramos paralelos son solo locales
-        if cfg["engine"] == "local" and not engine_ready():
+        self.serverRow.setVisible(cfg["engine"] == "remote")
+        self.serviceBox.setVisible(cfg["engine"] == "service")
+        self.qcChk.setVisible(cfg["engine"] != "service")   # sin Whisper que escuche lo que llega
+        self.parRow.setVisible(cfg["engine"] != "service")  # un servicio ya reparte su trabajo
+        self._streams_texts(cfg["engine"] == "local")
+        if cfg["engine"] == "service":
+            self.note.setText(_("Cada frase se pide al servicio de esa URL: el tuyo (st_server.py) o uno público con su clave. Aquí no hace falta GPU ni modelo de voz. La transcripción de audiolibros sigue en este equipo."))
+        elif cfg["engine"] == "local" and not engine_ready():
             self.note.setText(_("El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio."))
         elif cfg["engine"] == "local":
             self.note.setText(_("Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta."))
         else:
-            self.note.setText(_("Se genera por SSH en el servidor que indiques (debe tener el mismo motor instalado). El modelo y la voz de aquí se usan en el modo local."))
+            self.note.setText(_("Se genera por SSH en el servidor que indiques. Con XTTS usa el motor y la voz de este equipo, y el servidor necesita tener XTTS instalado. Con F5, el motor y la voz son los del servidor."))
 
     def refresh(self):
         cfg = load_config()
         self.engineSel.blockSignals(True)
-        self.engineSel.setCurrentIndex(0 if cfg["engine"] == "local" else 1)
+        self.engineSel.setCurrentIndex(max(0, self.engineSel.findData(cfg["engine"])))
         self.engineSel.blockSignals(False)
         self.serverEdit.setText(cfg.get("server", ""))
+        svc = service_cfg(cfg)
+        self.svcUrl.setText(svc["url"]); self.svcKey.setText(service_key())
+        self.svcModel.setCurrentText(svc["model"]); self.svcVoice.setCurrentText(svc["voice"])
+        self._service_warn()
         self.qcChk.blockSignals(True); self.qcChk.setChecked(bool(cfg.get("qc_auto"))); self.qcChk.blockSignals(False)
         self.streamsSel.blockSignals(True)
         si = {1: 0, 2: 1, 3: 2}.get(int(cfg.get("parallel_streams", 1) or 1), 0)
@@ -1895,6 +1888,73 @@ class ModelsScreen(QWidget):
 
     def _server_changed(self):
         cfg = load_config(); cfg["server"] = self.serverEdit.text().strip(); save_config(cfg)
+
+    # --- servicio por URL
+    def _service_box(self):
+        box = QWidget()
+        g = QGridLayout(box); g.setContentsMargins(0, 0, 0, 0); g.setHorizontalSpacing(10); g.setVerticalSpacing(8)
+        self.svcUrl = QLineEdit(); self.svcUrl.setPlaceholderText("https://…  ·  192.168.1.5:8765")
+        self.svcKey = QLineEdit(); self.svcKey.setPlaceholderText(_("Vacía si el servicio no la pide"))
+        self.svcKey.setEchoMode(QLineEdit.PasswordEchoOnEdit)
+        self.svcModel = QComboBox(); self.svcVoice = QComboBox()
+        for combo in (self.svcModel, self.svcVoice):           # se puede escribir: no todos dan la lista
+            combo.setEditable(True); combo.setInsertPolicy(QComboBox.NoInsert)
+            combo.lineEdit().setPlaceholderText(_("El que use por defecto"))
+            combo.activated.connect(self._service_changed)
+            combo.lineEdit().editingFinished.connect(self._service_changed)
+        self.svcUrl.editingFinished.connect(self._service_changed)
+        self.svcKey.editingFinished.connect(self._service_changed)
+        for row, (text, field) in enumerate(((_("URL:"), self.svcUrl), (_("Clave de acceso:"), self.svcKey),
+                                             (_("Modelo:"), self.svcModel), (_("Voz:"), self.svcVoice))):
+            lb = QLabel(text); lb.setObjectName("booksub")
+            g.addWidget(lb, row, 0); g.addWidget(field, row, 1)
+        self.svcTest = QPushButton(_("Probar")); self.svcTest.setObjectName("tb")
+        self.svcTest.setCursor(Qt.PointingHandCursor); self.svcTest.clicked.connect(self._service_test)
+        self.svcStatus = QLabel(""); self.svcStatus.setObjectName("hint"); self.svcStatus.setWordWrap(True)
+        test = QHBoxLayout(); test.setSpacing(10)
+        test.addWidget(self.svcTest); test.addWidget(self.svcStatus, 1)
+        g.addLayout(test, 4, 1)
+        self.serviceTested.connect(self._service_tested)
+        return box
+
+    def _service_warn(self):
+        svc = service_module(); url = self.svcUrl.text().strip()
+        self.svcStatus.setText(_("Esa dirección no es válida.") if url and not svc.api_base(url) else
+                               _("Esa dirección no va cifrada: la clave y el texto del libro viajarían a la vista. "
+                                 "Fuera de tu red de casa, usa https.") if svc.is_unsafe(url) else "")
+
+    def _service_changed(self, *_args):
+        cfg = load_config()
+        cfg["service"] = {"url": self.svcUrl.text().strip(), "model": self.svcModel.currentText().strip(),
+                          "voice": self.svcVoice.currentText().strip()}
+        save_config(cfg); save_service_key(self.svcKey.text().strip())
+        self._service_warn()
+
+    def _service_test(self):
+        self._service_changed()
+        s = service_cfg(); key = service_key()
+        self.svcTest.setEnabled(False); self.svcStatus.setText(_("Probando…"))
+
+        def work():                                  # hilo daemon: cerrar la app no espera a un servicio lento
+            mod = service_module()
+            try:
+                self.serviceTested.emit(mod.probe(s["url"], key, s["model"], s["voice"]))
+            except mod.ServiceError as e:
+                self.serviceTested.emit(service_error_text(e.kind, e.detail))
+            except Exception as e:
+                self.serviceTested.emit(_('Error inesperado: {0}').format(e))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _service_tested(self, answer):
+        self.svcTest.setEnabled(True)
+        if isinstance(answer, str):
+            self.svcStatus.setText(answer); return
+        for combo, names in ((self.svcModel, answer["models"]), (self.svcVoice, answer["voices"])):
+            chosen = combo.currentText()
+            combo.clear(); combo.addItems(names)
+            combo.setCurrentText(chosen or (names[0] if len(names) == 1 or combo is self.svcVoice and names else ""))
+        self._service_changed()
+        self.svcStatus.setText(_('Funciona: la frase de prueba ha durado {0} s.').format(f'{answer["seconds"]:.1f}'))
 
     def _qc_changed(self, on):
         cfg = load_config(); cfg["qc_auto"] = bool(on); save_config(cfg)
@@ -2020,7 +2080,7 @@ class ModelsScreen(QWidget):
         Usa el Whisper local (si hay modelo) o el voz-server; devuelve texto o None."""
         cfg = load_config()
         try:
-            if cfg.get("engine", "local") == "local":
+            if cfg.get("engine", "local") != "remote":
                 mdir = model_dir(active_whisper_id(cfg))
                 if not (mdir / "model.bin").exists():
                     return None
@@ -2888,7 +2948,7 @@ class Cuentacuentos(QMainWindow):
 
     def _start_import(self, worker, resume=False):
         self.imp = worker
-        local = load_config().get("engine", "local") == "local"
+        local = load_config().get("engine", "local") != "remote"
         first = _("Preparando…") if not resume else (
             _("Reanudando transcripción con {0}…").format(whisper_by_id(active_whisper_id())["name"]) if local
             else _("Reanudando transcripción…"))
@@ -2970,11 +3030,24 @@ class Cuentacuentos(QMainWindow):
                     _('Antes descarga el modelo «{0}» en Modelos.').format(m['name']))
                 self.show_models(); return
             self.worker = LocalGenWorker(path, m, active_voice(cfg), name=name, resume=resume)
+        elif cfg["engine"] == "service":
+            s = service_cfg(cfg); host = service_module().host_of(s["url"]); py = service_python()
+            if not host:
+                QMessageBox.information(self, "Storyteller", _("Antes indica la URL del servicio en Modelos."))
+                self.show_models(); return
+            if not py:
+                QMessageBox.information(self, "Storyteller",
+                    _("El motor todavía se está instalando. Prueba dentro de un rato, "
+                    "o cambia a «Servidor propio» en Modelos."))
+                return
+            m = {"id": "service", "name": host, "backend": "service", "python": py, "url": s["url"],
+                 "model": s["model"], "voice": s["voice"], "lang": active_language(cfg)}
+            self.worker = LocalGenWorker(path, m, name=name, resume=resume)
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
         self._gen_busy = True                             # ya comprometidos: bloquea un 2º disparo
         first = _("Preparando…") if not resume else (
-            _("Reanudando con {0}…").format(m["name"]) if cfg["engine"] == "local" else _("Reanudando…"))
+            _("Reanudando con {0}…").format(m["name"]) if cfg["engine"] != "remote" else _("Reanudando…"))
         self.library.set_generating(True, first, -1)
         self.player.set_gen_progress(True, first, -1)
         self.worker.progress.connect(self._gen_progress)

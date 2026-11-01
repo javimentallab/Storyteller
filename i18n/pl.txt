@@ -110,7 +110,7 @@
 108|Edytuj słownik wymowy…
 109|Lokalny silnik się instaluje (PyTorch + F5). W międzyczasie możesz generować na własnym serwerze.
 110|Generuje na tym komputerze z GPU. Wybierz model i głos; pobierz model, jeśli trzeba.
-111|Generuje przez SSH na wskazanym serwerze (musi mieć zainstalowany ten sam silnik). Model i głos stąd są używane w trybie lokalnym.
+111|Generowane przez SSH na wskazanym serwerze. XTTS używa silnika i głosu z tego komputera, a na serwerze musi być zainstalowany XTTS. F5 używa silnika i głosu serwera.
 112|✓ Zainstalowany
 113|Niepobrany · {0}
 114|{0}  · Język: {1}  ({2})
@@ -302,3 +302,35 @@
 300|Pobieranie już trwa.
 301|Anulowano pobieranie. Ponowne pobieranie zacznie się od początku.
 302|Pobieranie modelu transkrypcji nie zostało ukończone.
+303|Usługa przez URL
+304|URL:
+305|Klucz dostępu:
+306|Puste, jeśli usługa go nie wymaga
+307|Model:
+308|Głos:
+309|Domyślny usługi
+310|Testuj
+311|Testowanie…
+312|Działa: zdanie testowe trwało {0} s.
+313|Każde zdanie jest zamawiane w usłudze pod tym adresem URL: własnej (st_server.py) lub publicznej z jej kluczem. Karta graficzna ani model głosu nie są tu potrzebne. Transkrypcja audiobooków pozostaje na tym komputerze.
+314|Ten adres jest nieprawidłowy.
+315|Ten adres nie jest szyfrowany: klucz i tekst książki byłyby przesyłane jawnie. Poza siecią domową używaj https.
+316|Najpierw podaj URL usługi w sekcji Modele.
+317|Usługa odrzuciła klucz dostępu.
+318|Usługa nie znajduje tego adresu ani modelu. Sprawdź URL i model.
+319|Usługa odrzuciła żądanie.
+320|Usługa jest nadal zajęta po kilku próbach. Spróbuj później.
+321|Brak odpowiedzi usługi. Sprawdź URL i czy jest włączona.
+322|Usługa nie zwróciła czytelnego dźwięku.
+323|Usługa nie odpowiada; ponowna próba za {0} s…
+324|Łączenie z {0}…
+325|To, co już nagrano, jest zapisane; możesz wznowić książkę z biblioteki.
+326|Jedna część zatrzymała się na serwerze; być może jego GPU brakuje pamięci. To, co już przeczytano, jest zapisane: zmniejsz liczbę części w „Modelach” i naciśnij Wznów.
+327|Serwer nie mógł uruchomić tylu części; być może jego GPU brakuje pamięci. Zmniejsz liczbę części w „Modelach” i spróbuj ponownie.
+328|1 część
+329|2 części
+330|3 części
+331|Ile części jest czytanych naraz na GPU serwera. Każda zajmuje około 2 GB pamięci: jeśli się nie zmieszczą, narracja to zgłosi i trzeba zmniejszyć ich liczbę. Więcej części nie zawsze znaczy szybciej: z F5 na RTX 2060 1 i 2 trwają tyle samo.
+332|Na serwerze nie zainstalowano XTTS. Wybierz inny model w „Modelach” lub zainstaluj go na serwerze.
+333|Wysyłanie przeczytanego fragmentu na serwer…
+334|Utracono połączenie z serwerem. To, co tam przeczytano, zostaje zachowane: naciśnij Wznów, aby kontynuować.

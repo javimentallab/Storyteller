@@ -110,7 +110,7 @@
 108|Modifier le dictionnaire de prononciation…
 109|Le moteur local est en cours d’installation (PyTorch + F5). En attendant, vous pouvez générer sur un serveur personnel.
 110|Génère sur cet ordinateur avec le GPU. Choisissez modèle et voix ; téléchargez le modèle si besoin.
-111|Génère par SSH sur le serveur indiqué (il doit avoir le même moteur installé). Le modèle et la voix d’ici servent au mode local.
+111|Généré par SSH sur le serveur indiqué. Avec XTTS, il utilise le moteur et la voix de cet ordinateur, et XTTS doit être installé sur le serveur. Avec F5, le moteur et la voix sont ceux du serveur.
 112|✓ Installé
 113|Non téléchargé · {0}
 114|{0}  · Langue : {1}  ({2})
@@ -302,3 +302,35 @@
 300|Un téléchargement est déjà en cours.
 301|Téléchargement annulé. Si vous le relancez, il repartira de zéro.
 302|Le téléchargement du modèle de transcription n’a pas abouti.
+303|Un service par URL
+304|URL:
+305|Clé d'accès :
+306|Vide si le service n'en demande pas
+307|Modèle :
+308|Voix :
+309|Celui par défaut du service
+310|Tester
+311|Test en cours…
+312|Ça marche : la phrase de test a duré {0} s.
+313|Chaque phrase est demandée au service de cette URL : le vôtre (st_server.py) ou un service public avec sa clé. Ni carte graphique ni modèle de voix ne sont nécessaires ici. La transcription des livres audio reste sur cet ordinateur.
+314|Cette adresse n'est pas valide.
+315|Cette adresse n'est pas chiffrée : la clé et le texte du livre circuleraient en clair. Hors de votre réseau domestique, utilisez https.
+316|Indiquez d'abord l'URL du service dans Modèles.
+317|Le service a refusé la clé d'accès.
+318|Le service ne trouve pas cette adresse ou ce modèle. Vérifiez l'URL et le modèle.
+319|Le service a refusé la demande.
+320|Le service est toujours occupé après plusieurs tentatives. Réessayez plus tard.
+321|Aucune réponse du service. Vérifiez l'URL et qu'il est bien allumé.
+322|Le service n'a pas renvoyé d'audio lisible.
+323|Le service ne répond pas ; nouvel essai dans {0} s…
+324|Connexion à {0}…
+325|Ce qui est déjà narré est enregistré ; vous pouvez reprendre le livre depuis la bibliothèque.
+326|Une tranche s’est arrêtée sur le serveur ; son GPU manque peut-être de mémoire. Ce qui a été narré est enregistré : réduisez le nombre de tranches dans « Modèles » et cliquez sur Reprendre.
+327|Le serveur n’a pas pu lancer autant de tranches ; son GPU manque peut-être de mémoire. Réduisez le nombre de tranches dans « Modèles » et réessayez.
+328|1 tranche
+329|2 tranches
+330|3 tranches
+331|Nombre de tranches narrées en même temps sur le GPU du serveur. Chacune occupe environ 2 Go de sa mémoire : si elles ne tiennent pas, la narration vous le signale et il faut réduire le nombre. Plus de tranches ne veut pas toujours dire plus rapide : avec F5 sur une RTX 2060, 1 et 2 prennent le même temps.
+332|XTTS n’est pas installé sur le serveur. Choisissez un autre modèle dans « Modèles » ou installez-le sur le serveur.
+333|Envoi de ce qui a été narré au serveur…
+334|La connexion au serveur a été perdue. Ce qui y a été narré est conservé : cliquez sur Reprendre pour continuer.

@@ -110,7 +110,7 @@
 108|Uitspraakwoordenboek bewerken…
 109|De lokale engine wordt geïnstalleerd (PyTorch + F5). Intussen kun je op een eigen server maken.
 110|Maakt op deze computer met de GPU. Kies model en stem; download het model als dat nodig is.
-111|Maakt via SSH op de opgegeven server (daar moet dezelfde engine geïnstalleerd zijn). Model en stem van hier worden in de lokale modus gebruikt.
+111|Wordt via SSH gegenereerd op de opgegeven server. Met XTTS worden de engine en stem van deze computer gebruikt en moet XTTS op de server zijn geïnstalleerd. Met F5 zijn de engine en stem die van de server.
 112|✓ Geïnstalleerd
 113|Niet gedownload · {0}
 114|{0}  · Taal: {1}  ({2})
@@ -302,3 +302,35 @@
 300|Er loopt al een download.
 301|Download geannuleerd. Als je opnieuw downloadt, begint hij weer vanaf het begin.
 302|Het downloaden van het transcriptiemodel is niet voltooid.
+303|Een dienst via URL
+304|URL:
+305|Toegangssleutel:
+306|Leeg als de dienst er geen vraagt
+307|Model:
+308|Stem:
+309|De standaard van de dienst
+310|Testen
+311|Bezig met testen…
+312|Het werkt: de testzin duurde {0} s.
+313|Elke zin wordt opgevraagd bij de dienst op die URL: je eigen (st_server.py) of een openbare met zijn sleutel. Hier is geen videokaart of stemmodel nodig. Het transcriberen van luisterboeken blijft op deze computer.
+314|Dat adres is ongeldig.
+315|Dat adres is niet versleuteld: de sleutel en de tekst van het boek gaan onbeschermd over het netwerk. Gebruik buiten je thuisnetwerk https.
+316|Vul eerst de URL van de dienst in bij Modellen.
+317|De dienst heeft de toegangssleutel geweigerd.
+318|De dienst kan dat adres of dat model niet vinden. Controleer de URL en het model.
+319|De dienst heeft het verzoek geweigerd.
+320|De dienst is na meerdere pogingen nog steeds bezet. Probeer het later opnieuw.
+321|Geen antwoord van de dienst. Controleer de URL en of de dienst aanstaat.
+322|De dienst gaf geen leesbare audio terug.
+323|De dienst reageert niet; nieuwe poging over {0} s…
+324|Verbinden met {0}…
+325|Wat al is verteld, is opgeslagen; je kunt het boek hervatten vanuit de bibliotheek.
+326|Een deel is op de server gestopt; de GPU heeft mogelijk te weinig geheugen. Wat al is verteld, is opgeslagen: verlaag het aantal delen bij ‘Modellen’ en klik op Hervatten.
+327|De server kon niet zoveel delen starten; de GPU heeft mogelijk te weinig geheugen. Verlaag het aantal delen bij ‘Modellen’ en probeer het opnieuw.
+328|1 deel
+329|2 delen
+330|3 delen
+331|Hoeveel delen tegelijk worden verteld op de GPU van de server. Elk deel gebruikt ongeveer 2 GB van het geheugen: past het niet, dan meldt de vertelling dat en moet je het aantal verlagen. Meer delen is niet altijd sneller: met F5 op een RTX 2060 duren 1 en 2 even lang.
+332|XTTS is niet op de server geïnstalleerd. Kies een ander model bij ‘Modellen’ of installeer het op de server.
+333|Wat al is verteld wordt naar de server gestuurd…
+334|De verbinding met de server is verbroken. Wat daar is verteld, blijft bewaard: klik op Hervatten om door te gaan.

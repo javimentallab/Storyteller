@@ -14,6 +14,7 @@ resalta; clic para saltar). También **importa audiolibros existentes** y los
 entre 15 idiomas con TranslateGemma.
 
 Todo corre **en local** (GPU o CPU) o, si quieres, en un **servidor propio** por SSH.
+La narración también puede usar **cualquier servicio de voz por URL**: el tuyo o uno público con su clave.
 Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia app**.
 
 ## Características
@@ -101,7 +102,10 @@ idioma del sistema (inglés si no está en la lista); para forzar uno, `--lang x
   `whisper` (transcripción en streaming) y la preparación del texto común a los motores.
 - `engine/cc_xtts.py` — motor XTTS v2: `generate` / `count`, mismo formato de salida
   (mp3 + subtítulos + manifest, incremental y reanudable).
-
+- `engine/cc_service.py` — narra pidiendo cada frase a un servicio de voz, con la API estándar y
+  el mismo formato de salida. En este equipo no hace falta GPU ni modelo de voz.
+- `st_server.py` — ese servicio con tu XTTS y tus voces, para esta aplicación en otro equipo, la
+  app del móvil o cualquier otro cliente ([API](docs/server-api.md)).
 - `st_translate.py` + `engine/cc_translate.py` — pantalla y motor de traducción de
   documentos (un lector/escritor por formato; guarda el progreso y reanuda).
 

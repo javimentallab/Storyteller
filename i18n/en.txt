@@ -110,7 +110,7 @@
 108|Edit pronunciation dictionary…
 109|The local engine is being installed (PyTorch + F5). Meanwhile you can generate on your own server.
 110|Generated on this computer with the GPU. Choose model and voice; download the model if needed.
-111|Generated over SSH on the server you give (it must have the same engine installed). The model and voice here are used in local mode.
+111|Generated over SSH on the server you specify. With XTTS it uses this computer’s engine and voice, and the server needs XTTS installed. With F5, the engine and voice are the server’s own.
 112|✓ Installed
 113|Not downloaded · {0}
 114|{0}  · Language: {1}  ({2})
@@ -302,3 +302,35 @@
 300|A download is already in progress.
 301|Download cancelled. If you download it again, it starts from the beginning.
 302|The transcription model download did not finish.
+303|A service by URL
+304|URL:
+305|Access key:
+306|Empty if the service doesn't ask for one
+307|Model:
+308|Voice:
+309|The service's default
+310|Test
+311|Testing…
+312|It works: the test sentence lasted {0} s.
+313|Each sentence is requested from the service at that URL: your own (st_server.py) or a public one with its key. No graphics card or voice model is needed here. Audiobook transcription stays on this computer.
+314|That address isn't valid.
+315|That address isn't encrypted: the key and the book's text would travel in the clear. Outside your home network, use https.
+316|First enter the service's URL in Models.
+317|The service rejected the access key.
+318|The service can't find that address or that model. Check the URL and the model.
+319|The service rejected the request.
+320|The service is still busy after several attempts. Try again later.
+321|No answer from the service. Check the URL and that it's switched on.
+322|The service didn't return readable audio.
+323|The service isn't responding; retrying in {0} s…
+324|Connecting to {0}…
+325|What's already narrated is saved; you can resume the book from the library.
+326|A chunk stopped on the server; its GPU may be out of memory. What was narrated is saved: lower the number of chunks in “Models” and press Resume.
+327|The server couldn’t start that many chunks; its GPU may be out of memory. Lower the number of chunks in “Models” and try again.
+328|1 chunk
+329|2 chunks
+330|3 chunks
+331|How many chunks narrate at once on the server’s GPU. Each one takes about 2 GB of its memory: if they don’t fit, the narration tells you and you need to lower the number. More chunks aren’t always faster: with F5 on an RTX 2060, 1 and 2 take the same time.
+332|The server doesn’t have XTTS installed. Choose another model in “Models” or install it on the server.
+333|Sending what’s been narrated to the server…
+334|The connection to the server was lost. What was narrated there is kept: press Resume to continue.

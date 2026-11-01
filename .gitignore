@@ -17,6 +17,10 @@ books/
 engine/voices/
 # configuración local (motor, servidor, voz…)
 config.json
+# servidor de voz: su clave de acceso
+server.json
+# clave del servicio de voz por URL
+service.key
 # traducción: ajustes y progreso guardado
 translate.json
 translations/

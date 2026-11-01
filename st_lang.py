@@ -127,7 +127,7 @@ SOURCE = [
     'Editar diccionario de pronunciación…',  # 108
     'El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio.',  # 109
     'Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta.',  # 110
-    'Se genera por SSH en el servidor que indiques (debe tener el mismo motor instalado). El modelo y la voz de aquí se usan en el modo local.',  # 111
+    'Se genera por SSH en el servidor que indiques. Con XTTS usa el motor y la voz de este equipo, y el servidor necesita tener XTTS instalado. Con F5, el motor y la voz son los del servidor.',  # 111
     '✓ Instalado',  # 112
     'Sin descargar · {0}',  # 113
     '{0}  · Idioma: {1}  ({2})',  # 114
@@ -319,6 +319,38 @@ SOURCE = [
     'Ya hay una descarga en marcha.',  # 300
     'Descarga cancelada. Si vuelves a descargar, empezará de cero.',  # 301
     'La descarga del modelo de transcripción no se completó.',  # 302
+    'Un servicio por URL',  # 303
+    'URL:',  # 304
+    'Clave de acceso:',  # 305
+    'Vacía si el servicio no la pide',  # 306
+    'Modelo:',  # 307
+    'Voz:',  # 308
+    'El que use por defecto',  # 309
+    'Probar',  # 310
+    'Probando…',  # 311
+    'Funciona: la frase de prueba ha durado {0} s.',  # 312
+    'Cada frase se pide al servicio de esa URL: el tuyo (st_server.py) o uno público con su clave. Aquí no hace falta GPU ni modelo de voz. La transcripción de audiolibros sigue en este equipo.',  # 313
+    'Esa dirección no es válida.',  # 314
+    'Esa dirección no va cifrada: la clave y el texto del libro viajarían a la vista. Fuera de tu red de casa, usa https.',  # 315
+    'Antes indica la URL del servicio en Modelos.',  # 316
+    'El servicio rechazó la clave de acceso.',  # 317
+    'El servicio no encuentra esa dirección o ese modelo. Revisa la URL y el modelo.',  # 318
+    'El servicio rechazó la petición.',  # 319
+    'El servicio sigue ocupado tras varios intentos. Prueba más tarde.',  # 320
+    'No hay respuesta del servicio. Comprueba la URL y que esté encendido.',  # 321
+    'El servicio no devolvió un audio que se pueda leer.',  # 322
+    'El servicio no responde; reintentando en {0} s…',  # 323
+    'Conectando con {0}…',  # 324
+    'Lo ya narrado está guardado; puedes reanudar el libro desde la biblioteca.',  # 325
+    'Un tramo se cortó en el servidor; puede faltar memoria en su GPU. Lo narrado está guardado: baja el número de tramos en «Modelos» y pulsa Reanudar.',  # 326
+    'El servidor no pudo arrancar tantos tramos; puede faltar memoria en su GPU. Baja el número de tramos en «Modelos» y vuelve a intentarlo.',  # 327
+    '1 tramo',  # 328
+    '2 tramos',  # 329
+    '3 tramos',  # 330
+    'Cuántos tramos narran a la vez en la GPU del servidor. Cada uno ocupa unos 2 GB de su memoria: si no caben, la narración avisa y hay que bajar el número. Más tramos no siempre es más rápido: con F5 en una RTX 2060 se tarda lo mismo con 1 que con 2.',  # 331
+    'El servidor no tiene instalado XTTS. Elige otro modelo en «Modelos» o instálalo en el servidor.',  # 332
+    'Enviando lo narrado al servidor…',  # 333
+    'Se perdió la conexión con el servidor. Lo narrado allí se conserva: pulsa Reanudar para seguir.',  # 334
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"
