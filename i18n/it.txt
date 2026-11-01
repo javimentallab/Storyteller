@@ -225,3 +225,59 @@
 223|· ● narrazione in corso
 224|● In diretta: le parti nuove si aggiungono da sole
 225|In attesa che venga narrato altro…
+226|Veloce. Sta in una scheda grafica da 6 GB.
+227|Traduce meglio. Richiede una scheda grafica da 10-12 GB.
+228|Olandese
+229|Polacco
+230|Coreano
+231|Giapponese
+232|Russo
+233|Ucraino
+234|Cinese
+235|Hindi
+236|Thailandese
+237|Annullato.
+238|Preparazione del motore di traduzione (una sola volta)…
+239|Download di llama.cpp…
+240|Download di {0} ({1})…
+241|Download del modello sul server… {0}%
+242|Traduzione… {0}/{1}
+243|mancano {0}
+244|Lettura del documento…
+245|Caricamento del modello (su CPU, sarà lento)…
+246|Salvataggio del documento tradotto…
+247|Connessione al server…
+248|Download del modello sul server…
+249|Traduci documenti
+250|Documento
+251|Scegli file…
+252|EPUB, PDF, Word, PowerPoint, Excel, sottotitoli (SRT/VTT), TXT o Markdown
+253|Lingue
+254|Scambia le lingue
+255|A:
+256|Da:
+257|Modello
+258|Traduci su:
+259|Si mantengono paragrafi, titoli, tabelle ed elenchi; corsivi o grassetti all’interno di una frase vanno persi. Un PDF diventa un EPUB tradotto, senza la sua impaginazione, pronto da narrare.
+260|Traduci
+261|Apri cartella
+262|Narra questo libro
+263|Usa {0} sul server {1} (Ollama). Se non c’è, viene scaricato lì la prima volta.
+264|Nessun server configurato. Impostalo in «Modelli» (utente@host).
+265|Installa motore
+266|Scaricato.
+267|Non scaricato ({0}).
+268|Riprendi traduzione
+269|Documenti
+270|Scegli un documento da tradurre
+271|Elimina modello
+272|Eliminare {0} ({1}) da questo computer?
+273|La lingua di origine e quella di destinazione sono uguali.
+274|Salva la traduzione come
+275|Scegli un altro nome: l’originale non verrà sovrascritto.
+276|Arresto e salvataggio di quanto tradotto…
+277|Fermato. Quanto tradotto è salvato: premi «Riprendi traduzione» per continuare da dove eri rimasto.
+278|Fatto:
+279|Traduci…
+280|Traduci un libro o un documento in un’altra lingua (EPUB, PDF, Word, sottotitoli…)
+281|Salvataggio della traduzione in corso…

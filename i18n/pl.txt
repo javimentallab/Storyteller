@@ -225,3 +225,59 @@
 223|· ● czytanie trwa
 224|● Na żywo: nowe fragmenty dochodzą same
 225|Czekam, aż zostanie przeczytane więcej…
+226|Szybki. Mieści się na karcie graficznej 6 GB.
+227|Tłumaczy lepiej. Wymaga karty graficznej 10–12 GB.
+228|Niderlandzki
+229|Polski
+230|Koreański
+231|Japoński
+232|Rosyjski
+233|Ukraiński
+234|Chiński
+235|Hindi
+236|Tajski
+237|Anulowano.
+238|Przygotowuję silnik tłumaczenia (tylko raz)…
+239|Pobieram llama.cpp…
+240|Pobieram {0} ({1})…
+241|Pobieram model na serwer… {0}%
+242|Tłumaczę… {0}/{1}
+243|zostało {0}
+244|Czytam dokument…
+245|Wczytuję model (na CPU, będzie wolno)…
+246|Zapisuję przetłumaczony dokument…
+247|Łączę z serwerem…
+248|Pobieram model na serwer…
+249|Tłumaczenie dokumentów
+250|Dokument
+251|Wybierz plik…
+252|EPUB, PDF, Word, PowerPoint, Excel, napisy (SRT/VTT), TXT lub Markdown
+253|Języki
+254|Zamień języki
+255|Na:
+256|Z:
+257|Model
+258|Gdzie tłumaczyć:
+259|Zachowane zostają akapity, tytuły, tabele i listy; kursywa lub pogrubienie wewnątrz zdania znika. PDF staje się przetłumaczonym EPUB-em bez układu, gotowym do czytania.
+260|Tłumacz
+261|Otwórz folder
+262|Przeczytaj tę książkę
+263|Używa {0} na serwerze {1} (Ollama). Jeśli go tam nie ma, za pierwszym razem zostanie tam pobrany.
+264|Nie skonfigurowano serwera. Ustaw go w „Modelach” (użytkownik@host).
+265|Zainstaluj silnik
+266|Pobrano.
+267|Nie pobrano ({0}).
+268|Wznów tłumaczenie
+269|Dokumenty
+270|Wybierz dokument do przetłumaczenia
+271|Usuń model
+272|Usunąć {0} ({1}) z tego komputera?
+273|Język źródłowy i docelowy są takie same.
+274|Zapisz tłumaczenie jako
+275|Wybierz inną nazwę: oryginał nie zostanie nadpisany.
+276|Zatrzymuję i zapisuję przetłumaczoną część…
+277|Zatrzymano. Przetłumaczona część jest zapisana: naciśnij „Wznów tłumaczenie”, aby kontynuować od miejsca przerwania.
+278|Gotowe:
+279|Tłumacz…
+280|Przetłumacz książkę lub dokument na inny język (EPUB, PDF, Word, napisy…)
+281|Zapisuję trwające tłumaczenie…

@@ -225,3 +225,59 @@
 223|· ● being narrated now
 224|● Live: new parts are added automatically
 225|Waiting for more to be narrated…
+226|Fast. Fits on 6 GB graphics cards.
+227|Better translations. Needs a 10–12 GB graphics card.
+228|Dutch
+229|Polish
+230|Korean
+231|Japanese
+232|Russian
+233|Ukrainian
+234|Chinese
+235|Hindi
+236|Thai
+237|Cancelled.
+238|Setting up the translation engine (only once)…
+239|Downloading llama.cpp…
+240|Downloading {0} ({1})…
+241|Downloading the model on the server… {0}%
+242|Translating… {0}/{1}
+243|{0} left
+244|Reading the document…
+245|Loading the model (on CPU, it will be slow)…
+246|Saving the translated document…
+247|Connecting to the server…
+248|Downloading the model on the server…
+249|Translate documents
+250|Document
+251|Choose file…
+252|EPUB, PDF, Word, PowerPoint, Excel, subtitles (SRT/VTT), TXT or Markdown
+253|Languages
+254|Swap languages
+255|To:
+256|From:
+257|Model
+258|Translate on:
+259|Paragraphs, headings, tables and lists are kept; italics or bold inside a sentence are lost. A PDF becomes a translated EPUB, without its layout, ready to narrate.
+260|Translate
+261|Open folder
+262|Narrate this book
+263|Uses {0} on the server {1} (Ollama). If it isn’t there, it is downloaded there the first time.
+264|No server set up. Add it in “Models” (user@host).
+265|Install engine
+266|Downloaded.
+267|Not downloaded ({0}).
+268|Resume translation
+269|Documents
+270|Choose a document to translate
+271|Delete model
+272|Delete {0} ({1}) from this computer?
+273|The source and target languages are the same.
+274|Save the translation as
+275|Choose another name: the original won’t be overwritten.
+276|Stopping and saving what has been translated…
+277|Stopped. What has been translated is saved: press “Resume translation” to continue where you left off.
+278|Done:
+279|Translate…
+280|Translate a book or document into another language (EPUB, PDF, Word, subtitles…)
+281|Saving the translation in progress…

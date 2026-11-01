@@ -225,3 +225,59 @@
 223|· ● wird gerade erzählt
 224|● Live: Neues kommt von selbst dazu
 225|Warte, bis mehr erzählt ist…
+226|Schnell. Passt auf Grafikkarten mit 6 GB.
+227|Übersetzt besser. Braucht eine Grafikkarte mit 10–12 GB.
+228|Niederländisch
+229|Polnisch
+230|Koreanisch
+231|Japanisch
+232|Russisch
+233|Ukrainisch
+234|Chinesisch
+235|Hindi
+236|Thailändisch
+237|Abgebrochen.
+238|Richte die Übersetzungs-Engine ein (nur einmal)…
+239|Lade llama.cpp herunter…
+240|Lade {0} ({1}) herunter…
+241|Lade das Modell auf den Server… {0} %
+242|Übersetze… {0}/{1}
+243|noch {0}
+244|Lese das Dokument…
+245|Lade das Modell (auf der CPU, wird langsam)…
+246|Speichere das übersetzte Dokument…
+247|Verbinde mit dem Server…
+248|Lade das Modell auf den Server…
+249|Dokumente übersetzen
+250|Dokument
+251|Datei wählen…
+252|EPUB, PDF, Word, PowerPoint, Excel, Untertitel (SRT/VTT), TXT oder Markdown
+253|Sprachen
+254|Sprachen tauschen
+255|Nach:
+256|Von:
+257|Modell
+258|Übersetzen auf:
+259|Absätze, Überschriften, Tabellen und Listen bleiben erhalten; Kursiv oder Fett innerhalb eines Satzes geht verloren. Aus einem PDF wird ein übersetztes EPUB ohne sein Layout, bereit zum Erzählen.
+260|Übersetzen
+261|Ordner öffnen
+262|Dieses Buch erzählen
+263|Verwendet {0} auf dem Server {1} (Ollama). Fehlt es dort, wird es beim ersten Mal dort heruntergeladen.
+264|Kein Server eingerichtet. Trage ihn unter „Modelle“ ein (benutzer@host).
+265|Engine installieren
+266|Heruntergeladen.
+267|Nicht heruntergeladen ({0}).
+268|Übersetzung fortsetzen
+269|Dokumente
+270|Wähle ein Dokument zum Übersetzen
+271|Modell löschen
+272|{0} ({1}) von diesem Computer löschen?
+273|Ausgangs- und Zielsprache sind gleich.
+274|Übersetzung speichern unter
+275|Wähle einen anderen Namen: Das Original wird nicht überschrieben.
+276|Stoppe und speichere das Übersetzte…
+277|Gestoppt. Das Übersetzte ist gespeichert: Klicke auf „Übersetzung fortsetzen“, um dort weiterzumachen, wo du aufgehört hast.
+278|Fertig:
+279|Übersetzen…
+280|Ein Buch oder Dokument in eine andere Sprache übersetzen (EPUB, PDF, Word, Untertitel…)
+281|Speichere die laufende Übersetzung…

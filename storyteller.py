@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
 from st_lang import _  # interface texts in the user's language
+from st_translate import TranslatePage  # pantalla «Traducir documentos»
 
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "epub-tts"
@@ -1296,6 +1297,7 @@ class LibraryPage(QWidget):
     importAudio = Signal()
     resumeBook = Signal(str)
     listenGen = Signal()                                  # abrir el libro que se está narrando
+    openTranslate = Signal()
 
     def __init__(self):
         super().__init__()
@@ -1321,7 +1323,11 @@ class LibraryPage(QWidget):
         self.openBtn = QPushButton(_("Abrir EPUB…")); self.openBtn.setObjectName("open")
         self.openBtn.setCursor(Qt.PointingHandCursor)
         self.openBtn.clicked.connect(self.openEpub.emit)
-        hb.addWidget(self.refreshBtn); hb.addWidget(self.voicesBtn)
+        self.translateBtn = QPushButton(_("Traducir…")); self.translateBtn.setObjectName("tb")
+        self.translateBtn.setCursor(Qt.PointingHandCursor)
+        self.translateBtn.setToolTip(_("Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)"))
+        self.translateBtn.clicked.connect(self.openTranslate.emit)
+        hb.addWidget(self.refreshBtn); hb.addWidget(self.voicesBtn); hb.addWidget(self.translateBtn)
         hb.addWidget(self.importBtn); hb.addWidget(self.openBtn)
         root.addWidget(head)
 
@@ -2588,6 +2594,10 @@ class Cuentacuentos(QMainWindow):
         self.stack = QStackedWidget(); self.setCentralWidget(self.stack)
         self.library = LibraryPage(); self.player = PlayerPage(); self.models = ModelsScreen()
         self.stack.addWidget(self.library); self.stack.addWidget(self.player); self.stack.addWidget(self.models)
+        self.translate = TranslatePage(); self.stack.addWidget(self.translate)
+        self.library.openTranslate.connect(self.show_translate)
+        self.translate.back.connect(self.show_library)
+        self.translate.narrate.connect(self._narrate_translated)
         self.library.openEpub.connect(self.open_epub)
         self.library.openBook.connect(self.open_book)
         self.library.openModels.connect(self.show_models)
@@ -2606,7 +2616,8 @@ class Cuentacuentos(QMainWindow):
 
     def _fit_min_width(self):
         """Window never narrower than what the pages need, so translated buttons are never cut."""
-        need = max(pg.minimumSizeHint().width() for pg in (self.library, self.player, self.models))
+        need = max(pg.minimumSizeHint().width()
+                   for pg in (self.library, self.player, self.models, self.translate))
         self.setMinimumWidth(max(560, need))
 
     def show_library(self):
@@ -2617,6 +2628,15 @@ class Cuentacuentos(QMainWindow):
     def show_models(self):
         self.models.refresh()
         self.stack.setCurrentWidget(self.models)
+
+    def show_translate(self):
+        self.translate.refresh()
+        self.stack.setCurrentWidget(self.translate)
+
+    def _narrate_translated(self, epub):
+        """«Narrar este libro» en la pantalla de traducción: narración normal del EPUB traducido."""
+        self.show_library()
+        self._generate(epub)
 
     def open_book(self, folder):
         self.player.load_book(folder)
@@ -2825,6 +2845,8 @@ class Cuentacuentos(QMainWindow):
         except Exception: pass
         try: self._stop_worker_and_wait(getattr(self, "imp", None),
                                          _("Guardando la transcripción en curso…"))
+        except Exception: pass
+        try: self._stop_worker_and_wait(self.translate.worker, _("Guardando la traducción en curso…"))
         except Exception: pass
         event.accept()
 

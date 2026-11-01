@@ -225,3 +225,59 @@
 223|· ● wordt nu verteld
 224|● Live: nieuwe stukken komen er vanzelf bij
 225|Wachten tot er meer verteld is…
+226|Snel. Past op videokaarten van 6 GB.
+227|Vertaalt beter. Vraagt een videokaart van 10-12 GB.
+228|Nederlands
+229|Pools
+230|Koreaans
+231|Japans
+232|Russisch
+233|Oekraïens
+234|Chinees
+235|Hindi
+236|Thai
+237|Geannuleerd.
+238|Vertaalmachine instellen (slechts één keer)…
+239|llama.cpp downloaden…
+240|{0} ({1}) downloaden…
+241|Model downloaden op de server… {0}%
+242|Vertalen… {0}/{1}
+243|nog {0}
+244|Document lezen…
+245|Model laden (op de CPU, gaat langzaam)…
+246|Vertaald document opslaan…
+247|Verbinden met de server…
+248|Model downloaden op de server…
+249|Documenten vertalen
+250|Document
+251|Bestand kiezen…
+252|EPUB, PDF, Word, PowerPoint, Excel, ondertitels (SRT/VTT), TXT of Markdown
+253|Talen
+254|Talen omwisselen
+255|Naar:
+256|Van:
+257|Model
+258|Vertalen op:
+259|Alinea’s, koppen, tabellen en lijsten blijven behouden; cursief of vet binnen een zin gaat verloren. Een PDF wordt een vertaalde EPUB zonder de opmaak, klaar om te vertellen.
+260|Vertalen
+261|Map openen
+262|Dit boek vertellen
+263|Gebruikt {0} op de server {1} (Ollama). Staat het er niet op, dan wordt het daar de eerste keer gedownload.
+264|Geen server ingesteld. Stel die in bij “Modellen” (gebruiker@host).
+265|Engine installeren
+266|Gedownload.
+267|Niet gedownload ({0}).
+268|Vertaling hervatten
+269|Documenten
+270|Kies een document om te vertalen
+271|Model verwijderen
+272|{0} ({1}) van deze computer verwijderen?
+273|De bron- en doeltaal zijn hetzelfde.
+274|Vertaling opslaan als
+275|Kies een andere naam: het origineel wordt niet overschreven.
+276|Stoppen en het vertaalde opslaan…
+277|Gestopt. Het vertaalde is opgeslagen: klik op “Vertaling hervatten” om verder te gaan waar je gebleven was.
+278|Klaar:
+279|Vertalen…
+280|Een boek of document naar een andere taal vertalen (EPUB, PDF, Word, ondertitels…)
+281|Lopende vertaling opslaan…

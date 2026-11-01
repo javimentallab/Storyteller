@@ -225,3 +225,59 @@
 223|· ● sendo narrado agora
 224|● Ao vivo: o que é novo entra sozinho
 225|Esperando mais narração…
+226|Rápido. Cabe em placas de vídeo de 6 GB.
+227|Traduz melhor. Requer uma placa de vídeo de 10-12 GB.
+228|Holandês
+229|Polonês
+230|Coreano
+231|Japonês
+232|Russo
+233|Ucraniano
+234|Chinês
+235|Hindi
+236|Tailandês
+237|Cancelado.
+238|Preparando o mecanismo de tradução (só uma vez)…
+239|Baixando llama.cpp…
+240|Baixando {0} ({1})…
+241|Baixando o modelo no servidor… {0}%
+242|Traduzindo… {0}/{1}
+243|faltam {0}
+244|Lendo o documento…
+245|Carregando o modelo (na CPU, vai ficar lento)…
+246|Salvando o documento traduzido…
+247|Conectando ao servidor…
+248|Baixando o modelo no servidor…
+249|Traduzir documentos
+250|Documento
+251|Escolher arquivo…
+252|EPUB, PDF, Word, PowerPoint, Excel, legendas (SRT/VTT), TXT ou Markdown
+253|Idiomas
+254|Trocar idiomas
+255|Para:
+256|De:
+257|Modelo
+258|Traduzir em:
+259|Parágrafos, títulos, tabelas e listas são mantidos; itálicos ou negritos soltos dentro de uma frase se perdem. Um PDF vira um EPUB traduzido, sem o layout, pronto para narrar.
+260|Traduzir
+261|Abrir pasta
+262|Narrar este livro
+263|Usa {0} no servidor {1} (Ollama). Se não estiver lá, é baixado no servidor na primeira vez.
+264|Nenhum servidor configurado. Defina-o em “Modelos” (usuario@host).
+265|Instalar mecanismo
+266|Baixado.
+267|Não baixado ({0}).
+268|Retomar tradução
+269|Documentos
+270|Escolha um documento para traduzir
+271|Excluir modelo
+272|Excluir {0} ({1}) deste computador?
+273|O idioma de origem e o de destino são o mesmo.
+274|Salvar a tradução como
+275|Escolha outro nome: o original não será substituído.
+276|Parando e salvando o que já foi traduzido…
+277|Parado. O que já foi traduzido está salvo: clique em “Retomar tradução” para continuar de onde parou.
+278|Concluído:
+279|Traduzir…
+280|Traduzir um livro ou documento para outro idioma (EPUB, PDF, Word, legendas…)
+281|Salvando a tradução em andamento…

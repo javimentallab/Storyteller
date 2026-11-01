@@ -242,6 +242,62 @@ SOURCE = [
     ' · ● narrándose ahora',  # 223
     '● En directo: lo nuevo se va añadiendo solo',  # 224
     'Esperando a que se narre más…',  # 225
+    'Rápido. Cabe en tarjetas gráficas de 6 GB.',  # 226
+    'Traduce mejor. Pide una tarjeta gráfica de 10-12 GB.',  # 227
+    'Neerlandés',  # 228
+    'Polaco',  # 229
+    'Coreano',  # 230
+    'Japonés',  # 231
+    'Ruso',  # 232
+    'Ucraniano',  # 233
+    'Chino',  # 234
+    'Hindi',  # 235
+    'Tailandés',  # 236
+    'Cancelado.',  # 237
+    'Preparando el motor de traducción (una sola vez)…',  # 238
+    'Descargando llama.cpp…',  # 239
+    'Descargando {0} ({1})…',  # 240
+    'Descargando el modelo en el servidor… {0} %',  # 241
+    'Traduciendo… {0}/{1}',  # 242
+    'quedan {0}',  # 243
+    'Leyendo el documento…',  # 244
+    'Cargando el modelo (en CPU, irá lento)…',  # 245
+    'Guardando el documento traducido…',  # 246
+    'Conectando con el servidor…',  # 247
+    'Descargando el modelo en el servidor…',  # 248
+    'Traducir documentos',  # 249
+    'Documento',  # 250
+    'Elegir archivo…',  # 251
+    'EPUB, PDF, Word, PowerPoint, Excel, subtítulos (SRT/VTT), TXT o Markdown',  # 252
+    'Idiomas',  # 253
+    'Intercambiar idiomas',  # 254
+    'A:',  # 255
+    'De:',  # 256
+    'Modelo',  # 257
+    'Traducir en:',  # 258
+    'Se conservan párrafos, títulos, tablas y listas; las cursivas o negritas sueltas dentro de una frase se pierden. Un PDF se convierte en un EPUB traducido, sin su maquetación, listo para narrar.',  # 259
+    'Traducir',  # 260
+    'Abrir carpeta',  # 261
+    'Narrar este libro',  # 262
+    'Se usa {0} en el servidor {1} (Ollama). Si no lo tiene, lo descarga allí la primera vez.',  # 263
+    'No hay servidor configurado. Ponlo en «Modelos» (usuario@host).',  # 264
+    'Instalar motor',  # 265
+    'Descargado.',  # 266
+    'No descargado ({0}).',  # 267
+    'Reanudar traducción',  # 268
+    'Documentos',  # 269
+    'Elige un documento para traducir',  # 270
+    'Borrar modelo',  # 271
+    '¿Borrar {0} ({1}) de este equipo?',  # 272
+    'El idioma de origen y el de destino son el mismo.',  # 273
+    'Guardar la traducción como',  # 274
+    'Elige otro nombre: no voy a sobrescribir el original.',  # 275
+    'Deteniendo y guardando lo traducido…',  # 276
+    'Detenido. Lo traducido está guardado: pulsa «Reanudar traducción» para seguir donde lo dejaste.',  # 277
+    'Listo:',  # 278
+    'Traducir…',  # 279
+    'Traducir un libro o documento a otro idioma (EPUB, PDF, Word, subtítulos…)',  # 280
+    'Guardando la traducción en curso…',  # 281
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

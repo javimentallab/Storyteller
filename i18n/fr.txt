@@ -225,3 +225,59 @@
 223|· ● narration en cours
 224|● En direct : la suite s’ajoute toute seule
 225|En attente de la suite de la narration…
+226|Rapide. Tient sur une carte graphique de 6 Go.
+227|Traduit mieux. Demande une carte graphique de 10 à 12 Go.
+228|Néerlandais
+229|Polonais
+230|Coréen
+231|Japonais
+232|Russe
+233|Ukrainien
+234|Chinois
+235|Hindi
+236|Thaï
+237|Annulé.
+238|Préparation du moteur de traduction (une seule fois)…
+239|Téléchargement de llama.cpp…
+240|Téléchargement de {0} ({1})…
+241|Téléchargement du modèle sur le serveur… {0} %
+242|Traduction… {0}/{1}
+243|encore {0}
+244|Lecture du document…
+245|Chargement du modèle (sur le CPU, ce sera lent)…
+246|Enregistrement du document traduit…
+247|Connexion au serveur…
+248|Téléchargement du modèle sur le serveur…
+249|Traduire des documents
+250|Document
+251|Choisir un fichier…
+252|EPUB, PDF, Word, PowerPoint, Excel, sous-titres (SRT/VTT), TXT ou Markdown
+253|Langues
+254|Inverser les langues
+255|Vers :
+256|De :
+257|Modèle
+258|Traduire sur :
+259|Les paragraphes, titres, tableaux et listes sont conservés ; l’italique ou le gras à l’intérieur d’une phrase est perdu. Un PDF devient un EPUB traduit, sans sa mise en page, prêt à être narré.
+260|Traduire
+261|Ouvrir le dossier
+262|Narrer ce livre
+263|Utilise {0} sur le serveur {1} (Ollama). S’il n’y est pas, il y est téléchargé la première fois.
+264|Aucun serveur configuré. Indiquez-le dans « Modèles » (utilisateur@hôte).
+265|Installer le moteur
+266|Téléchargé.
+267|Non téléchargé ({0}).
+268|Reprendre la traduction
+269|Documents
+270|Choisissez un document à traduire
+271|Supprimer le modèle
+272|Supprimer {0} ({1}) de cet ordinateur ?
+273|La langue source et la langue cible sont identiques.
+274|Enregistrer la traduction sous
+275|Choisissez un autre nom : l’original ne sera pas écrasé.
+276|Arrêt et enregistrement de ce qui a été traduit…
+277|Arrêté. Ce qui a été traduit est enregistré : cliquez sur « Reprendre la traduction » pour continuer là où vous en étiez.
+278|Terminé :
+279|Traduire…
+280|Traduire un livre ou un document dans une autre langue (EPUB, PDF, Word, sous-titres…)
+281|Enregistrement de la traduction en cours…

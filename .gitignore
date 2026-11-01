@@ -1,6 +1,8 @@
 # Entorno del motor (se instala/descarga, no se versiona)
 engine/.venv/
 engine/.venv-xtts/
+engine/.venv-translate/
+engine/llama.cpp/
 engine/__pycache__/
 engine/.ready
 __pycache__/
@@ -15,6 +17,9 @@ books/
 engine/voices/
 # configuración local (motor, servidor, voz…)
 config.json
+# traducción: ajustes y progreso guardado
+translate.json
+translations/
 # diccionario de pronunciación del usuario (la semilla está en el código)
 pron.json
 # muestras de voz locales

@@ -10,7 +10,8 @@
 Desktop app (PySide6) that turns an **EPUB into a narrated audiobook** with a neural
 voice and plays it with **synced subtitles** (the sentence being read is highlighted;
 click to jump). It also **imports existing audiobooks** and **transcribes them with
-Whisper** to make those subtitles.
+Whisper** to make those subtitles, and **translates books and documents** between 15
+languages with TranslateGemma.
 
 Everything runs **locally** (GPU or CPU) or, if you like, on **your own server** over SSH.
 **Models and voices are not bundled**: they are **downloaded from inside the app**.
@@ -35,17 +36,30 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
   Language can be chosen or detected.
 - **Player** with synced subtitles, autoscroll, speed control, skips, go to
   chapter/position and a **listening bookmark** (picks up where you left off).
+- **Listen while it narrates**: *Listen* in the narration bar opens the book in progress;
+  the player adds new sentences and chapters by itself and, when it catches up, waits
+  and carries on from the exact spot.
 - **Stop and save / Resume** both narration and transcription (they work in blocks and
   save progress; they carry on from the same sentence). Closing the app during a
   narration is the same as *Stop and save*.
 - **Library**: resume half-done books, **regenerate** one from its original EPUB, and
   delete it.
+- **Translate documents** (*Translate…* button) with **TranslateGemma**: EPUB, PDF, Word,
+  PowerPoint, Excel, subtitles (SRT/VTT), TXT and Markdown, between the interface
+  languages. Paragraphs, headings, tables and subtitle timings are kept (italics or bold
+  inside a sentence are lost); a PDF becomes a translated EPUB, without its layout. On
+  this computer (llama.cpp, loaded only
+  while translating) or on your own server (Ollama over SSH). It can be stopped and
+  resumed, and the translated EPUB can be sent to narration with one click.
 - **Model manager** (*Models* screen): download/delete voice models (XTTS v2, F5) and
   transcription models (faster-whisper), choose the language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed
   automatically**). Catalogue of downloadable voices.
 
-<p align="center"><img src="docs/models.png" width="70%" alt="Models and voices screen"></p>
+<p align="center">
+  <img src="docs/translate.png" width="49%" alt="Translate documents screen">
+  <img src="docs/models.png" width="49%" alt="Models and voices screen">
+</p>
 
 ## Requirements
 
@@ -56,6 +70,8 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
 - XTTS engine in a separate venv, `engine/.venv-xtts` (its dependencies clash with
   F5's): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (for the
   QC), **without** `torchcodec` (torch ≥ 2.9 requires it and it fails on Windows).
+- Translation: installs itself from its own screen (`engine/.venv-translate` and
+  `engine/llama.cpp`). In server mode, Ollama on the server.
 
 Model weights and voices are downloaded from *Models* into `~/cuentacuentos/` (they are
 not in the repository).
@@ -82,6 +98,8 @@ the system language (English if it is not in the list); to force one, use
   `whisper` (streaming transcription) and the text preparation shared by the engines.
 - `engine/cc_xtts.py` — XTTS v2 engine: `generate` / `count`, same output format
   (mp3 + subtitles + manifest, incremental and resumable).
+- `st_translate.py` + `engine/cc_translate.py` — document translation screen and engine
+  (one reader/writer per format; saves progress and resumes).
 
 *Own server* mode uses an equivalent engine on the server over SSH (not included).
 
@@ -92,4 +110,5 @@ secrets and misconfigurations on every push/PR.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Components and models that are downloaded separately keep
+their own licence: see [NOTICE](NOTICE).

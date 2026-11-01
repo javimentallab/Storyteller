@@ -1,0 +1,19 @@
+Storyteller is released under the MIT License (see LICENSE).
+
+The components below are NOT included in this repository. They are downloaded or
+installed on the user's own computer, when the user asks for it, and they stay under
+their own licences.
+
+Document translation
+--------------------
+- TranslateGemma models (Google): Gemma Terms of Use, https://ai.google.dev/gemma/terms
+  GGUF conversions by mradermacher, https://huggingface.co/mradermacher
+- llama.cpp: MIT License, https://github.com/ggml-org/llama.cpp
+- pdfminer.six: MIT License, https://github.com/pdfminer/pdfminer.six
+- python-docx: MIT License, https://github.com/python-openxml/python-docx
+- python-pptx: MIT License, https://github.com/scanny/python-pptx
+- openpyxl: MIT License, https://foss.heptapod.net/openpyxl/openpyxl
+- Beautiful Soup: MIT License, https://www.crummy.com/software/BeautifulSoup/
+- lxml: BSD 3-Clause License, https://lxml.de/
+- Ollama (only in server mode, on the user's own server): MIT License,
+  https://github.com/ollama/ollama
