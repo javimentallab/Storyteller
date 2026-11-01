@@ -6,7 +6,7 @@ Lee un EPUB, lo manda a Mint para narrarlo con la voz neural (F5, voz A),
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
 resaltada, clic para saltar). La generacion corre en Mint (GPU) por SSH.
 """
-import sys, os, re, json, shutil, subprocess, time, unicodedata, tempfile, threading
+import sys, os, re, json, shutil, subprocess, time, unicodedata, tempfile, threading, wave
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer
@@ -377,19 +377,132 @@ def list_books():
         if d.is_dir():
             try: recover_interrupted(d)                   # narración cortada de golpe → reanudable
             except Exception: pass
-        mf = d / "manifest.json"
-        if not (d.is_dir() and mf.exists()):
+        if not d.is_dir():
             continue
-        try:
-            man = json.loads(mf.read_text("utf-8"))
-        except Exception:
-            continue
+        active = is_generating(d)
+        # Narrándose ahora: lo que hay en disco en este momento (los tramos en
+        # paralelo van por delante de la fusión periódica del manifest.json).
+        man = live_manifest(d) if active else None
+        if not man:
+            mf = d / "manifest.json"
+            if not mf.exists():
+                continue
+            try:
+                man = json.loads(mf.read_text("utf-8"))
+            except Exception:
+                continue
         tf = d / "title.txt"
         title = tf.read_text("utf-8").strip() if tf.exists() else d.name.replace("-", " ").capitalize()
         dur = sum(c.get("duration", 0) for c in man)
         out.append({"dir": d, "title": title, "n": len(man), "dur": dur, "manifest": man,
-                    "resumable": book_resumable(d)})
+                    "resumable": book_resumable(d), "active": active})
     return sorted(out, key=lambda b: b["title"].lower())
+
+
+# ------------------------------------------------- escuchar mientras se narra
+# El capítulo que el motor está narrando no se reproduce desde sus ficheros: el
+# reproductor los dejaría abiertos y en Windows el motor no podría reemplazar el
+# mp3 al cerrar el capítulo (ni borrarlo al reanudar). Suena una COPIA de lo
+# narrado hasta ahora en esta carpeta temporal, que se renueva al llegar al final.
+LISTEN_DIR = Path(tempfile.gettempdir()) / "storyteller-listen"
+
+def is_generating(d):
+    """True si ESTA app está narrando ahora mismo el libro de la carpeta d."""
+    return d is not None and str(Path(d)) in ACTIVE_GEN
+
+def _progress_key(e):
+    return (bool(e.get("done")), int(e.get("n") or 0), int(e.get("frames") or 0))
+
+def live_manifest(d):
+    """Capítulos del libro tal como están AHORA en disco: manifest.json más los
+    manifest.pN.json de los tramos en paralelo. Por capítulo gana el más avanzado."""
+    d = Path(d)
+    best = {}
+    for f in [d / "manifest.json"] + [p for _k, p in sorted(_stream_parts(d).items())]:
+        try:
+            part = json.loads(f.read_text("utf-8"))
+        except Exception:
+            continue
+        for e in part if isinstance(part, list) else []:
+            if not (isinstance(e, dict) and "id" in e and "base" in e):
+                continue
+            old = best.get(e["id"])
+            if old is None or _progress_key(e) > _progress_key(old):
+                best[e["id"]] = e
+    return [best[k] for k in sorted(best)]
+
+def chapter_is_partial(d, e):
+    """Capítulo narrado a medias: su audio aún crece (o se reescribirá al reanudar).
+    Las transcripciones de audiolibros traen el audio entero desde el principio."""
+    if e.get("done", True):
+        return False
+    return (read_gen_state(d) or {}).get("kind") != "import"
+
+def _wav_layout(path):
+    """(inicio de los datos, canales, bytes por muestra, frecuencia) de un WAV PCM.
+    No se fía del tamaño que declara la cabecera: mientras se escribe no está al día."""
+    with open(path, "rb") as f:
+        head = f.read(65536)
+    if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
+        return None
+    pos = 12; fmt = None
+    while pos + 8 <= len(head):
+        cid = head[pos:pos + 4]; size = int.from_bytes(head[pos + 4:pos + 8], "little")
+        if cid == b"fmt ":
+            ch = int.from_bytes(head[pos + 10:pos + 12], "little")
+            sr = int.from_bytes(head[pos + 12:pos + 16], "little")
+            bits = int.from_bytes(head[pos + 22:pos + 24], "little")
+            fmt = (ch, bits // 8, sr)
+        elif cid == b"data":
+            return ((pos + 8,) + fmt) if fmt else None
+        pos += 8 + size + (size & 1)
+    return None
+
+def clean_listen_dir(keep=None):
+    """Borra las copias viejas (la que está sonando sigue abierta y se salta sola)."""
+    try:
+        for p in LISTEN_DIR.iterdir():
+            if keep is None or p != keep:
+                try: p.unlink()
+                except OSError: pass
+    except OSError:
+        pass
+
+def snapshot_chapter(d, e):
+    """Copia reproducible de lo narrado hasta ahora de un capítulo a medias.
+    Sale del WAV del motor (los tiempos cuadran al ms con los subtítulos) cortado
+    en las muestras que el manifest da por guardadas; si no hay WAV (motor remoto),
+    del mp3 parcial. None si todavía no hay audio."""
+    d = Path(d)
+    LISTEN_DIR.mkdir(parents=True, exist_ok=True)
+    frames = int(e.get("frames") or 0); sr = int(e.get("sr") or 0)
+    tag = f"{slug(d.name)[:40]}-{e['base']}-{frames}-{int(time.time() * 1000)}"
+    src = d / f"{e['base']}.wav"
+    if frames > 0 and src.exists():
+        try:
+            lay = _wav_layout(src)
+            if lay and lay[2] in (1, 2, 3, 4) and (not sr or lay[3] == sr):
+                off, ch, bps, wsr = lay
+                with open(src, "rb") as f:
+                    f.seek(off); data = f.read(frames * ch * bps)
+                data = data[:len(data) - len(data) % (ch * bps)]
+                if data:
+                    out = LISTEN_DIR / f"{tag}.wav"
+                    with wave.open(str(out), "wb") as w:
+                        w.setnchannels(ch); w.setsampwidth(bps); w.setframerate(wsr)
+                        w.writeframes(data)
+                    return out
+        except Exception:
+            pass
+    mp3 = d / f"{e['base']}.mp3"
+    try:
+        if mp3.exists() and mp3.stat().st_size > 0:
+            out = LISTEN_DIR / f"{tag}.mp3"
+            shutil.copyfile(mp3, out)
+            return out
+    except Exception:
+        pass
+    return None
 
 
 def chap_label(m):
@@ -1122,10 +1235,14 @@ class BookCard(QFrame):
         col = QVBoxLayout(); col.setSpacing(3)
         t = QLabel(book["title"]); t.setObjectName("booktitle"); t.setWordWrap(True)
         mins = round(book["dur"] / 60)
-        extra = _(" · ⏸ a medias") if book.get("resumable") else ""
+        active = book.get("active")                       # narrándose ahora: se puede abrir y escuchar
+        extra = (_(" · ● narrándose ahora") if active
+                 else _(" · ⏸ a medias") if book.get("resumable") else "")
         sub = QLabel(_('{0} capítulos · {1} min{2}').format(book['n'], mins, extra)); sub.setObjectName("booksub")
         col.addWidget(t); col.addWidget(sub)
         row.addLayout(col, 1)
+        if active:                                        # ni reanudar ni borrar mientras narra
+            return
         if book.get("resumable"):
             self.resumeBtn = QPushButton(_("▸ Reanudar")); self.resumeBtn.setObjectName("tb")
             self.resumeBtn.setToolTip(_("Seguir narrando este libro desde donde se detuvo"))
@@ -1178,6 +1295,7 @@ class LibraryPage(QWidget):
     openModels = Signal()
     importAudio = Signal()
     resumeBook = Signal(str)
+    listenGen = Signal()                                  # abrir el libro que se está narrando
 
     def __init__(self):
         super().__init__()
@@ -1224,22 +1342,39 @@ class LibraryPage(QWidget):
         self.prog = QProgressBar(); self.prog.setTextVisible(False); self.prog.setFixedHeight(6)
         pv.addWidget(self.progLabel); pv.addWidget(self.prog)
         btns = QHBoxLayout(); btns.setSpacing(8); btns.addStretch(1)
+        self.listenBtn = QPushButton(_("▶ Escuchar")); self.listenBtn.setObjectName("tb")
+        self.listenBtn.setToolTip(_("Escuchar lo que ya está narrado mientras sigue narrando"))
+        self.listenBtn.clicked.connect(self.listenGen.emit); self.listenBtn.hide()
         self.stopBtn = QPushButton(_("Detener y guardar")); self.stopBtn.setObjectName("tb")
         self.cancelBtn = QPushButton(_("Cancelar")); self.cancelBtn.setObjectName("tb")
-        for b in (self.stopBtn, self.cancelBtn): b.setCursor(Qt.PointingHandCursor)
-        btns.addWidget(self.stopBtn); btns.addWidget(self.cancelBtn)
+        for b in (self.listenBtn, self.stopBtn, self.cancelBtn): b.setCursor(Qt.PointingHandCursor)
+        btns.addWidget(self.listenBtn); btns.addWidget(self.stopBtn); btns.addWidget(self.cancelBtn)
         pv.addLayout(btns)
         self.progWrap.hide(); root.addWidget(self.progWrap)
 
+        self._sig = None                                  # resumen de lo que muestran las tarjetas
         self.setStyleSheet(STYLE)
         self.refresh()
 
-    def refresh(self):
+    @staticmethod
+    def _signature(books):
+        return [(str(b["dir"]), b["title"], b["n"], round(b["dur"] / 60), b["resumable"], b["active"])
+                for b in books]
+
+    def refresh_if_changed(self):
+        """Mientras narra: rehace las tarjetas solo si algo cambió (libro nuevo, más
+        capítulos o minutos), para no parpadear ni perder el desplazamiento."""
+        books = list_books()
+        if self._signature(books) != self._sig:
+            self.refresh(books)
+
+    def refresh(self, books=None):
         # vacia las tarjetas (deja empty + stretch al final)
         while self.grid.count() > 2:
             it = self.grid.takeAt(0)
             if it.widget(): it.widget().deleteLater()
-        books = list_books()
+        books = list_books() if books is None else books
+        self._sig = self._signature(books)
         self.empty.setVisible(not books)
         for b in books:
             card = BookCard(b); card.opened.connect(self.openBook.emit)
@@ -1799,6 +1934,14 @@ class PlayerPage(QWidget):
         self.book_dir = None; self._autoscroll = False; self._pause_until = 0.0
         self._restore_pos = None; self._pb_last_save = 0.0; self._last_pos = 0
         self._manual_scroll = False   # si el usuario paginó a mano, no recolocar solo
+        # Escuchar mientras se narra (ver LISTEN_DIR):
+        self._live = False            # el libro abierto se está narrando ahora
+        self._partial = False         # el capítulo cargado está a medias (suena una copia)
+        self._waiting = None          # {"pos": ms, "at": ms, "play": bool, "next": bool} = esperando narración
+        self._cur_base = None         # capítulo cargado (por nombre: su índice cambia al llegar otros)
+        self._play_after_restore = False
+        self._liveTimer = QTimer(self); self._liveTimer.setInterval(2500)
+        self._liveTimer.timeout.connect(self._live_tick)
 
         self.player = QMediaPlayer()
         self.audio = QAudioOutput()
@@ -1883,6 +2026,9 @@ class PlayerPage(QWidget):
         spd = QLabel(_("Velocidad")); spd.setObjectName("time")
         ctr.addWidget(self.prevBtn); ctr.addWidget(self.back10); ctr.addWidget(self.playBtn)
         ctr.addWidget(self.fwd10); ctr.addWidget(self.nextBtn); ctr.addSpacing(10); ctr.addWidget(self.tcur)
+        # «● En directo…» / «Esperando a que se narre más…» (solo mientras se narra el libro)
+        self.liveLbl = ElidedLabel(""); self.liveLbl.setObjectName("live"); self.liveLbl.hide()
+        ctr.addSpacing(8); ctr.addWidget(self.liveLbl, 3)
         ctr.addStretch(1); ctr.addWidget(spd); ctr.addWidget(self.speed)
         bv.addLayout(ctr)
 
@@ -1913,6 +2059,15 @@ class PlayerPage(QWidget):
         self.tdur = QLabel("0:00"); self.tdur.setObjectName("time")
         sl.addWidget(self.seek, 1); sl.addWidget(self.tdur)
         bv.addLayout(sl)
+
+        # Progreso de la narración en curso, también aquí: se puede escuchar mientras narra.
+        self.genWrap = QWidget(); self.genWrap.setObjectName("progwrap")
+        gv = QVBoxLayout(self.genWrap); gv.setContentsMargins(16, 8, 16, 8); gv.setSpacing(5)
+        self.genLbl = ElidedLabel(""); self.genLbl.setObjectName("proglabel")
+        self.genBar = QProgressBar(); self.genBar.setTextVisible(False); self.genBar.setFixedHeight(4)
+        gv.addWidget(self.genLbl); gv.addWidget(self.genBar)
+        self.genWrap.hide()
+        root.addWidget(self.genWrap)
         root.addWidget(bar)
 
         self.setStyleSheet(STYLE)
@@ -2000,7 +2155,20 @@ class PlayerPage(QWidget):
 
     def stop(self):
         self._save_playback()                               # recordar el punto al salir
+        self._liveTimer.stop(); self._waiting = None
         self.player.stop()
+        # Soltar el fichero: al regenerar o reanudar, el motor tiene que poder
+        # borrarlo y reescribirlo (en Windows no puede si sigue abierto aquí).
+        self.player.setSource(QUrl())
+        clean_listen_dir()
+
+    def set_gen_progress(self, on, text="", pct=-1):
+        """Barra de la narración (o transcripción) en curso, también en el reproductor."""
+        self.genWrap.setVisible(on)
+        if on:
+            self.genLbl.setText(text)
+            if pct < 0: self.genBar.setRange(0, 0)
+            else: self.genBar.setRange(0, 100); self.genBar.setValue(pct)
 
     def _do_regen(self):
         src = self.book_dir / "source.epub"
@@ -2062,33 +2230,70 @@ class PlayerPage(QWidget):
 
     def load_book(self, folder):
         self.book_dir = Path(folder)
-        self.regenBtn.setVisible((self.book_dir / "source.epub").exists())
-        self.resumeBtn.setVisible(book_resumable(self.book_dir))
-        self.exportBtn.setVisible(True)
-        self.manifest = json.loads((self.book_dir / "manifest.json").read_text("utf-8"))
+        self._live = is_generating(self.book_dir)
+        self._waiting = None; self._cur_base = None; self.cap = 0
+        self.manifest = live_manifest(self.book_dir)    # = manifest.json (+ tramos si se está narrando)
         tf = self.book_dir / "title.txt"
         self.booklbl.setText(tf.read_text("utf-8").strip() if tf.exists()
                              else self.book_dir.name.replace("-", " ").capitalize())
-        self.chap.blockSignals(True); self.chap.clear()
-        for i, m in enumerate(self.manifest):
-            self.chap.addItem(chap_label(m))
-        self.chap.setVisible(len(self.manifest) > 1)
-        self.chap.blockSignals(False)
-        self.gotoChapBtn.setEnabled(len(self.manifest) > 1)
-        self.prevBtn.setEnabled(len(self.manifest) > 1)
-        self.nextBtn.setEnabled(len(self.manifest) > 1)
+        self._fill_chapters()
+        self._update_head()
         pb = self._read_playback()                          # retomar por donde se escuchaba
         start_cap = pb["cap"] if pb else 0
         self._restore_pos = pb["pos"] if pb else None
         self._pb_last_save = time.monotonic()
         self.load_chap(start_cap, False)
+        self._liveTimer.start()                             # si se está narrando, lo nuevo entra solo
+
+    def _fill_chapters(self):
+        n = len(self.manifest)
+        self.chap.blockSignals(True); self.chap.clear()
+        for m in self.manifest:
+            self.chap.addItem(chap_label(m))
+        self.chap.setVisible(n > 1)
+        if 0 <= self.cap < n:
+            self.chap.setCurrentIndex(self.cap)
+        self.chap.blockSignals(False)
+        for b in (self.gotoChapBtn, self.prevBtn, self.nextBtn):
+            b.setEnabled(n > 1)
+
+    def _update_head(self):
+        """Mientras se narra no se regenera, reanuda ni exporta (el motor sigue escribiendo)."""
+        live = self._live
+        self.regenBtn.setVisible(not live and (self.book_dir / "source.epub").exists())
+        self.resumeBtn.setVisible(not live and book_resumable(self.book_dir))
+        self.exportBtn.setVisible(not live)
+        self._update_live_label()
+
+    def _update_live_label(self):
+        if self._live and self._waiting is not None:
+            txt = _("Esperando a que se narre más…")
+        elif self._live:
+            txt = _("● En directo: lo nuevo se va añadiendo solo")
+        else:
+            txt = ""
+        self.liveLbl.setText(txt); self.liveLbl.setVisible(bool(txt))
+
+    def _sync_play_btn(self):
+        playing = (self.player.playbackState() == QMediaPlayer.PlayingState
+                   or (self._waiting is not None and self._waiting["play"]))
+        self.playBtn.setText("⏸" if playing else "▶")
 
     def _read_playback(self):
-        """Lee el punto de escucha guardado (capítulo + ms), validado."""
+        """Lee el punto de escucha guardado (capítulo + ms), validado. El capítulo va
+        por su nombre (base): mientras se narra en tramos, su posición en la lista cambia."""
         try:
             pb = json.loads((self.book_dir / "playback.json").read_text("utf-8"))
-            cap = int(pb.get("cap", 0)); pos = int(pb.get("pos", 0))
-            if 0 <= cap < len(self.manifest) and pos >= 0:
+            pos = int(pb.get("pos", 0))
+            if pos < 0:
+                return None
+            if pb.get("base"):
+                for i, m in enumerate(self.manifest):
+                    if m.get("base") == pb["base"]:
+                        return {"cap": i, "pos": pos}
+                return None
+            cap = int(pb.get("cap", 0))
+            if 0 <= cap < len(self.manifest):
                 return {"cap": cap, "pos": pos}
         except Exception:
             pass
@@ -2102,61 +2307,235 @@ class PlayerPage(QWidget):
             return
         try:
             p = self._last_pos if pos is None else pos
+            m = self.manifest[self.cap] if 0 <= self.cap < len(self.manifest) else {}
             (self.book_dir / "playback.json").write_text(
-                json.dumps({"cap": self.cap, "pos": int(max(0, p))}), "utf-8")
+                json.dumps({"cap": self.cap, "base": m.get("base"), "pos": int(max(0, p))}), "utf-8")
         except Exception:
             pass
 
-    def load_chap(self, i, autoplay):
+    def load_chap(self, i, autoplay, pos=None):
+        """Carga el capítulo i. Con pos (ms) se sigue en ese punto: si es el mismo
+        capítulo (que ha crecido mientras se narra) no se rehace el texto."""
         if not self.manifest or i < 0 or i >= len(self.manifest): return
-        self.cap = i
-        self.chap.blockSignals(True); self.chap.setCurrentIndex(i); self.chap.blockSignals(False)
         m = self.manifest[i]
-        data = json.loads((self.book_dir / f"{m['base']}.json").read_text("utf-8"))
-        self.cues = data.get("cues", [])
-        self.chtitle.setText(data.get("title") or m["title"])
-        while self.flow.count():
-            wdg = self.flow.takeAt(0).widget()
-            if wdg: wdg.deleteLater()
-        self.cue_widgets = []
-        for c in self.cues:
+        same = pos is not None and i == self.cap and self._cur_base == m["base"]
+        self.cap = i; self._cur_base = m["base"]
+        self.chap.blockSignals(True); self.chap.setCurrentIndex(i); self.chap.blockSignals(False)
+        if same:
+            self._append_new_cues(m)
+        else:
+            try:
+                data = json.loads((self.book_dir / f"{m['base']}.json").read_text("utf-8"))
+            except Exception:
+                data = {}
+            self.cues = data.get("cues", [])
+            self.chtitle.setText(data.get("title") or m.get("title", ""))
+            while self.flow.count():
+                wdg = self.flow.takeAt(0).widget()
+                if wdg: wdg.deleteLater()
+            self.cue_widgets = []
+            for c in self.cues:
+                cue = Cue(c["text"], float(c["start"])); cue.clicked.connect(self.seek_to)
+                self.flow.addWidget(cue); self.cue_widgets.append((c, cue))
+        self._waiting = None; self._play_after_restore = False
+        self._last_pos = pos or 0
+        # El salto pendiente se aplica DESPUÉS de cambiar de fichero: setSource avisa
+        # al momento de un «cargado» falso con la duración del fichero anterior (y en
+        # plena carga Qt ignora los saltos), que lo dejaría en un punto equivocado.
+        restore = pos if pos is not None else self._restore_pos
+        self._restore_pos = None
+        src = self._chapter_source(m)
+        if src is None:                                   # a medias y aún sin audio
+            self.player.setSource(QUrl())
+            self._restore_pos = restore
+            if self._live:
+                self._waiting = {"pos": pos or 0, "at": 0, "play": autoplay, "next": False}
+        else:
+            self.player.setSource(QUrl.fromLocalFile(str(src)))
+            self._restore_pos = restore
+            self.on_speed(self.speed.currentIndex())
+            if pos:
+                self._play_after_restore = autoplay       # arrancar ya en el punto, sin oír el principio
+            elif autoplay:
+                self.player.play()
+        if not same:
+            self.scroll.verticalScrollBar().setValue(0)
+            self._manual_scroll = False  # capítulo nuevo: vuelve a seguir la narración
+        self._sync_play_btn(); self._update_live_label()
+
+    def _chapter_source(self, m):
+        """Fichero que suena: el mp3 del capítulo o, si está a medias, una copia temporal."""
+        if chapter_is_partial(self.book_dir, m):
+            self._partial = True
+            snap = snapshot_chapter(self.book_dir, m)
+            clean_listen_dir(keep=snap)
+            return snap
+        self._partial = False
+        return self.book_dir / f"{m['base']}.mp3"
+
+    def _append_new_cues(self, m):
+        """Añade al texto las frases que el motor ha narrado desde la última vez."""
+        try:
+            data = json.loads((self.book_dir / f"{m['base']}.json").read_text("utf-8"))
+        except Exception:
+            return
+        cues = data.get("cues", [])
+        if len(cues) <= len(self.cues):
+            return
+        for c in cues[len(self.cues):]:
             cue = Cue(c["text"], float(c["start"])); cue.clicked.connect(self.seek_to)
             self.flow.addWidget(cue); self.cue_widgets.append((c, cue))
-        self._last_pos = 0
-        self.player.setSource(QUrl.fromLocalFile(str(self.book_dir / f"{m['base']}.mp3")))
-        self.on_speed(self.speed.currentIndex())
-        self.scroll.verticalScrollBar().setValue(0)
-        self._manual_scroll = False      # capítulo nuevo: vuelve a seguir la narración
-        if autoplay: self.player.play()
+        self.cues = cues
+
+    def _next_index(self):
+        """Capítulo siguiente: el de la sección siguiente. Mientras se narra no se salta
+        a uno posterior (con tramos en paralelo hay capítulos sin empezar en medio)."""
+        if not (0 <= self.cap < len(self.manifest)):
+            return None
+        try:
+            want = int(self.manifest[self.cap]["id"]) + 1
+        except Exception:
+            want = None
+        for j, e in enumerate(self.manifest):
+            if want is not None and e.get("id") == want:
+                return j
+        if self._live:
+            return None
+        return self.cap + 1 if self.cap + 1 < len(self.manifest) else None
+
+    def _refresh_manifest(self):
+        """Relee el libro del disco y mete los capítulos y frases nuevos."""
+        new = live_manifest(self.book_dir)
+        if not new:
+            return
+        key = lambda man: [(e.get("id"), e.get("done"), e.get("n"), e.get("frames")) for e in man]
+        if key(new) == key(self.manifest):
+            return
+        was_empty = not self.manifest
+        labels = [chap_label(e) for e in new] != [chap_label(e) for e in self.manifest]
+        self.manifest = new
+        idx = next((j for j, e in enumerate(new) if e.get("base") == self._cur_base), None)
+        self.cap = idx if idx is not None else min(self.cap, len(new) - 1)
+        if labels:
+            self._fill_chapters()
+        if was_empty:
+            self.load_chap(0, False)
+        elif idx is not None:
+            self._append_new_cues(new[idx])
+
+    def _live_tick(self):
+        """Cada 2,5 s mientras se narra el libro abierto: capítulos y frases nuevos, y
+        si estaba esperando a que hubiera más audio, seguir."""
+        if not self.book_dir:
+            return
+        live = is_generating(self.book_dir)
+        if not live and not self._live:
+            return
+        ended = self._live and not live                    # la narración acaba de terminar o pararse
+        self._live = live
+        self._refresh_manifest()
+        if ended:
+            self._update_head()
+        self._serve_waiting()
+        self._sync_play_btn(); self._update_live_label()
+
+    def _serve_waiting(self):
+        """Si se estaba esperando narración: seguir donde se quedó en cuanto la haya."""
+        w = self._waiting
+        if w is None or not (0 <= self.cap < len(self.manifest)):
+            return
+        m = self.manifest[self.cap]
+        if w["next"]:                                     # esperando a que empiece el capítulo siguiente
+            nxt = self._next_index()
+            if nxt is not None:
+                self.load_chap(nxt, w["play"])
+            elif not self._live:
+                self._waiting = None
+            return
+        avail = float(m.get("duration") or 0) * 1000      # ms narrados (= lo que cubren los subtítulos)
+        if m.get("done") and w["pos"] < avail - 400:
+            self.load_chap(self.cap, w["play"], pos=w["pos"])   # el mp3 definitivo, en el mismo punto
+        elif not m.get("done") and int(m.get("frames") or 0) > 0 and avail > w["pos"] + 300:
+            self.load_chap(self.cap, w["play"], pos=w["pos"])   # copia nueva con lo último narrado
+        elif m.get("done") or not self._live:             # capítulo acabado o ya no se narra: al siguiente
+            nxt = self._next_index()
+            if nxt is not None:
+                self.load_chap(nxt, w["play"])
+            elif self._live:
+                self._waiting = {"pos": 0, "at": w["at"], "play": w["play"], "next": True}
+            else:
+                self._waiting = None
 
     def seek_to(self, sec):
         self._manual_scroll = False      # saltar a una frase: vuelve a seguir la narración
-        self.player.setPosition(int(sec * 1000) + 10); self.player.play()
+        ms = int(sec * 1000) + 10
+        dur = self.player.duration()
+        if self._partial and self._live and (dur <= 0 or ms > dur - 200):
+            # Esa frase ya tiene texto pero su audio aún no está en la copia que suena:
+            # se sigue ahí en cuanto llegue (unos segundos).
+            at = self.player.position()
+            if self.player.playbackState() == QMediaPlayer.PlayingState:
+                self.player.pause()
+            self._waiting = {"pos": ms, "at": at, "play": True, "next": False}
+            self._sync_play_btn(); self._update_live_label()
+            return
+        self._waiting = None; self._update_live_label()
+        self.player.setPosition(ms); self.player.play()
 
     def toggle(self):
+        w = self._waiting
+        if w is not None:                 # esperando narración: ▶/⏸ decide si sigue sonando al llegar
+            w["play"] = not w["play"]; self._sync_play_btn()
+            return
         if self.player.playbackState() == QMediaPlayer.PlayingState: self.player.pause()
         else: self.player.play()
 
     def on_state(self, st):
-        self.playBtn.setText("⏸" if st == QMediaPlayer.PlayingState else "▶")
+        self._sync_play_btn()
         if st == QMediaPlayer.PausedState:
             self._save_playback()
 
     def on_media_status(self, st):
         if st in (QMediaPlayer.LoadedMedia, QMediaPlayer.BufferedMedia):
             self._apply_restore()
-        if st == QMediaPlayer.EndOfMedia and self.cap < len(self.manifest) - 1:
-            self.load_chap(self.cap + 1, True)
+        if st == QMediaPlayer.EndOfMedia:
+            self._on_end()
+
+    def _on_end(self):
+        if not (0 <= self.cap < len(self.manifest)):
+            return
+        end = max(self.player.duration(), self._last_pos)
+        if self._partial:
+            # Se acabó la copia del capítulo a medias: más audio, el mp3 definitivo,
+            # el capítulo siguiente o esperar a que se narre más.
+            self._waiting = {"pos": end, "at": end, "play": True, "next": False}
+            self._refresh_manifest()
+            self._serve_waiting()
+        else:
+            nxt = self._next_index()
+            if nxt is not None:
+                self.load_chap(nxt, True)
+            elif self._live:              # el siguiente capítulo aún no ha empezado a narrarse
+                self._waiting = {"pos": 0, "at": end, "play": True, "next": True}
+        self._sync_play_btn(); self._update_live_label()
 
     def _apply_restore(self):
         """Salta al punto de escucha guardado en cuanto se conoce la duración."""
         if self._restore_pos is None:
+            return
+        # Solo con el fichero ya cargado: la duración llega aún «cargando» y en ese
+        # estado Qt ignora el salto (sonaría desde el principio).
+        if self.player.mediaStatus() not in (QMediaPlayer.LoadedMedia, QMediaPlayer.BufferingMedia,
+                                             QMediaPlayer.BufferedMedia):
             return
         d = self.player.duration()
         if d > 0:
             self.player.setPosition(min(self._restore_pos, max(0, d - 500)))
             self._last_pos = self.player.position()
             self._restore_pos = None
+            if self._play_after_restore:
+                self._play_after_restore = False
+                self.player.play()
 
     def on_dur(self, d):
         self.seek.setRange(0, d); self.tdur.setText(fmt(d))
@@ -2165,6 +2544,10 @@ class PlayerPage(QWidget):
     def on_pos(self, p):
         if not self.seek.isSliderDown(): self.seek.setValue(p)
         self.tcur.setText(fmt(p)); self.highlight(p / 1000.0)
+        w = self._waiting
+        if w is not None and p > 0 and abs(p - w["at"]) > 1500:
+            self._waiting = None                    # se movió a otro punto: deja de esperar
+            self._sync_play_btn(); self._update_live_label()
         if p > 0:
             self._last_pos = p                      # última posición real conocida
             if time.monotonic() - self._pb_last_save > 5:
@@ -2210,6 +2593,10 @@ class Cuentacuentos(QMainWindow):
         self.library.openModels.connect(self.show_models)
         self.library.importAudio.connect(self.import_audio)
         self.library.resumeBook.connect(self._resume_gen)
+        self.library.listenGen.connect(self._listen_gen)
+        # Mientras narra, la biblioteca enseña sola el libro y lo que va creciendo.
+        self._libTimer = QTimer(self); self._libTimer.setInterval(4000)
+        self._libTimer.timeout.connect(self._lib_tick)
         self.player.back.connect(self.show_library)
         self.player.regen.connect(self._regen)
         self.player.resume.connect(self._resume_gen)
@@ -2235,6 +2622,23 @@ class Cuentacuentos(QMainWindow):
         self.player.load_book(folder)
         self.stack.setCurrentWidget(self.player)
         self._fit_min_width()
+
+    def _lib_tick(self):
+        if self.stack.currentWidget() is self.library:
+            self.library.refresh_if_changed()
+
+    def _listen_gen(self):
+        """«▶ Escuchar» de la barra de narración: abre el libro que se está narrando."""
+        w = getattr(self, "worker", None)
+        if not isinstance(w, LocalGenWorker):
+            return
+        d = LOCAL_BOOKS / w.name
+        man = live_manifest(d) if d.exists() else []
+        if not any(int(e.get("n") or 0) > 0 for e in man):
+            QMessageBox.information(self, "Storyteller", _("Todavía no hay nada narrado. Espera unos "
+                                    "segundos a que se guarden las primeras frases."))
+            return
+        self.open_book(str(d))
 
     def open_epub(self):
         path, _filter = QFileDialog.getOpenFileName(self, _("Elige un EPUB"), str(Path.home()),
@@ -2332,8 +2736,13 @@ class Cuentacuentos(QMainWindow):
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
         self._gen_busy = True                             # ya comprometidos: bloquea un 2º disparo
-        self.library.set_generating(True, _("Reanudando…") if resume else _("Preparando…"), -1)
-        self.worker.progress.connect(lambda t, p: self.library.set_generating(True, t, p))
+        first = _("Reanudando…") if resume else _("Preparando…")
+        self.library.set_generating(True, first, -1)
+        self.player.set_gen_progress(True, first, -1)
+        self.worker.progress.connect(self._gen_progress)
+        # Escuchar mientras narra: solo en local (el servidor propio se trae el audio al final).
+        self.library.listenBtn.setVisible(isinstance(self.worker, LocalGenWorker))
+        self._libTimer.start()
         self.worker.failed.connect(self._gen_fail)
         self.worker.done.connect(self._gen_done)
         self.worker.canceled.connect(self._gen_canceled)
@@ -2349,11 +2758,18 @@ class Cuentacuentos(QMainWindow):
         self.library.set_stopping(_("Cancelando…"))
         self.worker.stop(False)
 
+    def _gen_progress(self, text, pct):
+        self.library.set_generating(True, text, pct)
+        self.player.set_gen_progress(True, text, pct)
+
     def _cleanup_gen_conns(self):
         self._gen_busy = False                            # libera el candado de narración
         for btn in (self.library.stopBtn, self.library.cancelBtn):
             try: btn.clicked.disconnect()
             except Exception: pass
+        self.library.listenBtn.hide()
+        self.player.set_gen_progress(False)
+        self._libTimer.stop()
 
     def _gen_fail(self, msg):
         self._cleanup_gen_conns()
@@ -2370,7 +2786,10 @@ class Cuentacuentos(QMainWindow):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
-        self.open_book(folder)
+        # Si estaba escuchando (este u otro libro) no se le corta: el reproductor ya
+        # recoge solo el final de la narración.
+        if self.stack.currentWidget() is not self.player:
+            self.open_book(folder)
 
     # ---- cierre de la aplicación -----------------------------------------
     def _stop_worker_and_wait(self, worker, label):
@@ -2441,6 +2860,7 @@ QLabel#cue[active="true"] { color: #ece2d0; background: rgba(227,169,79,0.17); }
 QProgressBar { background: #16120d; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: #e3a94f; border-radius: 3px; }
 #time { color: #a2957f; font-size: 12px; }
+#live { color: #e3a94f; font-size: 12px; }
 QPushButton#tb { background: #16120d; border: 1px solid #352d22; border-radius: 8px; padding: 7px 11px; }
 QPushButton#tb:hover { border-color: #e3a94f; color: #e3a94f; }
 #play { background: #e3a94f; color: #1a140c; border: none; border-radius: 8px; font-size: 16px; min-width: 46px; padding: 7px 11px; }

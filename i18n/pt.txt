@@ -219,3 +219,9 @@
 217|Salvando a transcrição em andamento…
 218|ativo
 219|Pronúncia
+220|▶ Ouvir
+221|Ouvir o que já foi narrado enquanto a narração continua
+222|Ainda não há nada narrado. Espere alguns segundos até as primeiras frases serem salvas.
+223|· ● sendo narrado agora
+224|● Ao vivo: o que é novo entra sozinho
+225|Esperando mais narração…

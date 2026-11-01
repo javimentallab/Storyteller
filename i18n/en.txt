@@ -219,3 +219,9 @@
 217|Saving the transcription in progress…
 218|active
 219|Pronunciation
+220|▶ Listen
+221|Listen to what is already narrated while the narration goes on
+222|Nothing has been narrated yet. Wait a few seconds for the first sentences to be saved.
+223|· ● being narrated now
+224|● Live: new parts are added automatically
+225|Waiting for more to be narrated…

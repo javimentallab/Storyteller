@@ -219,3 +219,9 @@
 217|Zapisuję trwającą transkrypcję…
 218|aktywny
 219|Wymowa
+220|▶ Słuchaj
+221|Słuchaj tego, co już przeczytano, podczas gdy czytanie trwa
+222|Jeszcze nic nie przeczytano. Poczekaj kilka sekund, aż zapiszą się pierwsze zdania.
+223|· ● czytanie trwa
+224|● Na żywo: nowe fragmenty dochodzą same
+225|Czekam, aż zostanie przeczytane więcej…

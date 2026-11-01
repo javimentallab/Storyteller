@@ -236,6 +236,12 @@ SOURCE = [
     'Guardando la transcripción en curso…',  # 217
     'activo',  # 218
     'Pronunciación',  # 219
+    '▶ Escuchar',  # 220
+    'Escuchar lo que ya está narrado mientras sigue narrando',  # 221
+    'Todavía no hay nada narrado. Espera unos segundos a que se guarden las primeras frases.',  # 222
+    ' · ● narrándose ahora',  # 223
+    '● En directo: lo nuevo se va añadiendo solo',  # 224
+    'Esperando a que se narre más…',  # 225
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

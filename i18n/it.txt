@@ -219,3 +219,9 @@
 217|Salvataggio della trascrizione in corso…
 218|attivo
 219|Pronuncia
+220|▶ Ascolta
+221|Ascolta ciò che è già narrato mentre la narrazione continua
+222|Non è ancora stato narrato nulla. Aspetta qualche secondo che vengano salvate le prime frasi.
+223|· ● narrazione in corso
+224|● In diretta: le parti nuove si aggiungono da sole
+225|In attesa che venga narrato altro…

@@ -219,3 +219,9 @@
 217|Speichere die laufende Transkription…
 218|aktiv
 219|Aussprache
+220|▶ Anhören
+221|Das schon Erzählte anhören, während weiter erzählt wird
+222|Es ist noch nichts erzählt. Warte ein paar Sekunden, bis die ersten Sätze gespeichert sind.
+223|· ● wird gerade erzählt
+224|● Live: Neues kommt von selbst dazu
+225|Warte, bis mehr erzählt ist…

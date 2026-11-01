@@ -219,3 +219,9 @@
 217|De lopende transcriptie opslaan…
 218|actief
 219|Uitspraak
+220|▶ Luisteren
+221|Luister naar wat al verteld is terwijl het vertellen doorgaat
+222|Er is nog niets verteld. Wacht een paar seconden tot de eerste zinnen zijn opgeslagen.
+223|· ● wordt nu verteld
+224|● Live: nieuwe stukken komen er vanzelf bij
+225|Wachten tot er meer verteld is…

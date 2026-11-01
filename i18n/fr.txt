@@ -219,3 +219,9 @@
 217|Enregistrement de la transcription en cours…
 218|actif
 219|Prononciation
+220|▶ Écouter
+221|Écouter ce qui est déjà narré pendant que la narration continue
+222|Rien n’a encore été narré. Attendez quelques secondes que les premières phrases soient enregistrées.
+223|· ● narration en cours
+224|● En direct : la suite s’ajoute toute seule
+225|En attente de la suite de la narration…
