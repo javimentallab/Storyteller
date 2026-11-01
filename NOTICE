@@ -9,18 +9,47 @@ Interface
 - PySide6 (Qt for Python): GNU LGPL 3.0, https://www.qt.io/qt-for-python
 - FFmpeg (external program, not installed by the app): GNU LGPL or GPL depending on the
   build, https://ffmpeg.org/
+- curl (external program, not installed by the app): curl licence (MIT style),
+  https://curl.se/
 
 Narration
 ---------
 - F5-TTS: MIT License, https://github.com/SWivid/F5-TTS
-  It requires Unidecode (GNU GPL 2.0 or later), which Storyteller's own code does not use.
+  Only needed to narrate with an F5 model. Storyteller's own code does not use the
+  packages listed here, which F5-TTS brings with it:
+  - Unidecode (F5-TTS requires it): GNU GPL 2.0 or later,
+    https://github.com/avian2/unidecode
+  - vocos (F5-TTS requires it): MIT License, https://github.com/charactr-platform/vocos
+  - encodec (vocos requires it): CC BY-NC 4.0 in version 0.1.1, the one on PyPI (the
+    source on GitHub has since moved to the MIT License),
+    https://github.com/facebookresearch/encodec
+  - x-transformers and einx (F5-TTS requires them): MIT License,
+    https://github.com/lucidrains/x-transformers
+  - frozendict (einx requires it): GNU LGPL 3.0,
+    https://github.com/Marco-Sulla/python-frozendict
 - F5-TTS official weights: CC BY-NC 4.0, https://huggingface.co/SWivid/F5-TTS
 - F5-Spanish weights: CC BY-NC 4.0, https://huggingface.co/jpgallegoar/F5-Spanish
+- Example reference voice (basic_ref_en.wav): downloaded on request from the F5-TTS
+  repository, https://github.com/SWivid/F5-TTS
 - coqui-tts: Mozilla Public License 2.0, https://github.com/idiap/coqui-ai-TTS
 - XTTS v2 weights: Coqui Public Model License (non-commercial),
   https://huggingface.co/coqui/XTTS-v2
 - num2words: GNU LGPL 2.1, https://github.com/savoirfairelinux/num2words
 - PyTorch: BSD License, https://pytorch.org/
+  Its CUDA builds include NVIDIA CUDA libraries, under NVIDIA's own licence.
+- torchaudio: BSD 2-Clause License, https://github.com/pytorch/audio
+
+Audio and numbers
+-----------------
+- NumPy: BSD 3-Clause License, with parts under 0BSD, MIT, Zlib and CC0 1.0,
+  https://numpy.org/
+- SciPy: BSD 3-Clause License, https://scipy.org/
+- soundfile: BSD 3-Clause License, https://github.com/bastibe/python-soundfile
+  Its wheels include libsndfile: GNU LGPL 2.1, https://libsndfile.github.io/libsndfile/
+- noisereduce (XTTS engine): MIT License, https://github.com/timsainb/noisereduce
+- librosa: ISC License, https://librosa.org/
+- soxr (librosa requires it): GNU LGPL 2.1 or later, with libsoxr (GNU LGPL 2.1 or later)
+  and PFFFT (BSD style) inside, https://github.com/dofuuz/python-soxr
 
 Transcription
 -------------
@@ -43,3 +72,55 @@ Document translation
 - openpyxl: MIT License, https://foss.heptapod.net/openpyxl/openpyxl
 - Ollama (only in server mode, on the user's own server): MIT License,
   https://github.com/ollama/ollama
+
+Installed along with the above
+------------------------------
+pip installs these automatically as dependencies of the packages above. The exact set
+depends on which engines are installed.
+
+Mozilla Public License 2.0:
+  certifi; tqdm (MPL-2.0 AND MIT); orjson (MPL-2.0 AND (Apache-2.0 OR MIT))
+MIT License:
+  annotated-doc, annotated-types, anyio, attrs, audioread, bitsandbytes, brotli,
+  charset-normalizer, coqpit-config, ctranslate2, docopt, einops, ema-pytorch,
+  et-xmlfile, fastapi, filelock, fonttools, groovy, h11, hf-gradio, hydra-core,
+  inflect, jaraco.functools, jmespath, loguru, markdown-it-py, mdurl,
+  monotonic-alignment-search, more-itertools, narwhals, onnxruntime, platformdirs,
+  pydantic, pydantic-core, pydub, pyparsing, pypinyin, pysbd, python-fire, pytz,
+  pyyaml, rich, rjieba, safehttpx, six, soupsieve, tabulate, termcolor, tomli,
+  tomlkit, torchdiffeq, truststore, typeguard, typer, typing-inspection, urllib3,
+  wandb, win32-setctime
+BSD licences:
+  antlr4-python3-runtime, av (see below), click, cloudpickle, colorama, contourpy,
+  cycler, decorator, dill, fsspec, httpcore, httpcore2, httpx, httpx2, idna, jinja2,
+  joblib, kiwisolver, lazy-loader, llvmlite, markdown, markupsafe, mpmath,
+  multiprocess, networkx, numba, omegaconf, pandas, pooch, protobuf, psutil, pyasn1,
+  pyasn1-modules, pycparser, pygments, scikit-learn, semantic-version, starlette,
+  sympy, threadpoolctl, torchcodec, uvicorn, werkzeug, xlsxwriter, xxhash
+  The wheels of av (PyAV, which faster-whisper requires) include FFmpeg (GNU LGPL 3.0 or
+  later) and the video encoders libx264 and libx265 (GNU GPL 2.0 or later), which
+  Storyteller never uses.
+Apache License 2.0:
+  absl-py, accelerate, aiosignal, boto3, botocore, cached-path, coqui-tts-trainer,
+  cwevals, datasets, distro, fire, flatbuffers, frozenlist, google-api-core,
+  google-auth, google-cloud-core, google-cloud-storage, google-crc32c,
+  google-resumable-media, googleapis-common-protos, gradio, gradio-client, grpcio,
+  hf-xet, huggingface-hub, ko-speech-tools, msgpack, multidict, opentelemetry-api,
+  opentelemetry-exporter-http-transport, opentelemetry-exporter-otlp-common,
+  opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http,
+  opentelemetry-proto, opentelemetry-sdk, opentelemetry-semantic-conventions,
+  propcache, proto-plus, pyarrow, python-multipart, requests, s3transfer, safetensors,
+  tensorboard, tensorboard-data-server, tokenizers, transformers,
+  transformers-stream-generator, tzdata, yarl
+ISC License:
+  anyascii, shellingham
+Python Software Foundation License:
+  aiohappyeyeballs, matplotlib, typing-extensions
+Other permissive licences:
+  aiohttp (Apache-2.0 AND MIT), cffi (MIT-0), cryptography (Apache-2.0 OR BSD-3-Clause),
+  packaging (Apache-2.0 OR BSD-2-Clause), pillow (MIT-CMU),
+  python-dateutil (Apache-2.0 OR BSD-3-Clause), regex (Apache-2.0 AND CNRI-Python),
+  sniffio (MIT OR Apache-2.0)
+
+The LGPL and MPL packages above are used unmodified, as separately installed libraries;
+you can replace them with any compatible version.
