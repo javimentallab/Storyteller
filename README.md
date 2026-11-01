@@ -54,7 +54,7 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
   resumed, even with another model, and the translated EPUB can be sent to narration
   with one click.
 - **Model manager** (*Models* screen): download/delete voice models (XTTS v2, F5) and
-  transcription models (faster-whisper), choose the language, parallel chunks and QC,
+  transcription models (faster-whisper), with a progress bar (size, speed, time left) and *Cancel*, choose the language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed
   automatically**). Catalogue of downloadable voices.
 

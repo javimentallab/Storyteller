@@ -53,7 +53,7 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
   (Ollama por SSH). Se puede detener y reanudar, también con otro modelo, y el EPUB
   traducido se manda a narrar con un clic.
 - **Gestor de modelos** (pantalla *Modelos*): descargar/borrar modelos de voz (XTTS v2,
-  F5) y de transcripción (faster-whisper), elegir idioma, tramos en paralelo y QC, y
+  F5) y de transcripción (faster-whisper), con barra de progreso (tamaño, velocidad, tiempo restante) y *Cancelar*, elegir idioma, tramos en paralelo y QC, y
   **cargar voces** desde archivo
   o por URL (el texto de referencia se **autotranscribe**). Catálogo de voces
   descargables.
