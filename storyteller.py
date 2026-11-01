@@ -21,8 +21,10 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 from st_lang import _  # interface texts in the user's language
 from st_translate import TranslatePage  # pantalla «Traducir documentos»
 
+__version__ = "1.0"
+
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
-REMOTE_DIR = "epub-tts"
+REMOTE_DIR = "epub-tts"                # relativa al home del usuario del servidor
 HOME_CC    = Path.home() / "cuentacuentos"
 LOCAL_BOOKS = HOME_CC / "books"
 # Ruta del Python del motor: Windows usa Scripts/, Linux/macOS usan bin/.

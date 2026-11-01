@@ -68,7 +68,7 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
 - **Python 3.11+** con `PySide6` y `PySide6-Addons` (QtMultimedia, backend ffmpeg).
 - **ffmpeg** y **ffprobe** y **curl** en el `PATH`.
 - Motor F5/Whisper en `engine/.venv` (PyTorch, `f5-tts`, `faster-whisper`,
-  `num2words`). Para GPU NVIDIA, PyTorch con CUDA.
+  `num2words`, `beautifulsoup4`, `lxml`). Para GPU NVIDIA, PyTorch con CUDA.
 - Motor XTTS en un venv aparte, `engine/.venv-xtts` (sus dependencias chocan con las de
   F5): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (para el
   QC), **sin** `torchcodec` (torch ≥ 2.9 lo exige y en Windows falla).
@@ -115,4 +115,4 @@ secretos y malas configuraciones en cada push/PR.
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE). Los componentes y modelos que se descargan aparte conservan
-su propia licencia: ver [NOTICE](NOTICE).
+su propia licencia: ver [NOTICE](NOTICE). Historial de versiones: [CHANGELOG](CHANGELOG.md).

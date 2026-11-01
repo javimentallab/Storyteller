@@ -97,10 +97,9 @@ def cmd_generate(a):
     no_state = getattr(a, "no_state", False)
     if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
         try:
-            from ebooklib import epub
-            _t = epub.read_epub(a.epub).get_metadata("DC", "title")
-            if _t and _t[0][0].strip():
-                E.write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
+            _t = E.epub_title(a.epub)
+            if _t:
+                E.write_atomic(os.path.join(a.out, "title.txt"), _t)
         except Exception: pass
     print(f"capitulos: {len(chaps)}", flush=True)
     prev = E.load_prev_manifest(a.out, mani_name) if a.resume else {}

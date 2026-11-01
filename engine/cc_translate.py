@@ -15,7 +15,7 @@ Uso (lo lanza la app; imprime líneas de estado en stdout):
   python -I cc_translate.py translate --in F --out F --src en --tgt es
          (--llama-dir DIR --gguf FILE | --ssh user@host --ollama-model NAME)
          [--cache F] [--cache-id ID] [--stop-file F] [--title T] [--workers N]
-  python -I cc_translate.py download --url URL --dest FILE
+  python -I cc_translate.py download --url URL --dest FILE [--sha256 H]
   python -I cc_translate.py unzip --zip FILE --dest DIR
 
 Protocolo de salida: TOTAL n · SEG i n · PULL pct · DL pct · INFO texto · OUT ruta ·
@@ -1183,6 +1183,14 @@ def cmd_download(a):
                 if total and time.time() - last > 0.5:
                     say("DL", int(100 * got / total), f"{got / 1e9:.2f}/{total / 1e9:.2f} GB")
                     last = time.time()
+    if a.sha256:                       # lo que se descarga se ejecuta o se carga: que sea lo esperado
+        h = hashlib.sha256()
+        with open(part, "rb") as f:
+            for buf in iter(lambda: f.read(1 << 20), b""):
+                h.update(buf)
+        if h.hexdigest() != a.sha256.lower():
+            part.unlink(missing_ok=True)
+            raise RuntimeError(f"{dest.name}: la descarga no coincide con la huella esperada")
     replace_retry(part, dest)
     say("DL", 100)
     say("DONE")
@@ -1233,6 +1241,7 @@ def main():
     d = sub.add_parser("download")
     d.add_argument("--url", required=True)
     d.add_argument("--dest", required=True)
+    d.add_argument("--sha256")
     u = sub.add_parser("unzip")
     u.add_argument("--zip", required=True)
     u.add_argument("--dest", required=True)

@@ -1,8 +1,36 @@
 Storyteller is released under the MIT License (see LICENSE).
 
-The components below are NOT included in this repository. They are downloaded or
+None of the components below is included in this repository. They are downloaded or
 installed on the user's own computer, when the user asks for it, and they stay under
 their own licences.
+
+Interface
+---------
+- PySide6 (Qt for Python): GNU LGPL 3.0, https://www.qt.io/qt-for-python
+- FFmpeg (external program, not installed by the app): GNU LGPL or GPL depending on the
+  build, https://ffmpeg.org/
+
+Narration
+---------
+- F5-TTS: MIT License, https://github.com/SWivid/F5-TTS
+  It requires Unidecode (GNU GPL 2.0 or later), which Storyteller's own code does not use.
+- F5-TTS official weights: CC BY-NC 4.0, https://huggingface.co/SWivid/F5-TTS
+- F5-Spanish weights: CC BY-NC 4.0, https://huggingface.co/jpgallegoar/F5-Spanish
+- coqui-tts: Mozilla Public License 2.0, https://github.com/idiap/coqui-ai-TTS
+- XTTS v2 weights: Coqui Public Model License (non-commercial),
+  https://huggingface.co/coqui/XTTS-v2
+- num2words: GNU LGPL 2.1, https://github.com/savoirfairelinux/num2words
+- PyTorch: BSD License, https://pytorch.org/
+
+Transcription
+-------------
+- faster-whisper and its Whisper models: MIT License,
+  https://github.com/SYSTRAN/faster-whisper
+
+Reading documents
+-----------------
+- Beautiful Soup: MIT License, https://www.crummy.com/software/BeautifulSoup/
+- lxml: BSD 3-Clause License, https://lxml.de/
 
 Document translation
 --------------------
@@ -13,7 +41,5 @@ Document translation
 - python-docx: MIT License, https://github.com/python-openxml/python-docx
 - python-pptx: MIT License, https://github.com/scanny/python-pptx
 - openpyxl: MIT License, https://foss.heptapod.net/openpyxl/openpyxl
-- Beautiful Soup: MIT License, https://www.crummy.com/software/BeautifulSoup/
-- lxml: BSD 3-Clause License, https://lxml.de/
 - Ollama (only in server mode, on the user's own server): MIT License,
   https://github.com/ollama/ollama

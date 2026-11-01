@@ -41,12 +41,18 @@ REQS = ["beautifulsoup4==4.15.0", "lxml==6.1.3", "python-docx==1.2.0", "python-p
 # llama.cpp fijado a una versión probada (no la última del día).
 LLAMA_BUILD = "b11803"
 _LB = f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_BUILD}/"
+# (fichero, sha256 publicado en la versión): se comprueba al descargar, porque luego se ejecuta.
 if os.name == "nt":
-    LLAMA_FILES = [f"llama-{LLAMA_BUILD}-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"]
+    LLAMA_FILES = [(f"llama-{LLAMA_BUILD}-bin-win-cuda-12.4-x64.zip",
+                    "3a9724665d7b1036d2e7f9e1cd2ef869f534bd3a1f7c11972e1eaeb223d9ec07"),
+                   ("cudart-llama-bin-win-cuda-12.4-x64.zip",
+                    "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6")]
 elif sys.platform == "darwin":
-    LLAMA_FILES = [f"llama-{LLAMA_BUILD}-bin-macos-arm64.tar.gz"]
+    LLAMA_FILES = [(f"llama-{LLAMA_BUILD}-bin-macos-arm64.tar.gz",
+                    "742ad51ee1bcf2606b5875d3a45824f8e6fd9000dc4d7488107448e0d40ddd12")]
 else:
-    LLAMA_FILES = [f"llama-{LLAMA_BUILD}-bin-ubuntu-vulkan-x64.tar.gz"]
+    LLAMA_FILES = [(f"llama-{LLAMA_BUILD}-bin-ubuntu-vulkan-x64.tar.gz",
+                    "dac1fc5070dd9f737f97fce15965070a3f9b7d586c66186b509604a3a7ac731c")]
 
 _HF = "https://huggingface.co/mradermacher/"
 
@@ -59,12 +65,14 @@ def _sz(v):
 TR_MODELS = [
     {"id": "translategemma-4b", "name": "TranslateGemma 4B", "size": _sz("2,5 GB"),
      "file": "translategemma-4b-it.Q4_K_M.gguf",
-     "url": _HF + "translategemma-4b-it-GGUF/resolve/main/translategemma-4b-it.Q4_K_M.gguf",
+     "url": _HF + "translategemma-4b-it-GGUF/resolve/d37868f759d2f817a43d28dd80cf9f982ffa62fd/translategemma-4b-it.Q4_K_M.gguf",
+     "sha256": "81200d03e843d2ec1ece6eeafe7d13cb6e5211e1fcd336ade55790b683a08330",
      "ollama": "translategemma:4b",
      "desc": _("Rápido. Cabe en tarjetas gráficas de 6 GB.")},
     {"id": "translategemma-12b", "name": "TranslateGemma 12B", "size": _sz("7,3 GB"),
      "file": "translategemma-12b-it.Q4_K_M.gguf",
-     "url": _HF + "translategemma-12b-it-GGUF/resolve/main/translategemma-12b-it.Q4_K_M.gguf",
+     "url": _HF + "translategemma-12b-it-GGUF/resolve/41d7c8aa650b26791225ad9d0597e674e680da96/translategemma-12b-it.Q4_K_M.gguf",
+     "sha256": "b7aac4b4be7ab0c49b6556c29c4467e74313df7f1e95d9f9676bb2adf0afa528",
      "ollama": "translategemma:12b",
      "desc": _("Traduce mejor. Pide una tarjeta gráfica de 10-12 GB.")},
 ]
@@ -252,16 +260,16 @@ class InstallWorker(QThread):
                           "pip")
                 (_VENV / ".ready").write_text("ok", encoding="utf-8")
             if self.local and find_llama_server() is None:
-                for f in LLAMA_FILES:
+                for f, sha in LLAMA_FILES:
                     dest = WORK / "dl" / f
-                    self._run([str(VPY), "-I", str(ENGINE), "download", "--url", _LB + f, "--dest", str(dest)],
-                              _("Descargando llama.cpp…"))
+                    self._run([str(VPY), "-I", str(ENGINE), "download", "--url", _LB + f, "--dest", str(dest),
+                               "--sha256", sha], _("Descargando llama.cpp…"))
                     self._run([str(VPY), "-I", str(ENGINE), "unzip", "--zip", str(dest), "--dest",
                                str(LLAMA_DIR)], "unzip")
                     dest.unlink(missing_ok=True)
             if self.local and not gguf_path(self.model).exists():
                 self._run([str(VPY), "-I", str(ENGINE), "download", "--url", self.model["url"], "--dest",
-                           str(gguf_path(self.model))],
+                           str(gguf_path(self.model))] + (["--sha256", self.model["sha256"]] if self.model.get("sha256") else []),
                           _("Descargando {0} ({1})…").format(self.model["name"], self.model["size"]))
             self.done.emit()
         except Exception as e:
@@ -398,7 +406,7 @@ class TranslatePage(QWidget):
         self.pickBtn = QPushButton(_("Elegir archivo…")); self.pickBtn.setObjectName("tb")
         self.pickBtn.setCursor(Qt.PointingHandCursor); self.pickBtn.clicked.connect(self._pick)
         self.fileLbl = QLabel(_("EPUB, PDF, Word, PowerPoint, Excel, subtítulos (SRT/VTT), TXT o Markdown"))
-        self.fileLbl.setObjectName("booksub"); self.fileLbl.setWordWrap(True)
+        self.fileLbl.setObjectName("booksub"); self.fileLbl.setWordWrap(True); self.fileLbl.setTextFormat(Qt.PlainText)
         frow.addWidget(self.pickBtn); frow.addWidget(self.fileLbl, 1)
         col.addLayout(frow)
 
@@ -440,7 +448,7 @@ class TranslatePage(QWidget):
         card = QFrame(); card.setObjectName("bookcard")
         cv = QVBoxLayout(card); cv.setContentsMargins(14, 10, 14, 10); cv.setSpacing(6)
         self.modelInfo = QLabel(""); self.modelInfo.setObjectName("booksub"); self.modelInfo.setWordWrap(True)
-        self.modelInfo.setStyleSheet("background: transparent;")
+        self.modelInfo.setStyleSheet("background: transparent;"); self.modelInfo.setTextFormat(Qt.PlainText)
         mrow = QHBoxLayout(); mrow.setSpacing(8)
         self.dlBtn = QPushButton(_("Descargar")); self.dlBtn.setObjectName("tb")
         self.delBtn = QPushButton(_("Borrar")); self.delBtn.setObjectName("tb")
@@ -468,7 +476,7 @@ class TranslatePage(QWidget):
         self.resCard = QFrame(); self.resCard.setObjectName("bookcard")
         rv = QVBoxLayout(self.resCard); rv.setContentsMargins(14, 10, 14, 10); rv.setSpacing(8)
         self.resLbl = QLabel(""); self.resLbl.setWordWrap(True); self.resLbl.setObjectName("booksub")
-        self.resLbl.setStyleSheet("background: transparent;")
+        self.resLbl.setStyleSheet("background: transparent;"); self.resLbl.setTextFormat(Qt.PlainText)
         self.resLbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
         rrow = QHBoxLayout(); rrow.setSpacing(8); rrow.addStretch(1)
         self.folderBtn = QPushButton(_("Abrir carpeta")); self.folderBtn.setObjectName("tb")
@@ -558,7 +566,7 @@ class TranslatePage(QWidget):
         f = QFrame(); f.setObjectName("bookcard")
         row = QHBoxLayout(f); row.setContentsMargins(14, 10, 10, 10); row.setSpacing(10)
         tx = QVBoxLayout(); tx.setSpacing(2)
-        name = QLabel(Path(j.get("inp", "?")).name); name.setWordWrap(True)
+        name = QLabel(Path(j.get("inp", "?")).name); name.setWordWrap(True); name.setTextFormat(Qt.PlainText)
         name.setStyleSheet("background: transparent;")
         total, done = j.get("total") or 0, j["done"]
         count = _("{0} de {1} trozos ({2} %)").format(done, total, round(100 * done / total)) if total \

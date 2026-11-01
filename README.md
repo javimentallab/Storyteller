@@ -68,7 +68,7 @@ Everything runs **locally** (GPU or CPU) or, if you like, on **your own server**
 - **Python 3.11+** with `PySide6` and `PySide6-Addons` (QtMultimedia, ffmpeg backend).
 - **ffmpeg**, **ffprobe** and **curl** on the `PATH`.
 - F5/Whisper engine in `engine/.venv` (PyTorch, `f5-tts`, `faster-whisper`,
-  `num2words`). For NVIDIA GPUs, PyTorch with CUDA.
+  `num2words`, `beautifulsoup4`, `lxml`). For NVIDIA GPUs, PyTorch with CUDA.
 - XTTS engine in a separate venv, `engine/.venv-xtts` (its dependencies clash with
   F5's): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (for the
   QC), **without** `torchcodec` (torch ≥ 2.9 requires it and it fails on Windows).
@@ -113,4 +113,4 @@ secrets and misconfigurations on every push/PR.
 ## License
 
 MIT. See [LICENSE](LICENSE). Components and models that are downloaded separately keep
-their own licence: see [NOTICE](NOTICE).
+their own licence: see [NOTICE](NOTICE). Version history: [CHANGELOG](CHANGELOG.md).

@@ -401,22 +401,52 @@ def _blocks_text(soup):
         lines.append(ln)
     return "\n".join(lines)
 
-def chapters_from_epub(path, min_chars=25):
-    from ebooklib import epub, ITEM_DOCUMENT
+def _epub_package(path):
+    """(zip, carpeta del OPF, OPF ya leído). Un EPUB es un zip: no hace falta otra librería."""
+    import zipfile
     from bs4 import BeautifulSoup
-    book = epub.read_epub(path)
-    id2 = {it.get_id(): it for it in book.get_items()}
-    spine = [id2[i] for (i, _lin) in (book.spine or []) if i in id2]
-    docs = spine or list(book.get_items_of_type(ITEM_DOCUMENT))
+    z = zipfile.ZipFile(path)
+    opf = BeautifulSoup(z.read("META-INF/container.xml"), "xml").find("rootfile")["full-path"]
+    return z, opf.rsplit("/", 1)[0] + "/" if "/" in opf else "", BeautifulSoup(z.read(opf), "xml")
+
+
+def _epub_docs(path):
+    """Documentos del libro en orden de lectura: [(nombre relativo, contenido)]."""
+    import posixpath
+    from urllib.parse import unquote
+    z, base, pkg = _epub_package(path)
+    names = set(z.namelist())
+    def is_doc(it):
+        return it.get("media-type") in ("application/xhtml+xml", "text/html") or \
+            (it.get("href") or "").lower().endswith((".xhtml", ".html", ".htm"))
+    items = {it.get("id"): it for it in pkg.find_all("item")}
+    order = [items[r.get("idref")] for r in pkg.find_all("itemref") if r.get("idref") in items]
+    docs = []
+    for it in (order or list(items.values())):
+        name = unquote(it.get("href") or "")
+        full = posixpath.normpath(base + name)
+        if is_doc(it) and full in names:
+            docs.append((name, z.read(full)))
+    return docs
+
+
+def epub_title(path):
+    """Título del libro (dc:title), o "" si no tiene."""
+    try:
+        t = _epub_package(path)[2].find("title")
+        return t.get_text(strip=True) if t else ""
+    except Exception:
+        return ""
+
+
+def chapters_from_epub(path, min_chars=25):
+    from bs4 import BeautifulSoup
     out = []
-    for it in docs:
-        try:
-            if it.get_type() != ITEM_DOCUMENT: continue
-        except Exception:
-            continue
-        name = (it.get_name() or "").lower()
+    for name, content in _epub_docs(path):
+        name = name.lower()
         if "nav" in name or "toc" in name: continue            # saltar indice
-        soup = BeautifulSoup(it.get_content(), "lxml")
+        soup = BeautifulSoup(content, "lxml")
+        if soup.head: soup.head.decompose()                    # su <title> no se narra
         for t in soup(["script", "style"]): t.decompose()
         h = soup.find(["h1", "h2", "h3"])
         title = (h.get_text(" ", strip=True) if h else "").strip()
@@ -542,9 +572,8 @@ def cmd_generate(a):
     no_state = getattr(a, "no_state", False)
     if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
         try:
-            from ebooklib import epub
-            _t = epub.read_epub(a.epub).get_metadata("DC", "title")
-            if _t and _t[0][0].strip(): write_atomic(os.path.join(a.out, "title.txt"), _t[0][0].strip())
+            _t = epub_title(a.epub)
+            if _t: write_atomic(os.path.join(a.out, "title.txt"), _t)
         except Exception: pass
     print(f"capitulos: {len(chaps)}", flush=True)
     prev = load_prev_manifest(a.out, mani_name) if a.resume else {}

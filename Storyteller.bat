@@ -1,2 +1,2 @@
 @echo off
-start "" "pythonw" "%~dp0storyteller.py" %*
+start "" pythonw "%~dp0storyteller.py" %*
