@@ -624,7 +624,8 @@ class TestNarrateWithQc(BookAndServer):
         self.assert_book_is_whole(p)
         self.assertEqual(sorted(self.engine.calls), self.heard_by_ear())
         self.assertEqual(len(self.engine.calls), self.manifest()[0]["n"])
-        self.assertNotIn("QC", p.stdout)
+        # Un venv solo con engine/deps/base avisa una vez de lo que no mide; de las frases no dice nada.
+        self.assertNotIn("QC frase", p.stdout)
 
     def test_the_narration_key_does_not_go_to_whoever_listens(self):
         self.assert_book_is_whole(self.run_service(*self.qc()))
