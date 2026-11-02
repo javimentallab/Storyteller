@@ -427,7 +427,8 @@ def cmd_whisper(a):
 
 _BLOCK_TAGS = ["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "td", "th",
                "dt", "dd", "pre", "figcaption", "caption", "section", "aside", "header", "footer", "tr"]
-_END_PUNCT = ".?!…:;,»\"”’)]"
+_END_PUNCT = ".?!…:;,»\"”’)]。！？：；，、」』）।؟،؛"
+_HAS_TEXT = re.compile(r"[^\W_]")                # una letra o cifra, de cualquier alfabeto
 
 def _blocks_text(soup):
     """Texto por BLOQUES: cada párrafo/título/recuadro en su línea y, si no acaba en
@@ -446,7 +447,7 @@ def _blocks_text(soup):
             continue
         ln = re.sub(r"\s+([,\.;:\!\?\)\]»”])", r"\1", ln)     # "palabra ," que dejan <i>/<span>
         ln = re.sub(r"([\(\[«“¿¡])\s+", r"\1", ln)
-        if re.search(r"[A-Za-zÀ-ɏ0-9]", ln) and ln[-1] not in _END_PUNCT:
+        if _HAS_TEXT.search(ln) and ln[-1] not in _END_PUNCT:
             ln += "."
         lines.append(ln)
     return "\n".join(lines)
@@ -510,9 +511,13 @@ _ABBR_END = re.compile(r"(?:\b(?:[Ss]r|[Ss]ra|[Ss]rta|[Dd]r|[Dd]ra|[Mm]r|[Mm]rs|
                        r"[Ll]ic|[Ii]ng|EE|vs|[Pp]ág|[Nn]úm|aprox)|(?<![\w.])[A-ZÁÉÍÓÚÑ])\.$")
 
 # Fin de frase: signo, quizá una comilla o un paréntesis que cierra, y espacio. Si sigue
-# minúscula no es fin ("¿Qué hora es? —dijo él", "etc. y", "Bueno… quizá").
-_SENT_SPLIT = re.compile(r"(?:(?<=[.!?…])|(?<=[.!?…][»”\"’)\]]))\s+(?![—–-]?\s*[a-záéíóúüñ])")
-_SENT_END = re.compile(r"[.!?…][»”\"’)\]]*$")
+# minúscula no es fin ("¿Qué hora es? —dijo él", "etc. y", "Bueno… quizá"). En chino y
+# japonés no hay espacio tras el signo: sin cortar ahí, un párrafo entero iría de una vez.
+_SENT_SPLIT = re.compile(r"(?:(?<=[.!?…।؟])|(?<=[.!?…।؟][»”\"’)\]]))\s+(?![—–-]?\s*[a-záéíóúüñ])"
+                         r"|(?:(?<=[。！？])(?![」』”）])|(?<=[。！？][」』”）]))\s*")
+_SENT_END = re.compile(r"[.!?…。！？।؟][»”\"’)\]」』）]*$")
+_CLAUSE_SPLIT = re.compile(r"(?<=[,;:،؛])\s+|(?<=[，、；：])\s*")
+_CLAUSE_END_TIGHT = "，、；："                     # tras estos no se escribe espacio
 
 # Silencio que se añade tras cada trozo según cómo acabe; lo marca la puntuación del
 # libro, no el modelo. trim_clip deja además 40 ms por lado: se oyen 0,30 / 0,63 / 0,98 s.
@@ -535,9 +540,9 @@ def _split_paragraph(text, hard=240, short=20):
         s = s.strip()
         if not s: continue
         clauses = []
-        for p in re.split(r"(?<=[,;:])\s+", s):
+        for p in _CLAUSE_SPLIT.split(s):
             if clauses and len(clauses[-1]) < short:
-                clauses[-1] += " " + p
+                clauses[-1] += ("" if clauses[-1][-1] in _CLAUSE_END_TIGHT else " ") + p
             else:
                 clauses.append(p)
         for p in clauses:
@@ -546,7 +551,7 @@ def _split_paragraph(text, hard=240, short=20):
                 if cut < 0: cut = hard
                 out.append(p[:cut].strip()); p = p[cut:].strip()
             out.append(p)
-    return [c for c in out if re.search(r"[A-Za-zÀ-ɏ0-9]", c)]
+    return [c for c in out if _HAS_TEXT.search(c)]
 
 def split_chunks(text):
     """[(trozo, clave de PAUSES)]. Cada línea del texto es un párrafo (_blocks_text)."""

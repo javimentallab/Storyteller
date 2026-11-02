@@ -32,6 +32,27 @@ class Troceo(unittest.TestCase):
         self.assertEqual(E.split_chunks("Dijo «basta.» Después se fue."),
                          [("Dijo «basta.»", "frase"), ("Después se fue.", "parrafo")])
 
+    def test_otros_alfabetos_no_se_quedan_sin_texto(self):
+        self.assertEqual(E.split_chunks("Привет, это длинная фраза на русском языке, и она продолжается. Хорошо."),
+                         [("Привет, это длинная фраза на русском языке,", "coma"),
+                          ("и она продолжается.", "frase"), ("Хорошо.", "parrafo")])
+        self.assertEqual(E.split_sentences("नमस्ते दुनिया। आप कैसे हैं؟ ठीक."), ["नमस्ते दुनिया।", "आप कैसे हैं؟", "ठीक."])
+        self.assertEqual(E.split_sentences("مرحبا بالعالم الجميل في هذا اليوم، كيف حالك اليوم؟ بخير."),
+                         ["مرحبا بالعالم الجميل في هذا اليوم،", "كيف حالك اليوم؟", "بخير."])
+
+    def test_chino_y_japones_cortan_sin_espacio(self):
+        self.assertEqual(E.split_chunks("你好，世界。今天天气很好！我们走吧。"),
+                         [("你好，世界。", "frase"), ("今天天气很好！", "frase"), ("我们走吧。", "parrafo")])
+        self.assertEqual(E.split_chunks("彼は「行く。」と言った。雨です。"),
+                         [("彼は「行く。」", "frase"), ("と言った。", "frase"), ("雨です。", "parrafo")])
+
+    def test_clausulas_largas_en_chino(self):
+        largo = "这是一个相当长的句子部分用来测试切分功能是否正常工作"
+        self.assertEqual(E.split_sentences(f"{largo}，{largo}。"), [f"{largo}，", f"{largo}。"])
+
+    def test_sin_letras_no_es_un_trozo(self):
+        self.assertEqual(E.split_chunks("* * *\n---\n。"), [])
+
     def test_clausula_enorme_se_corta_en_un_espacio(self):
         trozos = E.split_sentences("palabra " * 60)
         self.assertGreater(len(trozos), 1)
