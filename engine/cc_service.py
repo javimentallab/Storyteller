@@ -139,7 +139,7 @@ class Client:
         self.language = language or ""           # la API estándar no lo lleva; si lo rechaza, se deja de mandar
 
     def _call(self, path, body=None, timeout=TIMEOUT):
-        head = {"User-Agent": "Storyteller/1.0"}  # Cloudflare corta el de Python
+        head = {"User-Agent": "Storyteller/1.1"}  # Cloudflare corta el de Python
         if self.key:
             head["Authorization"] = "Bearer " + self.key
         if body is not None:

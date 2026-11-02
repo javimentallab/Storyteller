@@ -8,10 +8,10 @@
 </p>
 
 Desktop app (PySide6) that turns an **EPUB into a narrated audiobook** with a neural
-voice and plays it with **synced subtitles** (the sentence being read is highlighted;
-click to jump). It also **imports existing audiobooks** and **transcribes them with
-Whisper** to make those subtitles, and **translates books and documents** between 15
-languages with TranslateGemma.
+voice, in the language you choose (17 available with XTTS), and plays it with **synced
+subtitles** (the sentence being read is highlighted; click to jump). It also **imports
+existing audiobooks** and **transcribes them with Whisper** to make those subtitles, and
+**translates books and documents** between 15 languages with TranslateGemma.
 
 Everything runs **locally** (GPU or CPU) or, if you like, on **your own server** over SSH.
 Narration can also use **any voice service by URL**: your own or a public one with its key.
@@ -22,17 +22,26 @@ Narration can also use **any voice service by URL**: your own or a public one wi
 - **Narrate an EPUB** with neural TTS, choosing the engine in *Models*:
   - **XTTS v2 multilingual** (coqui-tts): reads the whole sentence in one go and
     pronounces foreign words in the text properly (e.g. English inside a Spanish book).
-    Clones the voice from a reference recording.
+    Clones the voice from a reference recording. Narrates in **17 languages**, chosen in
+    *Models*: English, Spanish, French, German, Italian, Portuguese, Dutch, Polish, Czech,
+    Hungarian, Turkish, Russian, Arabic, Hindi, Chinese, Japanese and Korean.
   - **F5-TTS** (Spanish or English): one model per language.
+  - **A voice service by URL**: your own XTTS with `st_server.py` ([API](docs/server-api.md))
+    or a public service with its key, with several **requests at a time**. There your own
+    server can also receive new voices and hand finished books to other apps.
+- **Pauses that follow the book**: it cuts at every comma, so the pauses after a comma, a
+  full stop and a paragraph are set by the punctuation and not left to the model.
 - **Parallel chunks** (1, 2 or 3): splits the chapters between several processes on the
   same GPU; with XTTS, 3 chunks narrate about 2.5 times faster.
 - **Time left** in the progress bar ("~1 h 10 min left, done around 14:35"), worked out
   from each chunk's real pace.
 - **Quality check (QC) with Whisper**: transcribes every narrated sentence and
-  regenerates it when words are missing, text is made up or it gets stuck repeating.
-- **Text prepared for the voice**: numbers spelled out in the model's language,
+  regenerates it when words are missing, text is made up or it gets stuck repeating. It also
+  measures the audio, because Whisper doesn't hear babbling without words.
+- **Text prepared for the voice**: numbers spelled out in the language being narrated,
   acronyms spelled letter by letter, CAPITALS, punctuation, and an editable
-  **pronunciation dictionary** (`pron.json`) for words that sound wrong.
+  **pronunciation dictionary** (`pron.json`, with a part for each language) for words that
+  sound wrong.
 - **Import an audiobook** (mp3/m4a/…) and transcribe it with Whisper → timed subtitles.
   Language can be chosen or detected.
 - **Player** with synced subtitles, autoscroll, speed control, skips, go to
@@ -43,7 +52,8 @@ Narration can also use **any voice service by URL**: your own or a public one wi
 - **Stop and save / Resume** both narration and transcription, even with another model
   (what is already done is kept; they work in blocks and
   save progress; they carry on from the same sentence). Closing the app during a
-  narration is the same as *Stop and save*.
+  narration is the same as *Stop and save*. One job runs at a time: resuming another book
+  asks whether to stop the current one, which stays saved, and switch to it.
 - **Library**: resume half-done books, **regenerate** one from its original EPUB, and
   delete it.
 - **Translate documents** (*Translate…* button) with **TranslateGemma**: EPUB, PDF, Word,
@@ -55,7 +65,7 @@ Narration can also use **any voice service by URL**: your own or a public one wi
   resumed, even with another model, and the translated EPUB can be sent to narration
   with one click.
 - **Model manager** (*Models* screen): download/delete voice models (XTTS v2, F5) and
-  transcription models (faster-whisper), with a progress bar (size, speed, time left) and *Cancel*, choose the language, parallel chunks and QC,
+  transcription models (faster-whisper), with a progress bar (size, speed, time left) and *Cancel*, choose the narration language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed
   automatically**). Catalogue of downloadable voices.
 
@@ -179,7 +189,8 @@ the system language (English if it is not in the list); to force one, use
 ## Security
 
 Continuous scanning with **Trivy** (`.github/workflows/trivy.yml`): vulnerabilities,
-secrets and misconfigurations on every push/PR.
+secrets and misconfigurations on every push/PR and every week. **CodeQL** analyzes the code,
+the tests run in CI, and every Action is pinned by commit.
 
 ## Contributing
 

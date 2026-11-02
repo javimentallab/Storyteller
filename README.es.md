@@ -8,10 +8,10 @@
 </p>
 
 Aplicación de escritorio (PySide6) que convierte **EPUB en audiolibro narrado** con
-voz neural y lo reproduce con **subtítulos sincronizados** (la frase que suena se
-resalta; clic para saltar). También **importa audiolibros existentes** y los
-**transcribe con Whisper** para generar esos subtítulos, y **traduce libros y documentos**
-entre 15 idiomas con TranslateGemma.
+voz neural, en el idioma que elijas (17 disponibles con XTTS), y lo reproduce con
+**subtítulos sincronizados** (la frase que suena se resalta; clic para saltar). También
+**importa audiolibros existentes** y los **transcribe con Whisper** para generar esos
+subtítulos, y **traduce libros y documentos** entre 15 idiomas con TranslateGemma.
 
 Todo corre **en local** (GPU o CPU) o, si quieres, en un **servidor propio** por SSH.
 La narración también puede usar **cualquier servicio de voz por URL**: el tuyo o uno público con su clave.
@@ -22,17 +22,25 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
 - **Narrar un EPUB** con TTS neural, eligiendo motor en *Modelos*:
   - **XTTS v2 multilingüe** (coqui-tts): lee la frase entera de una pasada y pronuncia
     bien las palabras en otro idioma dentro del texto (p. ej. inglés en un libro en
-    español). Clona la voz a partir de un audio de referencia.
+    español). Clona la voz a partir de un audio de referencia. Narra en **17 idiomas**,
+    que se eligen en *Modelos*: español, inglés, francés, alemán, italiano, portugués,
+    neerlandés, polaco, checo, húngaro, turco, ruso, árabe, hindi, chino, japonés y coreano.
   - **F5-TTS** (Español o Inglés): un modelo por idioma.
+  - **Un servicio de voz por URL**: tu propio XTTS con `st_server.py` ([API](docs/server-api.md))
+    o un servicio público con su clave, con varias **peticiones a la vez**. Ahí tu servidor
+    también puede recibir voces nuevas y dar libros terminados a otras apps.
+- **Pausas que sigue el libro**: corta en cada coma, así que las pausas tras una coma, un
+  punto y un párrafo las marca la puntuación y no se dejan al modelo.
 - **Tramos en paralelo** (1, 2 o 3): reparte los capítulos entre varios procesos en la
   misma GPU; con XTTS, 3 tramos narran unas 2,5 veces más rápido.
 - **Tiempo restante** en la barra de progreso («quedan ~1 h 10 min, hacia las 14:35»),
   calculado con el ritmo real de cada tramo.
 - **Control de calidad (QC) con Whisper**: transcribe cada frase narrada y la regenera
-  si faltan palabras, se inventa texto o entra en bucle repitiendo.
-- **Texto preparado para la voz**: números en palabras en el idioma del modelo, siglas
+  si faltan palabras, se inventa texto o entra en bucle repitiendo. También mide el audio,
+  porque Whisper no oye el balbuceo sin palabras.
+- **Texto preparado para la voz**: números en palabras en el idioma que se narra, siglas
   deletreadas, MAYÚSCULAS, puntuación, y un **diccionario de pronunciación** editable
-  (`pron.json`) para las palabras que suenen mal.
+  (`pron.json`, con una parte por idioma) para las palabras que suenen mal.
 - **Importar un audiolibro** (mp3/m4a/…) y transcribirlo con Whisper → subtítulos
   con tiempos. Idioma seleccionable o autodetección.
 - **Reproductor** con subtítulos sincronizados, autoscroll, control de velocidad,
@@ -43,7 +51,8 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
 - **Detener y guardar / Reanudar** tanto la narración como la transcripción, también con
   otro modelo (lo ya hecho se conserva; van por
   bloques y guardan el progreso; se continúan desde la misma frase). Cerrar la app
-  durante una narración equivale a «Detener y guardar».
+  durante una narración equivale a «Detener y guardar». Hay un solo trabajo a la vez: al
+  reanudar otro libro, pregunta si detiene el actual, que queda guardado, y pasa a él.
 - **Biblioteca**: reanudar libros a medias, **regenerar** uno desde su EPUB original y
   borrarlo.
 - **Traducir documentos** (botón *Traducir…*) con **TranslateGemma**: EPUB, PDF, Word,
@@ -54,7 +63,7 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
   (Ollama por SSH). Se puede detener y reanudar, también con otro modelo, y el EPUB
   traducido se manda a narrar con un clic.
 - **Gestor de modelos** (pantalla *Modelos*): descargar/borrar modelos de voz (XTTS v2,
-  F5) y de transcripción (faster-whisper), con barra de progreso (tamaño, velocidad, tiempo restante) y *Cancelar*, elegir idioma, tramos en paralelo y QC, y
+  F5) y de transcripción (faster-whisper), con barra de progreso (tamaño, velocidad, tiempo restante) y *Cancelar*, elegir el idioma de la narración, tramos en paralelo y QC, y
   **cargar voces** desde archivo
   o por URL (el texto de referencia se **autotranscribe**). Catálogo de voces
   descargables.
@@ -76,7 +85,6 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
   QC) + `beautifulsoup4` + `lxml` (para leer el EPUB), **sin** `torchcodec` (torch ≥ 2.9 lo
   exige y en Windows falla). Para narrar en japonés o chino necesita además
   `cutlet fugashi unidic-lite` o `pypinyin`.
-
 - Traducción: se instala sola desde su pantalla (`engine/.venv-translate` y
   `engine/llama.cpp`). En modo servidor, Ollama en el servidor.
 
@@ -180,7 +188,8 @@ El modo *Servidor propio* usa un motor equivalente en el servidor por SSH (no in
 ## Seguridad
 
 Escaneo continuo con **Trivy** (`.github/workflows/trivy.yml`): vulnerabilidades,
-secretos y malas configuraciones en cada push/PR.
+secretos y malas configuraciones en cada push/PR y cada semana. **CodeQL** analiza el código,
+los tests corren en CI y cada Action está fijada por commit.
 
 ## Contribuir
 

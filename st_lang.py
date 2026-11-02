@@ -47,8 +47,8 @@ SOURCE = [
     'quedan {0} (hacia las {1})',  # 28
     'quedan {0} ({1})',  # 29
     'Sección {0}',  # 30
-    'Enviando el EPUB a Mint…',  # 31
-    'No pude enviar el EPUB a Mint:\n',  # 32
+    'Enviando el EPUB al servidor…',  # 31
+    'No pude enviar el EPUB al servidor:\n',  # 32
     'Reanudando el motor de voz…',  # 33
     'Arrancando el motor de voz…',  # 34
     'Narrando capítulo {0}/{1} — frase {2}',  # 35
@@ -108,7 +108,7 @@ SOURCE = [
     'Servidor:',  # 89
     'usuario@host de tu servidor (SSH)',  # 90
     'Revisar y regenerar frases que suenen mal (QC Whisper)',  # 91
-    'Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el Mint, el del Mint. (En local hace falta un modelo Whisper descargado.)',  # 92
+    'Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el servidor, el del servidor. (En local hace falta un modelo Whisper descargado.)',  # 92
     'Velocidad / uso de GPU:',  # 93
     'Normal — 1 tramo (no satura la GPU, más lento)',  # 94
     'Rápido — 2 tramos (≈1,8×)',  # 95

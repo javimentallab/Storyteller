@@ -2,9 +2,9 @@
 """
 Storyteller — app de escritorio (PySide6).
 Biblioteca de libros narrados + reproductor con subtitulos sincronizados.
-Lee un EPUB, lo manda a Mint para narrarlo con la voz neural (F5, voz A),
+Lee un EPUB, lo manda al servidor para narrarlo con la voz neural (F5, voz A),
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
-resaltada, clic para saltar). La generacion corre en Mint (GPU) por SSH.
+resaltada, clic para saltar). La generacion corre en el servidor (GPU) por SSH.
 """
 import sys, os, re, json, shutil, subprocess, time, tempfile, threading
 from pathlib import Path
@@ -24,7 +24,7 @@ from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chap
                      merge_stream_manifests, read_gen_state, recover_interrupted, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, ENGINE_PACKAGES)
 
-__version__ = "1.0"
+__version__ = "1.1"
 
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "epub-tts"                # relativa al home del usuario del servidor
@@ -163,8 +163,8 @@ def whisper_installed(w):
     return (model_dir(w["id"]) / "model.bin").exists()
 def qc_args_local(cfg=None):
     """Args de QC para los motores LOCALES (4070): usan el Whisper descargado en
-    «Modelos» (en CPU, sin red), NUNCA el voz-server del Mint. El remoto (Mint) hace
-    su QC en el propio Mint. Devuelve (args, aviso-o-None)."""
+    «Modelos» (en CPU, sin red), NUNCA el voz-server del servidor. El remoto hace
+    su QC en el propio servidor. Devuelve (args, aviso-o-None)."""
     cfg = cfg or load_config()
     if not cfg.get("qc_auto"):
         return [], None
@@ -401,7 +401,7 @@ class GenWorker(QThread):
                               encoding="utf-8", errors="replace", creationflags=NOWIN)
 
     def stop(self, save):
-        """Detiene la narración en Mint. save=True conserva lo hecho; False descarta."""
+        """Detiene la narración en el servidor. save=True conserva lo hecho; False descarta."""
         self.mode = "stopsave" if save else "cancel"
         try:
             # matar solo el python de narración; el script sigue y rearranca el voz-server
@@ -458,7 +458,7 @@ class GenWorker(QThread):
             if self.xtts:
                 r = self._run(SSH + [self.host, f"test -x {REMOTE_DIR}/.venv-xtts/bin/python && test -x {REMOTE_DIR}/run_xtts.sh"])
                 if r.returncode == 255:                    # 255 = no hay conexión
-                    self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + r.stderr.strip())
+                    self.failed.emit(_("No pude enviar el EPUB al servidor:\n") + r.stderr.strip())
                     return
                 if r.returncode != 0 or not self.voice:
                     self.failed.emit(_("El servidor no tiene instalado XTTS. Elige otro modelo en «Modelos» o instálalo en el servidor."))
@@ -477,15 +477,15 @@ class GenWorker(QThread):
                     shutil.copyfile(epub, tmp_epub); epub = Path(tmp_epub)
             except Exception: pass
             remote_epub = f"{REMOTE_DIR}/inbox/{self.name}.epub"
-            self.progress.emit(_("Enviando el EPUB a Mint…"), -1)
+            self.progress.emit(_("Enviando el EPUB al servidor…"), -1)
             r = self._run(SCP + [str(epub), f"{self.host}:{remote_epub}"])
             if r.returncode != 0:
-                self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + r.stderr.strip()); return
+                self.failed.emit(_("No pude enviar el EPUB al servidor:\n") + r.stderr.strip()); return
             if self.xtts:
                 try:
                     self._send_xtts(dest)
                 except RuntimeError as e:
-                    self.failed.emit(_("No pude enviar el EPUB a Mint:\n") + str(e)); return
+                    self.failed.emit(_("No pude enviar el EPUB al servidor:\n") + str(e)); return
 
             self.progress.emit(_("Reanudando el motor de voz…") if self.resume
                                else _("Arrancando el motor de voz…"), -1)
@@ -684,7 +684,7 @@ class LocalGenWorker(QThread):
                     cmd += ["--resume"]
                 if pron.exists():
                     cmd += ["--pron", str(pron)]
-                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el Mint)
+                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el servidor)
                 if _note: self.progress.emit(_note, -1)
                 cmd += _qa
             else:
@@ -700,7 +700,7 @@ class LocalGenWorker(QThread):
                     cmd += ["--pron", str(pron)]                  # diccionario de pronunciación
                 if self.voice:
                     cmd += ["--voice", str(self.voice["wav"]), "--voice-text", str(self.voice["txt"])]
-                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el Mint)
+                _qa, _note = qc_args_local()                 # QC en LOCAL = Whisper local (nunca el servidor)
                 if _note: self.progress.emit(_note, -1)
                 cmd += _qa
             # Nº de tramos en paralelo: reparte los capítulos entre N procesos en la
@@ -1610,8 +1610,8 @@ class ModelsScreen(QWidget):
         self.qcChk = QCheckBox(_("Revisar y regenerar frases que suenen mal (QC Whisper)"))
         self.qcChk.setToolTip(_("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
                               "texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del "
-                              "sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el Mint, "
-                              "el del Mint. (En local hace falta un modelo Whisper descargado.)"))
+                              "sitio donde narras: en LOCAL el modelo descargado en «Modelos»; en el servidor, "
+                              "el del servidor. (En local hace falta un modelo Whisper descargado.)"))
         self.qcChk.setCursor(Qt.PointingHandCursor)
         self.qcChk.toggled.connect(self._qc_changed)
         self.col.addWidget(self.qcChk)
