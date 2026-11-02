@@ -1,6 +1,6 @@
 # Italiano. NN|testo, NN = posizione in st_lang.SOURCE; \n = a capo; mantenere {0}, {1}…
 0|F5 spagnolo
-1|Spagnolo di Spagna, alta qualità. È la voce A.
+1|Spagnolo di Spagna, alta qualità.
 2|F5 inglese (ufficiale)
 3|Inglese (modello base ufficiale F5-TTS). Meglio con una voce di riferimento in inglese.
 4|XTTS v2 (multilingue)
@@ -20,7 +20,7 @@
 18|Galiziano
 19|Basco
 20|Il QC è attivo ma non c’è nessun modello Whisper scaricato. Scaricane uno in “Modelli” per controllare la qualità. Narro senza QC.
-21|Voce A — grave (F5 spagnolo)
+21|Narratore — grave (F5 spagnolo)
 22|calcolo del tempo rimanente…
 23|meno di 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Importa audiolibro…
 77|Aggiungi un audiolibro/audio esistente e trascrivilo (Whisper) per i sottotitoli
 78|Apri EPUB…
-79|Ancora nessun libro.\nPremi “Apri EPUB…” e Storyteller lo narrerà con la voce A.
+79|Ancora nessun libro.\nPremi “Apri EPUB…” e Storyteller lo narrerà.
 80|Ferma e salva
 81|Annulla
 82|Elimina libro
@@ -358,3 +358,16 @@
 356|Per narrare con un servizio basta poter leggere l’EPUB. Per installarlo, esegui questo in un terminale:\n\n{0}
 357|Il QC non ha potuto controllare {0} frasi: restano come le ha prodotte il modello. Il motivo è nel gen.log del libro.
 358|non controllato (QC)
+359|Sì
+360|No
+361|OK
+362|Copia
+363|Whisper per controllare:
+364|Vuoto: il Whisper di questo computer, sulla CPU
+365|Chiave di Whisper:
+366|Modello di Whisper:
+367|Ogni frase ricevuta viene trascritta e, se non corrisponde al testo, richiesta di nuovo fino ad altre 2 volte: ci vuole di più e, con un servizio a pagamento, costa di più.
+368|Senza URL di Whisper, il QC ha bisogno di Whisper nell’ambiente di un motore di questo computer, e non c’è.
+369|In questo ambiente, il QC confronta ciò che sente Whisper con il testo, ma non misura la voce in più alla fine di ogni frase, perché manca numpy.
+370|Il QC è attivo, ma non c’è con cosa controllare: né URL di Whisper né Whisper su questo computer. Questa narrazione non sarà controllata.
+371|Questo indirizzo non è cifrato: la chiave e l’audio viaggerebbero in chiaro. Fuori dalla rete di casa, usa https.

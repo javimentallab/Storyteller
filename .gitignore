@@ -22,6 +22,7 @@ config.json
 server.json
 # clave del servicio de voz por URL
 service.key
+service_qc.key
 # traducción: ajustes y progreso guardado
 translate.json
 translations/

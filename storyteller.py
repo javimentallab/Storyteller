@@ -2,19 +2,20 @@
 """
 Storyteller — app de escritorio (PySide6).
 Biblioteca de libros narrados + reproductor con subtitulos sincronizados.
-Lee un EPUB, lo manda al servidor para narrarlo con la voz neural (F5, voz A),
+Lee un EPUB, lo manda al servidor para narrarlo con la voz neural,
 se trae la grabacion + el mapa de tiempos y lo reproduce (frase que suena
 resaltada, clic para saltar). La generacion corre en el servidor (GPU) por SSH.
 """
 import sys, os, re, json, shutil, subprocess, time, tempfile, threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer
-from PySide6.QtGui import QShortcut, QKeySequence, QIcon
+from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer, QTranslator, QLibraryInfo
+from PySide6.QtGui import QShortcut, QKeySequence, QIcon, QFontDatabase, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QSlider, QScrollArea, QFileDialog, QProgressBar,
     QFrame, QMessageBox, QInputDialog, QLineEdit, QCheckBox, QProgressDialog, QSizePolicy, QGridLayout,
+    QDialog, QPlainTextEdit,
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
@@ -43,6 +44,7 @@ VPY_XTTS   = _VENV_XTTS / ("Scripts/python.exe" if os.name == "nt" else "bin/pyt
 CC_XTTS    = HOME_CC / "engine" / "cc_xtts.py"
 CC_SERVICE = HOME_CC / "engine" / "cc_service.py"   # narrar con un servicio por URL
 SERVICE_KEY = HOME_CC / "service.key"
+SERVICE_QC_KEY = HOME_CC / "service_qc.key"   # la del Whisper que revisa: puede ser de otro
 MODELS_DIR = HOME_CC / "models"
 CONFIG     = HOME_CC / "config.json"
 PRON_FILE  = HOME_CC / "pron.json"   # diccionario de pronunciación (para el motor)
@@ -76,7 +78,7 @@ NOWIN = 0x08000000 if os.name == "nt" else 0
 MODELS = [
     {"id": "f5-spanish", "name": _("F5 Español"), "backend": "f5", "repo": "jpgallegoar/F5-Spanish",
      "ckpt": "model_1250000.safetensors", "vocab": "vocab.txt", "arch": "F5TTS_Base",
-     "lang": "es", "size": "~1,3 GB", "desc": _("Castellano peninsular, alta calidad. Es la voz A.")},
+     "lang": "es", "size": "~1,3 GB", "desc": _("Castellano peninsular, alta calidad.")},
     {"id": "f5-english", "name": _("F5 Inglés (oficial)"), "backend": "f5", "repo": "SWivid/F5-TTS",
      "ckpt": "F5TTS_v1_Base/model_1250000.safetensors", "vocab": "F5TTS_v1_Base/vocab.txt",
      "arch": "F5TTS_v1_Base", "lang": "en", "size": "~1,3 GB",
@@ -168,8 +170,8 @@ def active_whisper_id(cfg=None):
 def whisper_installed(w):
     return (model_dir(w["id"]) / "model.bin").exists()
 def qc_args_local(cfg=None, model=None):
-    """Args de QC para los motores LOCALES (4070): usan el Whisper descargado en
-    «Modelos» (en CPU, sin red), NUNCA el voz-server del servidor. El remoto hace
+    """Args de QC para los motores LOCALES: usan el Whisper descargado en
+    «Modelos» (en CPU, sin red), NUNCA el Whisper del servidor. El remoto hace
     su QC en el propio servidor. Devuelve (args, aviso-o-None). Con aviso no se revisa."""
     cfg = cfg or load_config()
     if not cfg.get("qc_auto"):
@@ -233,9 +235,11 @@ def whisper_python():
     venv = whisper_venv(ENGINE_DIR)
     return (VPY_XTTS if venv == VENV_XTTS else VPY) if venv else None
 
+INSTALL_HEAD = "cd ~/cuentacuentos"
+
 def install_text(what):
     """Los comandos para pegarlos en una terminal: son los del README, desde la carpeta de la app."""
-    return "\n".join(["cd ~/cuentacuentos"] + install_commands(what))
+    return "\n".join([INSTALL_HEAD] + install_commands(what))
 def engine_how_text(model):
     """Cómo instalar el motor que le falta a ese modelo."""
     if model.get("backend") == "xtts":
@@ -254,11 +258,59 @@ def whisper_how_text(backend=None):
 def next_model_id(cfg):
     """Con qué modelo seguir al quitar el activo: el primero que pueda narrar aquí o, si no, el de partida."""
     return next((m["id"] for m in all_models(cfg) if voice_engine_ready(m) and model_installed(m)), DEFAULT_MODEL)
+def how_parts(text):
+    """(lo de antes, los comandos, lo de después) de un aviso. Sin comandos, todo es «lo de antes»."""
+    paras = text.split("\n\n")
+    for i, para in enumerate(paras):
+        if para.startswith(INSTALL_HEAD):
+            return "\n\n".join(paras[:i]), para, "\n\n".join(paras[i + 1:])
+    return text, "", ""
+def how_dialog(parent, text):
+    """Un aviso con comandos: van en su cuadro, sin partir las líneas, y se copian de una vez."""
+    before, commands, after = how_parts(text)
+    dlg = QDialog(parent); dlg.setWindowTitle("Storyteller")
+    lay = QVBoxLayout(dlg)
+    box = QPlainTextEdit(commands); box.setObjectName("commands"); box.setReadOnly(True)
+    box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+    fixed = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+    box.setStyleSheet(f"font-family: '{fixed.family()}';")       # con setFont manda la hoja de estilo de la app
+    fm = QFontMetrics(fixed); lines = commands.splitlines()
+    wide = max((fm.horizontalAdvance(l) for l in lines), default=0) + 2 * fm.averageCharWidth() + 28
+    # Lo que no quepa en la pantalla se ve con la barra: una línea partida no se puede pegar.
+    box.setMinimumWidth(min(wide, 900))
+    box.setFixedHeight(fm.lineSpacing() * (len(lines) + 1) + 34)
+    for part, widget in ((before, None), (None, box), (after, None)):
+        if widget:
+            lay.addWidget(widget)
+        elif part:
+            label = QLabel(part); label.setWordWrap(True); label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            lay.addWidget(label)
+    row = QHBoxLayout(); row.addStretch(1)
+    copy = QPushButton(_("Copiar")); ok = QPushButton(_("Aceptar")); ok.setDefault(True)
+    copy.clicked.connect(lambda: QApplication.clipboard().setText(commands))
+    ok.clicked.connect(dlg.accept)
+    row.addWidget(copy); row.addWidget(ok); lay.addLayout(row)
+    return dlg
 def show_how(parent, text):
-    """Un aviso con comandos: el texto se puede seleccionar para copiarlos."""
+    """Un aviso que puede traer comandos para pegarlos en una terminal."""
+    if how_parts(text)[1]:
+        how_dialog(parent, text).exec()
+        return
     box = QMessageBox(QMessageBox.Icon.Information, "Storyteller", text, QMessageBox.StandardButton.Ok, parent)
     box.setTextInteractionFlags(Qt.TextSelectableByMouse)
     box.exec()
+def warn(parent, text, title="Storyteller"):
+    """Un aviso de que algo ha fallado; si trae comandos, sin partirlos."""
+    if how_parts(text)[1]:
+        show_how(parent, text)
+    else:
+        QMessageBox.warning(parent, title, text)
+def fit_popup(combo):
+    """La lista desplegable, con los nombres enteros aunque el cuadro cerrado sea más estrecho."""
+    fm = combo.fontMetrics()
+    wide = max((fm.horizontalAdvance(combo.itemText(i)) for i in range(combo.count())), default=0)
+    combo.view().setTextElideMode(Qt.TextElideMode.ElideNone)
+    combo.view().setMinimumWidth(wide + 48)
 
 def voices():
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
@@ -269,7 +321,7 @@ def voices():
         vid = wav.stem
         namef = wav.with_suffix(".name")
         if namef.exists(): name = namef.read_text(encoding="utf-8").strip()
-        elif vid == "narrator": name = _("Voz A — grave (F5 Español)")
+        elif vid == "narrator": name = _("Narrador — grave (F5 Español)")
         else: name = vid.replace("-", " ").capitalize()
         out.append({"id": vid, "name": name, "wav": wav, "txt": txt})
     return out
@@ -296,25 +348,87 @@ def service_module():
 def service_cfg(cfg=None):
     s = (cfg or load_config()).get("service") or {}
     return {"url": s.get("url", ""), "model": s.get("model", ""), "voice": s.get("voice", ""),
-            "parallel": max(1, min(int(s.get("parallel", 1) or 1), 4))}
+            "parallel": max(1, min(int(s.get("parallel", 1) or 1), 4)),
+            "qc_url": s.get("qc_url", ""), "qc_model": s.get("qc_model", "")}
 
-def service_key():
-    try: return SERVICE_KEY.read_text("utf-8").strip()
+def service_key(path=SERVICE_KEY):
+    try: return path.read_text("utf-8").strip()
     except OSError: return ""
 
-def save_service_key(key):
+def save_service_key(key, path=SERVICE_KEY):
     """Aparte de config.json y legible solo por el usuario."""
     try:
         if key:
-            fd = os.open(SERVICE_KEY, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(key)
         else:
-            SERVICE_KEY.unlink(missing_ok=True)
+            path.unlink(missing_ok=True)
     except OSError: pass
 
-def service_python():
-    """El Python que lee el EPUB para el servicio: el de un motor instalado."""
-    return VPY if epub_ready() else (VPY_XTTS if xtts_ready() else None)
+# Lo que necesita el Whisper local dentro del proceso de cc_service (cc_engine.qc_transcribe_local).
+LOCAL_QC_PACKAGES = ("numpy", "soundfile", "faster-whisper")
+
+def python_has(py, packages):
+    """¿Tiene el venv de ese Python estos paquetes? Sin importar nada, como venv_has."""
+    return venv_has(Path(py).parent.parent, packages)
+
+def service_python(cfg=None):
+    """El Python que lee el EPUB para el servicio: el de un motor instalado. Si se va a revisar con el
+    Whisper de este equipo, que corre en ese proceso, mejor el que lo tenga."""
+    cfg = cfg or load_config()
+    envs = [py for py, ready in ((VPY, epub_ready()), (VPY_XTTS, xtts_ready())) if ready]
+    if cfg.get("qc_auto") and not service_cfg(cfg)["qc_url"]:
+        envs.sort(key=lambda py: not python_has(py, LOCAL_QC_PACKAGES))
+    return envs[0] if envs else None
+
+def service_qc(cfg=None):
+    """Cómo revisar lo que llega del servicio: (args de cc_service, clave de ese Whisper, aviso). Con aviso
+    no se revisa. Una URL escrita manda sobre el Whisper de este equipo."""
+    cfg = cfg or load_config()
+    if not cfg.get("qc_auto"):
+        return [], "", None
+    s = service_cfg(cfg)
+    tune = ["--qc-threshold", "0.85", "--qc-retries", "2"]
+    if s["qc_url"]:
+        model = ["--qc-model", s["qc_model"]] if s["qc_model"] else []
+        return ["--qc-url", s["qc_url"]] + model + tune, service_key(SERVICE_QC_KEY), None
+    py = service_python(cfg)
+    if not py or not python_has(py, LOCAL_QC_PACKAGES):
+        return [], "", _("QC activado, pero no hay con qué revisar: ni URL de Whisper ni Whisper en este equipo. "
+                         "Esta narración no se revisará.")
+    w = whisper_by_id(active_whisper_id(cfg))
+    if not whisper_installed(w):
+        return [], "", (_("QC activado pero no hay modelo Whisper descargado. Descárgalo en "
+                          "«Modelos» para que revise la calidad. Narro sin QC."))
+    return ["--qc-whisper-dir", str(model_dir(w["id"]))] + tune, "", None
+
+def service_qc_hint(cfg):
+    """(lo que hay que saber del QC con un servicio, ¿ofrecer instalar Whisper?). Sin prometer más de lo que hará."""
+    s = service_cfg(cfg); py = service_python(cfg)
+    if s["qc_url"]:
+        if py and not python_has(py, ("numpy",)):
+            return _("Con este entorno, el QC compara lo que oye Whisper con el texto, pero no mide la voz de más "
+                     "al final de cada frase, porque falta numpy."), False
+        return "", False
+    if py and python_has(py, LOCAL_QC_PACKAGES):
+        if whisper_installed(whisper_by_id(active_whisper_id(cfg))):
+            return "", False
+        return _("El QC necesita un modelo Whisper: descárgalo más abajo."), False
+    # Sin soundfile, instalar Whisper no bastaría: solo hay un entorno para leer el EPUB.
+    return (_("Sin URL de Whisper, el QC necesita Whisper en el entorno de un motor de este equipo, y no está."),
+            bool(py and python_has(py, ("soundfile",))))
+
+def service_command(model, epub, dest, pron=None, resume=False):
+    """La orden de cc_service. Las claves no van aquí: se verían en la lista de procesos."""
+    cmd = [str(model["python"]), "-I", str(CC_SERVICE), "generate",
+           "--epub", str(epub), "--out", str(dest), "--url", model["url"],
+           "--model", model["model"], "--voice", model["voice"],
+           "--lang", model.get("lang", "es"), "--parallel", str(model.get("parallel", 1))]
+    if resume:
+        cmd += ["--resume"]
+    if pron and pron.exists():
+        cmd += ["--pron", str(pron)]
+    return cmd + service_qc()[0]
 
 def service_error_text(kind, detail=""):
     """Lo que le pasa al servicio, para el usuario. El mensaje del propio servicio, si dio alguno, detrás."""
@@ -457,7 +571,7 @@ class GenWorker(QThread):
         """Detiene la narración en el servidor. save=True conserva lo hecho; False descarta."""
         self.mode = "stopsave" if save else "cancel"
         try:
-            # matar solo el python de narración; el script sigue y rearranca el voz-server
+            # matar solo el python de narración; el script sigue y rearranca su servicio de voz
             subprocess.run(SSH + [self.host, "pkill -f 'epub2audio.py|xtts_tramos.py|cc_xtts.py'"],
                            capture_output=True, text=True, timeout=20, creationflags=NOWIN)
         except Exception:
@@ -720,14 +834,7 @@ class LocalGenWorker(QThread):
             pron = ensure_pron()
             if self.service:
                 # La voz la hace el servicio; aquí se lee el EPUB y se guarda lo que llega.
-                cmd = [str(self.model["python"]), "-I", str(CC_SERVICE), "generate",
-                       "--epub", str(epub), "--out", str(dest), "--url", self.model["url"],
-                       "--model", self.model["model"], "--voice", self.model["voice"],
-                       "--lang", self.model.get("lang", "es"), "--parallel", str(self.model.get("parallel", 1))]
-                if self.resume:
-                    cmd += ["--resume"]
-                if pron.exists():
-                    cmd += ["--pron", str(pron)]
+                cmd = service_command(self.model, epub, dest, pron, self.resume)
             elif self.model.get("backend") == "xtts":
                 # Motor XTTS (multilingüe), su propio venv. Lee la frase entera; la voz
                 # de referencia la clona del wav de la voz activa.
@@ -823,7 +930,7 @@ class LocalGenWorker(QThread):
                            else _("Cargando el modelo…"), -1)
         eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
         # La clave, nunca en la línea de órdenes: se vería en la lista de procesos.
-        env = dict(os.environ, ST_SERVICE_KEY=service_key()) if self.service else None
+        env = dict(os.environ, ST_SERVICE_KEY=service_key(), ST_QC_KEY=service_key(SERVICE_QC_KEY)) if self.service else None
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
                              text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
         self.proc = p
@@ -1141,14 +1248,14 @@ class XttsDownloadWorker(ModelDownload):
 
 
 def voz_http_url():
-    """URL HTTP del voz-server (Whisper), derivada del host de config['server']."""
+    """URL HTTP del Whisper del servidor, derivada del host de config['server']."""
     cfg = load_config()
     host = (cfg.get("server") or MINT).split("@")[-1].split(":")[0]
     return f"http://{host}:8000"
 
 
 class ImportWorker(QThread):
-    """Importa un audio existente: lo pasa a MP3 y lo transcribe en el voz-server
+    """Importa un audio existente: lo pasa a MP3 y lo transcribe en el Whisper del servidor
     (Whisper, verbose_json con tiempos) para generar los cues de subtítulos.
     Transcribe POR TRAMOS (guardando cada uno) para poder DETENER Y GUARDAR,
     CANCELAR y REANUDAR, igual que la narración con F5. 1 capítulo (cap01)."""
@@ -1281,7 +1388,7 @@ class ImportWorker(QThread):
                 if not resume: shutil.rmtree(dest, ignore_errors=True)
                 self.failed.emit(_("No pude leer la duración del audio.")); return
 
-            # LOCAL = Whisper en este equipo (sin servidor); REMOTO = voz-server por SSH.
+            # LOCAL = Whisper en este equipo (sin servidor); REMOTO = Whisper del servidor, por SSH.
             lang = active_language()
             if load_config().get("engine", "local") != "remote":
                 ok, msg, covered = self._transcribe_local(dest, mp3, title, dur, cues, covered, lang)
@@ -1301,7 +1408,7 @@ class ImportWorker(QThread):
             self.failed.emit(_('Error inesperado al importar: {0}').format(e))
 
     def _transcribe_remote(self, dest, mp3, title, dur, cues, covered, language="es"):
-        """Transcribe por tramos contra el Whisper del voz-server (SSH/HTTP)."""
+        """Transcribe por tramos contra el Whisper del servidor (SSH/HTTP)."""
         url = voz_http_url() + "/v1/audio/transcriptions"
         start = covered
         while start < dur - 0.05:
@@ -1524,7 +1631,7 @@ class LibraryPage(QWidget):
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True); self.scroll.setObjectName("reader")
         inner = QWidget(); self.grid = QVBoxLayout(inner)
         self.grid.setContentsMargins(16, 16, 16, 16); self.grid.setSpacing(12)
-        self.empty = QLabel(_("Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará con la voz A."))
+        self.empty = QLabel(_("Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará."))
         self.empty.setObjectName("hint"); self.empty.setWordWrap(True); self.empty.setAlignment(Qt.AlignCenter)
         self.grid.addWidget(self.empty)
         self.grid.addStretch(1)
@@ -1857,7 +1964,6 @@ class ModelsScreen(QWidget):
         (al cambiar el motor) sin reconstruir la lista de modelos/voces ni perder scroll."""
         self.serverRow.setVisible(cfg["engine"] == "remote")
         self.serviceBox.setVisible(cfg["engine"] == "service")
-        self.qcChk.setVisible(cfg["engine"] != "service")   # sin Whisper que escuche lo que llega
         self._apply_qc_view(cfg)
         self.parRow.setVisible(cfg["engine"] != "service")  # el servicio lleva su selector en serviceBox
         self.narrLangRow.setVisible(cfg["engine"] == "service" or model_by_id(cfg.get("model"), cfg).get("backend") == "xtts")
@@ -1879,8 +1985,10 @@ class ModelsScreen(QWidget):
 
     def _apply_qc_view(self, cfg):
         """En local, la casilla del QC solo se puede marcar si de verdad va a revisar. En un servidor, su Whisper
-        no es cosa de este equipo; con un servicio por URL no hay QC."""
+        no es cosa de este equipo. Con un servicio por URL siempre se puede marcar, porque al marcarla se puede
+        escribir la URL de un Whisper; lo que falte se dice debajo y al narrar."""
         why = ""
+        info = ""
         no_whisper = False
         if cfg["engine"] == "local":
             no_whisper = not qc_can_run(ENGINE_DIR, model_by_id(cfg.get("model"), cfg).get("backend", "f5"))
@@ -1888,19 +1996,25 @@ class ModelsScreen(QWidget):
                 why = _("El QC necesita Whisper en el entorno del motor que narra, y no está.")
             elif not whisper_installed(whisper_by_id(active_whisper_id(cfg))):
                 why = _("El QC necesita un modelo Whisper: descárgalo más abajo.")
+        elif cfg["engine"] == "service" and cfg.get("qc_auto"):
+            info, no_whisper = service_qc_hint(cfg)
+        for widget in self.svcQcWidgets:
+            widget.setVisible(cfg["engine"] == "service" and bool(cfg.get("qc_auto")))
         self.qcChk.setEnabled(not why)
         self.qcChk.blockSignals(True)
         self.qcChk.setChecked(bool(cfg.get("qc_auto")) and not why)
         self.qcChk.blockSignals(False)
-        self.qcHint.setText(why)
+        self.qcHint.setText(why or info)
         self.qcHow.setVisible(no_whisper)
-        self.qcRow.setVisible(bool(why))
+        self.qcRow.setVisible(bool(why or info))
 
     def _qc_how(self):
         cfg = load_config()
+        backend = model_by_id(cfg.get("model"), cfg).get("backend", "f5")
+        if cfg.get("engine") == "service":
+            backend = "xtts" if service_python(cfg) == VPY_XTTS else "f5"
         show_how(self, _("Para revisar las frases (QC), Whisper tiene que estar en el entorno del motor que narra, y no está. "
-                         "Para instalarlo ahí, ejecuta esto en una terminal:\n\n{0}").format(
-                     whisper_install_text(model_by_id(cfg.get("model"), cfg).get("backend", "f5"))))
+                         "Para instalarlo ahí, ejecuta esto en una terminal:\n\n{0}").format(whisper_install_text(backend)))
 
     def refresh(self):
         cfg = load_config()
@@ -1910,6 +2024,8 @@ class ModelsScreen(QWidget):
         self.serverEdit.setText(cfg.get("server", ""))
         svc = service_cfg(cfg)
         self.svcUrl.setText(svc["url"]); self.svcKey.setText(service_key())
+        self.svcQcUrl.setText(svc["qc_url"]); self.svcQcModel.setText(svc["qc_model"])
+        self.svcQcKey.setText(service_key(SERVICE_QC_KEY))
         self.svcModel.setCurrentText(svc["model"]); self.svcVoice.setCurrentText(svc["voice"])
         self.svcParallel.blockSignals(True)
         self.svcParallel.setCurrentIndex(max(0, self.svcParallel.findData(svc["parallel"])))
@@ -2094,6 +2210,24 @@ class ModelsScreen(QWidget):
         test = QHBoxLayout(); test.setSpacing(10)
         test.addWidget(self.svcTest); test.addWidget(self.svcStatus, 1)
         g.addLayout(test, 5, 1)
+        # Con qué revisar lo que llega: solo se ve con la casilla del QC marcada.
+        self.svcQcUrl = QLineEdit(); self.svcQcUrl.setPlaceholderText(_("Vacío: el Whisper de este equipo, en CPU"))
+        self.svcQcKey = QLineEdit(); self.svcQcKey.setPlaceholderText(_("Vacía si el servicio no la pide"))
+        self.svcQcKey.setEchoMode(QLineEdit.PasswordEchoOnEdit)
+        self.svcQcModel = QLineEdit(); self.svcQcModel.setPlaceholderText(_("El que use por defecto"))
+        self.svcQcWidgets = []
+        for row, (text, field) in enumerate(((_("Whisper para revisar:"), self.svcQcUrl), (_("Clave de Whisper:"), self.svcQcKey),
+                                             (_("Modelo de Whisper:"), self.svcQcModel)), 6):
+            lb = QLabel(text); lb.setObjectName("booksub")
+            g.addWidget(lb, row, 0); g.addWidget(field, row, 1)
+            field.editingFinished.connect(self._service_changed)
+            self.svcQcWidgets += [lb, field]
+        self.svcQcStatus = QLabel(""); self.svcQcStatus.setObjectName("hint"); self.svcQcStatus.setWordWrap(True)
+        qc_cost = QLabel(_("Cada frase que llega se transcribe y, si no coincide con el texto, se pide otra vez, hasta 2 "
+                           "veces más: tarda más y, en un servicio de pago, cuesta más."))
+        qc_cost.setObjectName("hint"); qc_cost.setWordWrap(True)
+        g.addWidget(self.svcQcStatus, 9, 1); g.addWidget(qc_cost, 10, 1)
+        self.svcQcWidgets += [self.svcQcStatus, qc_cost]
         self.serviceTested.connect(self._service_tested)
         return box
 
@@ -2102,14 +2236,21 @@ class ModelsScreen(QWidget):
         self.svcStatus.setText(_("Esa dirección no es válida.") if url and not svc.api_base(url) else
                                _("Esa dirección no va cifrada: la clave y el texto del libro viajarían a la vista. "
                                  "Fuera de tu red de casa, usa https.") if svc.is_unsafe(url) else "")
+        url = self.svcQcUrl.text().strip()
+        self.svcQcStatus.setText(_("Esa dirección no es válida.") if url and not svc.api_base(url) else
+                                 _("Esa dirección no va cifrada: la clave y el audio viajarían a la vista. "
+                                   "Fuera de tu red de casa, usa https.") if svc.is_unsafe(url) else "")
 
     def _service_changed(self, *_args):
         cfg = load_config()
         cfg["service"] = {"url": self.svcUrl.text().strip(), "model": self.svcModel.currentText().strip(),
                           "voice": self.svcVoice.currentText().strip(),
-                          "parallel": int(self.svcParallel.currentData() or 1)}
+                          "parallel": int(self.svcParallel.currentData() or 1),
+                          "qc_url": self.svcQcUrl.text().strip(), "qc_model": self.svcQcModel.text().strip()}
         save_config(cfg); save_service_key(self.svcKey.text().strip())
+        save_service_key(self.svcQcKey.text().strip(), SERVICE_QC_KEY)
         self._service_warn()
+        self._apply_qc_view(cfg)
 
     def _service_test(self):
         self._service_changed()
@@ -2139,6 +2280,7 @@ class ModelsScreen(QWidget):
 
     def _qc_changed(self, on):
         cfg = load_config(); cfg["qc_auto"] = bool(on); save_config(cfg)
+        self._apply_qc_view(cfg)
 
     def _streams_changed(self, _arg):
         cfg = load_config(); cfg["parallel_streams"] = int(self.streamsSel.currentData() or 1); save_config(cfg)
@@ -2263,7 +2405,7 @@ class ModelsScreen(QWidget):
 
     def _autotranscribe(self, audio):
         """Transcribe un clip corto para rellenar el texto de referencia de la voz.
-        Usa el Whisper local (si hay modelo) o el voz-server; devuelve texto o None."""
+        Usa el Whisper local (si hay modelo) o el del servidor; devuelve texto o None."""
         cfg = load_config()
         try:
             if cfg.get("engine", "local") != "remote":
@@ -2593,6 +2735,7 @@ class PlayerPage(QWidget):
             self.outSel.addItem(d.description())
             if want and d.description() == want: sel = i
         if self.outSel.count(): self.outSel.setCurrentIndex(sel)
+        fit_popup(self.outSel)
         self.outSel.blockSignals(False)
         self._apply_output()
 
@@ -2600,6 +2743,8 @@ class PlayerPage(QWidget):
         i = self.outSel.currentIndex()
         if 0 <= i < len(getattr(self, "_devs", [])):
             self.audio.setDevice(self._devs[i])
+            # El cuadro cerrado puede cortar el nombre.
+            self.outSel.setToolTip(_("Salida de audio") + ": " + self._devs[i].description())
 
     def _out_changed(self, _arg):
         self._apply_output()
@@ -3170,7 +3315,7 @@ class Cuentacuentos(QMainWindow):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
-        QMessageBox.warning(self, _("Importar audiolibro"), msg)
+        warn(self, msg, _("Importar audiolibro"))
         self._next_after_switch()
 
     def _import_canceled(self):
@@ -3249,10 +3394,10 @@ class Cuentacuentos(QMainWindow):
                 self.show_models(); return
             qc_note = qc_args_local(cfg, m)[1]            # se narra igual, pero sin parecer que revisa
             if qc_note:
-                QMessageBox.warning(self, "Storyteller", qc_note)
+                warn(self, qc_note)
             self.worker = LocalGenWorker(path, m, active_voice(cfg), name=name, resume=resume)
         elif cfg["engine"] == "service":
-            s = service_cfg(cfg); host = service_module().host_of(s["url"]); py = service_python()
+            s = service_cfg(cfg); host = service_module().host_of(s["url"]); py = service_python(cfg)
             if not host:
                 QMessageBox.information(self, "Storyteller", _("Antes indica la URL del servicio en Modelos."))
                 self.show_models(); return
@@ -3260,6 +3405,9 @@ class Cuentacuentos(QMainWindow):
                 show_how(self, _("Para narrar con un servicio solo hace falta poder leer el EPUB. Para instalarlo, "
                                  "ejecuta esto en una terminal:\n\n{0}").format(install_text("base")))
                 return
+            qc_note = service_qc(cfg)[2]                  # se narra igual, pero sin parecer que revisa
+            if qc_note:
+                warn(self, qc_note)
             m = {"id": "service", "name": host, "backend": "service", "python": py, "url": s["url"],
                  "model": s["model"], "voice": s["voice"], "parallel": s["parallel"], "lang": narration_language(cfg)}
             self.worker = LocalGenWorker(path, m, name=name, resume=resume)
@@ -3306,7 +3454,7 @@ class Cuentacuentos(QMainWindow):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
-        QMessageBox.warning(self, "Storyteller", msg)
+        warn(self, msg)
         self._next_after_switch()
 
     def _gen_canceled(self):
@@ -3417,8 +3565,31 @@ QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
 """
 
 
+class StandardButtons(QTranslator):
+    """Sí, No, Aceptar y Cancelar de los avisos de Qt, en el idioma de la interfaz: Qt no trae tailandés
+    ni hindi, y sin traducción salen en inglés."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.texts = {"&Yes": _("Sí"), "&No": _("No"), "OK": _("Aceptar"), "&OK": _("Aceptar"),
+                      "Cancel": _("Cancelar"), "&Cancel": _("Cancelar")}
+
+    def isEmpty(self):
+        return False
+
+    def translate(self, context, source, disambiguation=None, n=-1):
+        return self.texts.get(source, "") if context == "QPlatformTheme" else ""
+
+def install_translations(app):
+    """Lo que escribe la propia Qt, como el menú de copiar y pegar, y los botones de sus avisos."""
+    qt = QTranslator(app)
+    if qt.load("qtbase_" + {"zh": "zh_CN", "pt": "pt_BR"}.get(LANG, LANG), QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(qt)
+    app._translators = [qt, StandardButtons(app)]        # vivos mientras dure la app
+    app.installTranslator(app._translators[1])           # el último instalado es el primero que se mira
+
 def main():
     app = QApplication(sys.argv)
+    install_translations(app)
     _ico = HOME_CC / "storyteller.ico"
     if _ico.exists(): app.setWindowIcon(QIcon(str(_ico)))
     win = Cuentacuentos(); win.show()

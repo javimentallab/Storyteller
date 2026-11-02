@@ -7,14 +7,20 @@ el reproductor, «escuchar mientras narra» y reanudar funcionan igual.
 
   python -I cc_service.py generate --epub E --out O --url U [--model M] [--voice V]
                                    [--lang es] [--pron P] [--resume] [--parallel N]
+                                   [--qc-url U [--qc-model M] | --qc-whisper-dir D]
+                                   [--qc-threshold 0.85] [--qc-retries 2]
   python -I cc_service.py count --epub E
 
 La clave va en la variable de entorno ST_SERVICE_KEY: en la línea de órdenes se vería en la
-lista de procesos. Este módulo solo usa la biblioteca estándar hasta que hay que leer el EPUB
-(cc_engine), para que la pantalla de Modelos pueda importarlo y probar un servicio.
+lista de procesos. La del Whisper de --qc-url, si la pide, en ST_QC_KEY: esa dirección puede ser
+de otro, y no se le manda la del servicio. Este módulo solo usa la biblioteca estándar hasta que
+hay que leer el EPUB (cc_engine), para que la pantalla de Modelos pueda importarlo y probar un
+servicio. El QC, sin --qc-url ni --qc-whisper-dir, no se activa. Con Whisper por URL basta la
+biblioteca estándar, pero sin numpy no mide la voz de más al final de la frase; con Whisper
+local hacen falta numpy, soundfile y faster-whisper en este Python.
 """
-import argparse, collections, concurrent.futures, http.client, json, os, re, subprocess, sys, tempfile, threading
-import time, urllib.error, urllib.request, wave
+import argparse, collections, concurrent.futures, http.client, io, json, math, os, re, secrets, subprocess, sys
+import tempfile, threading, time, urllib.error, urllib.request, wave
 from itertools import islice
 from urllib.parse import urlsplit
 
@@ -32,10 +38,14 @@ MAX_RETRY_AFTER = 120
 MAX_PARALLEL = 4                                 # como «Peticiones a la vez» en la app del móvil
 AHEAD = 3                                        # frases por petición a la vez que pueden esperar su turno
 ENDPOINTS = ("/audio/speech", "/audio/voices", "/audio/transcriptions", "/chat/completions", "/models")
+QC_KEY_ENV = "ST_QC_KEY"
+QC_TIMEOUT = 60                                  # como cc_engine.qc_transcribe
+# Lo que se pide al transcribir, de más a menos: un modelo que no da tiempos por palabra lo rechaza.
+QC_ASKS = (("verbose_json", ("word", "segment")), ("verbose_json", ()), ("json", ()))
 
 
 class ServiceError(Exception):
-    """kind: url, auth, notfound, refused, busy, down o noaudio. busy y down se reintentan."""
+    """kind: url, auth, notfound, refused, busy, down, noaudio o notext. busy y down se reintentan."""
 
     def __init__(self, kind, detail="", retry_after=None):
         super().__init__(f"{kind}: {detail}" if detail else kind)
@@ -137,12 +147,15 @@ class Client:
         self.tries, self.sleep, self.on_wait = tries, sleep, on_wait
         self.format = "wav"                      # sin pérdidas; si no lo da, mp3 (ver _audio)
         self.language = language or ""           # la API estándar no lo lleva; si lo rechaza, se deja de mandar
+        self.ask = 0                             # cuál de QC_ASKS contesta este servicio
 
-    def _call(self, path, body=None, timeout=TIMEOUT):
+    def _call(self, path, body=None, timeout=TIMEOUT, content_type=""):
         head = {"User-Agent": "Storyteller/1.1"}  # Cloudflare corta el de Python
         if self.key:
             head["Authorization"] = "Bearer " + self.key
-        if body is not None:
+        if content_type:                         # ya viene empaquetado
+            head["Content-Type"] = content_type
+        elif body is not None:
             head["Content-Type"] = "application/json"
             body = json.dumps(body, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(self.base + path, data=body, headers=head)
@@ -205,6 +218,27 @@ class Client:
         """PCM de 16 bits, mono, a SR."""
         return decode(self._retrying(lambda: self._audio(text)))
 
+    def transcribe(self, pcm, language="", prompt=""):
+        """(texto, segundo en que acaba la última palabra o None) de un PCM como el de say(). Sin
+        reintentos: si no contesta, no es que suene mal, y la narración no debe esperarle. Solo una
+        respuesta cambia lo que se pide desde entonces: un fallo no dice nada del servicio."""
+        for i in range(self.ask, len(QC_ASKS)):
+            form, content_type = _form(self.model, language, prompt, QC_ASKS[i], pcm)
+            try:
+                raw = self._call("/audio/transcriptions", form, QC_TIMEOUT, content_type)
+            except ServiceError as e:
+                if e.kind != "refused" or i == len(QC_ASKS) - 1:
+                    raise
+                continue
+            try:
+                o = json.loads(raw)
+            except ValueError:
+                raise ServiceError("notext") from None
+            if not isinstance(o, dict) or not isinstance(o.get("text"), str):
+                raise ServiceError("notext")
+            self.ask = i
+            return o["text"], _last_end(o)
+
     def listing(self, path, field):
         """Nombres de un listado. Vacío si el servicio no lo tiene: no todos lo dan."""
         try:
@@ -233,6 +267,37 @@ def decode(audio):
     if p.returncode or not p.stdout:
         raise ServiceError("noaudio")
     return p.stdout
+
+
+def _form(model, language, prompt, ask, pcm):
+    """(cuerpo, Content-Type) para /audio/transcriptions: el PCM de say() en un WAV y lo que se pide."""
+    fmt, times = ask
+    fields = [("model", model), ("response_format", fmt), *(("timestamp_granularities[]", t) for t in times),
+              ("language", language), ("prompt", prompt)]
+    clip = io.BytesIO()
+    with wave.open(clip, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm)
+    mark = "----storyteller" + secrets.token_hex(16)
+    out = bytearray()
+    for name, value in fields:
+        if value:
+            out += f'--{mark}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode("utf-8")
+    out += (f'--{mark}\r\nContent-Disposition: form-data; name="file"; filename="audio.wav"\r\n'
+            "Content-Type: audio/wav\r\n\r\n").encode("utf-8")
+    out += clip.getvalue() + f"\r\n--{mark}--\r\n".encode("utf-8")
+    return bytes(out), "multipart/form-data; boundary=" + mark
+
+
+def _last_end(o):
+    """Cuándo acaba la última palabra, si lo dice: unos las dan sueltas y otros dentro de cada segmento."""
+    try:
+        words = o.get("words") or [w for s in o.get("segments") or [] for w in s.get("words") or []]
+        end = words[-1].get("end") if words else None
+    except (AttributeError, TypeError, LookupError):
+        return None
+    if isinstance(end, bool) or not isinstance(end, (int, float)) or not math.isfinite(end) or end < 0:
+        return None
+    return end
 
 
 def probe(url, key="", model="", voice=""):
@@ -284,6 +349,89 @@ def _engine():
     return cc_engine
 
 
+class Reviewer:
+    """El QC de los motores locales, con lo que llega del servicio: el mismo juicio y los mismos umbrales
+    (cc_engine._qc_eval y qc_audio_fault) y hasta qc_retries reintentos, quedándose con el mejor. Oye con
+    un Whisper local (--qc-whisper-dir, que manda, como en cc_engine.qc_hyp) o por URL (--qc-url). Sin
+    respuesta del Whisper la frase se queda como llegó y se dice, con las palabras que cuenta la app."""
+
+    def __init__(self, E, a, key=""):
+        self.E = E
+        self.threshold, self.attempts = a.qc_threshold, max(0, a.qc_retries) + 1
+        self.lang = "" if a.lang == "auto" else (a.lang or "")
+        self.whisper_dir = a.qc_whisper_dir
+        self.ear = None
+        if not self.whisper_dir:
+            try:
+                self.ear = Client(a.qc_url, key, a.qc_model, tries=1)
+            except ServiceError:
+                pass                             # dirección mala: nadie que oiga, y cada frase lo dirá
+        self.pace = threading.Lock()             # cc_engine apunta en una lista la velocidad de los clips buenos
+        self.local = threading.Lock()            # y carga su Whisper local una sola vez, sin cerrojo
+        try:
+            import numpy
+            self.np = numpy
+        except ImportError:
+            self.np = None
+            say("QC: sin numpy no se mide la voz de más al final de cada frase")
+
+    def _samples(self, pcm):
+        return self.np.frombuffer(pcm, dtype="<i2").astype("float32") / 32768.0
+
+    def heard(self, pcm):
+        """(texto, fin de la última palabra), o (None, None) si no hay respuesta, como cc_engine.qc_hyp."""
+        if self.whisper_dir:
+            with self.local:
+                try:
+                    return self.E.qc_transcribe_local(self._samples(pcm), SR, self.whisper_dir, self.lang or None)
+                except Exception as e:           # este Python sin numpy o sin soundfile
+                    say(f"  QC local falló: {type(e).__name__}")
+                    return None, None
+        if not self.ear:
+            return None, None
+        try:
+            return self.ear.transcribe(pcm, self.E._whisper_lang(self.lang) or "",
+                                       "Lectura de un libro." if self.lang == "es" else ".")
+        except ServiceError as e:
+            say(f"  QC por URL falló: {e}")
+            return None, None
+
+    def best(self, si, spoken, voice):
+        """El PCM que se queda para esa frase; voice(spoken) lo pide. Si el servicio falla, el error sube."""
+        E = self.E
+        best, best_score = None, -1e9
+        for att in range(self.attempts):
+            pcm = voice(spoken)
+            hyp, last_end = self.heard(pcm)
+            if hyp is None:
+                if best is None:
+                    best = pcm
+                say(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado")
+                break
+            wav = self._samples(pcm) if self.np else None
+            rec, ok, score, motivo = E._qc_eval(spoken, hyp, self.threshold, self._fault(spoken, wav, last_end))
+            if score > best_score:
+                best_score, best = score, pcm
+            if ok:
+                if wav is not None:
+                    with self.pace:
+                        E.qc_note_rate(spoken, wav, SR)
+                if att > 0:
+                    say(f"  QC frase {si+1}: OK recall={rec:.2f} (intento {att+1})")
+                break
+            det = f"recall={rec:.2f}" + (f", alucina ({motivo})" if motivo else f" < {self.threshold:.2f}")
+            say(f"  QC frase {si+1}: {det}, regenerando ({att+1}/{self.attempts})")
+        return best
+
+    def _fault(self, spoken, wav, last_end):
+        if wav is None:
+            return ""
+        if last_end is not None:
+            last_end = min(last_end, len(wav) / SR)   # un servicio que diga otra cosa no debe parar la narración
+        with self.pace:
+            return self.E.qc_audio_fault(spoken, wav, SR, last_end)
+
+
 def _chunks(E, text):
     """[(trozo, silencio detrás en segundos)]: las mismas pausas que el motor local."""
     if hasattr(E, "split_chunks"):
@@ -307,7 +455,7 @@ def _seed(paths, entry, texts):
         return None
 
 
-def narrate_chapter(E, a, client, ci, ch, prev, manifest, save):
+def narrate_chapter(E, a, client, ci, ch, prev, manifest, save, review=None):
     base = f"cap{ci:02d}"
     paths = {x: os.path.join(a.out, f"{base}.{x}") for x in ("wav", "mp3", "json")}
     chunks = _chunks(E, ch["text"])
@@ -352,11 +500,17 @@ def narrate_chapter(E, a, client, ci, ch, prev, manifest, save):
         entry.update(n=len(cues), duration=round(t, 3), sr=SR, frames=frames)
         save()
 
+    def voice(item):
+        si, spoken = item
+        if not spoken:
+            return b""
+        return review.best(si, spoken, client.say) if review else client.say(spoken)
+
     if seed:
         flush()
     try:
-        todo = (E.normalize_text(t).strip() for t in texts[len(cues):])
-        answers = in_order(lambda spoken: client.say(spoken) if spoken else b"", todo, a.parallel)
+        todo = ((si, E.normalize_text(texts[si]).strip()) for si in range(len(cues), len(texts)))
+        answers = in_order(voice, todo, a.parallel)
         for si, pcm in enumerate(answers, len(cues)):
             dur = len(pcm) / 2 / SR
             gap = int(chunks[si][1] * SR)
@@ -407,6 +561,7 @@ def cmd_generate(a):
 
     client = Client(a.url, os.environ.get(KEY_ENV, ""), a.model, a.voice,
                     on_wait=lambda s: say(f"SERVICE-RETRY {s}"), language=a.lang if a.lang != "auto" else "")
+    review = Reviewer(E, a, os.environ.get(QC_KEY_ENV, "")) if E.qc_on(a) else None
     try:
         for ci, ch in enumerate(chaps, 1):
             pe = prev.get(ci)
@@ -414,7 +569,7 @@ def cmd_generate(a):
                 manifest.append(pe); save()
                 say(f"[cap {ci}] ya hecho, lo mantengo")
                 continue
-            narrate_chapter(E, a, client, ci, ch, pe, manifest, save)
+            narrate_chapter(E, a, client, ci, ch, pe, manifest, save, review)
     except ServiceError as e:
         say("SERVICE-ERROR " + json.dumps({"kind": e.kind, "detail": e.detail}, ensure_ascii=False))
         os._exit(3)                              # lo llegado ya está guardado; no esperar a las que sigan en marcha
@@ -438,6 +593,11 @@ def main():
     g.add_argument("--voice", default=""); g.add_argument("--lang", default="es")
     g.add_argument("--pron", default=""); g.add_argument("--resume", action="store_true")
     g.add_argument("--parallel", type=lambda v: max(1, min(int(v), MAX_PARALLEL)), default=1)
+    g.add_argument("--qc-url", default="")                   # Whisper por URL, con la API estándar
+    g.add_argument("--qc-model", default="")                 # su modelo, si hay que decirlo
+    g.add_argument("--qc-whisper-dir", default="")           # Whisper LOCAL (sin red); uno u otro activa el QC
+    g.add_argument("--qc-threshold", type=float, default=0.85)     # los dos, como los motores locales
+    g.add_argument("--qc-retries", type=int, default=2)
     g.set_defaults(func=cmd_generate)
     c = sub.add_parser("count")
     c.add_argument("--epub", required=True)

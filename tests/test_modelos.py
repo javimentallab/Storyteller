@@ -120,6 +120,18 @@ win.worker = w
 win.open_book = lambda folder: None
 win._gen_done(str(dest))
 out["gen_done"] = list(warned)
+# El QC con un servicio: qué se le manda a cc_service, qué se dice y por dónde va la clave.
+args, key, note = S.service_qc()
+hint = S.service_qc_hint(S.load_config())
+out["service"] = {"args": args, "key": key, "note": note, "hint": hint[0], "offer": hint[1],
+                  "python": str(S.service_python() or ""), "fields": page.svcQcUrl.isVisibleTo(page),
+                  "cmd": S.service_command({"python": "py", "url": "u", "model": "", "voice": ""}, "e.epub", "out")}
+envs = {}
+one = iter(["capitulos: 0"])
+S.subprocess.Popen = lambda *a, **k: (envs.update(k.get("env") or {}), types.SimpleNamespace(stdout=one, wait=lambda: 0, returncode=0, poll=lambda: 0))[1]
+sw = S.LocalGenWorker(epub, {"id": "service", "name": "x", "backend": "service"}, None, name="s")
+sw._run_single(["py"], dest, [])
+out["service"]["env_key"] = envs.get("ST_QC_KEY")
 print("JSON:" + json.dumps(out, ensure_ascii=False))
 win.close()
 """
@@ -127,7 +139,7 @@ win.close()
 
 @unittest.skipUnless(QT, "hace falta PySide6")
 class Combinacion(unittest.TestCase):
-    def see(self, main=(), xtts=(), config=None, models=(), shot=None, xtts_cached=False):
+    def see(self, main=(), xtts=(), config=None, models=(), shot=None, xtts_cached=False, qc_key=None):
         home = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, home, True)
         app = home / "cuentacuentos"
@@ -152,6 +164,8 @@ class Combinacion(unittest.TestCase):
             f = app / "models" / rel
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_bytes(b"x")
+        if qc_key:
+            (app / "service_qc.key").write_text(qc_key, "utf-8")
         epub = home / "libro.epub"
         epub.write_bytes(b"PK")
         env = dict(os.environ, USERPROFILE=str(home), HOME=str(home), QT_QPA_PLATFORM="offscreen", PYTHONIOENCODING="utf-8",
@@ -218,9 +232,9 @@ class Combinacion(unittest.TestCase):
         s = self.see(xtts=XTTS, xtts_cached=True, config={"model": "xtts-v2", "qc_auto": True})
         self.assertFalse(s["qc"]["checked"])                         # la casilla no engaña
         self.assertEqual(s["generate"]["started"], ["xtts-v2"])
-        self.assertEqual(len(s["generate"]["warned"]), 1)
-        self.assertIn("no se revisará", s["generate"]["warned"][0])
-        self.assertIn(".venv-xtts", s["generate"]["warned"][0])
+        self.assertEqual(len(s["generate"]["how"]), 1)               # trae comandos: van en su cuadro
+        self.assertIn("no se revisará", s["generate"]["how"][0])
+        self.assertIn(".venv-xtts", s["generate"]["how"][0])
 
     def test_xtts_con_whisper_sin_modelo_whisper(self):
         s = self.see(xtts=XTTS + WHISPER)
@@ -293,9 +307,75 @@ class Combinacion(unittest.TestCase):
 
     def test_con_un_servicio_sin_nada_dice_que_instalar(self):
         s = self.see(config={"engine": "service", "service": {"url": "https://x.example/v1"}})
-        self.assertFalse(s["qc"]["visible"])
         self.assertEqual(s["generate"]["started"], [])
         self.assertIn(os.path.join("deps", "base") if WINDOWS else "deps/base", s["generate"]["how"][0])
+
+    SVC = {"url": "https://x.example/v1"}
+    LOCAL_QC = ["numpy", "soundfile", "faster-whisper", "av"]
+
+    def test_servicio_sin_qc_no_cambia_la_orden(self):
+        s = self.see(main=BASE, config={"engine": "service", "service": self.SVC})
+        self.assertTrue(s["qc"]["visible"])
+        self.assertTrue(s["qc"]["enabled"])
+        self.assertFalse(s["qc"]["checked"])
+        self.assertFalse(s["service"]["fields"])
+        self.assertEqual(s["service"]["args"], [])
+        self.assertFalse([a for a in s["service"]["cmd"] if a.startswith("--qc")])
+        self.assertEqual(s["generate"]["warned"], [])
+
+    def test_servicio_con_url_de_whisper_y_su_clave_aparte(self):
+        svc = dict(self.SVC, qc_url="https://w.example/v1", qc_model="whisper-1")
+        s = self.see(main=BASE + ["numpy"], config={"engine": "service", "service": svc, "qc_auto": True}, qc_key="secreta")
+        self.assertTrue(s["qc"]["enabled"])
+        self.assertTrue(s["qc"]["checked"])
+        self.assertTrue(s["service"]["fields"])
+        self.assertEqual(s["service"]["args"], ["--qc-url", "https://w.example/v1", "--qc-model", "whisper-1",
+                                                "--qc-threshold", "0.85", "--qc-retries", "2"])
+        self.assertEqual(s["service"]["key"], "secreta")
+        self.assertEqual(s["service"]["env_key"], "secreta")
+        self.assertNotIn("secreta", s["service"]["cmd"])            # se vería en la lista de procesos
+        self.assertEqual(s["qc"]["hint"], "")
+        self.assertEqual(s["generate"]["warned"] + s["generate"]["how"], [])
+        self.assertEqual(s["generate"]["started"], ["service"])
+
+    def test_servicio_con_url_sin_numpy_dice_lo_que_no_mide(self):
+        svc = dict(self.SVC, qc_url="https://w.example/v1")
+        s = self.see(main=BASE, config={"engine": "service", "service": svc, "qc_auto": True})
+        self.assertIn("numpy", s["qc"]["hint"])
+        self.assertTrue(s["qc"]["checked"])
+        self.assertEqual(s["service"]["args"][:2], ["--qc-url", "https://w.example/v1"])
+        self.assertFalse(s["qc"]["how"])
+
+    def test_servicio_con_el_whisper_de_este_equipo(self):
+        s = self.see(main=BASE, xtts=XTTS + self.LOCAL_QC, models=["whisper-small/model.bin"],
+                     config={"engine": "service", "service": self.SVC, "qc_auto": True, "whisper_model": "whisper-small"})
+        self.assertIn(".venv-xtts", s["service"]["python"])          # corre en ese proceso: el que lo tenga
+        self.assertEqual(s["service"]["args"][0], "--qc-whisper-dir")
+        self.assertIn("whisper-small", s["service"]["args"][1])
+        self.assertEqual(s["qc"]["hint"], "")
+        self.assertIsNone(s["service"]["note"])
+
+    def test_servicio_con_whisper_sin_modelo(self):
+        s = self.see(main=BASE, xtts=XTTS + self.LOCAL_QC, config={"engine": "service", "service": self.SVC, "qc_auto": True})
+        self.assertIn("descárgalo", s["qc"]["hint"])
+        self.assertEqual(s["service"]["args"], [])
+        self.assertTrue(s["service"]["note"])
+        self.assertTrue(s["generate"]["warned"])
+
+    def test_servicio_sin_con_que_revisar_avisa_y_narra(self):
+        s = self.see(main=BASE, config={"engine": "service", "service": self.SVC, "qc_auto": True})
+        self.assertTrue(s["qc"]["enabled"])                          # marcada, para poder escribir la URL
+        self.assertTrue(s["service"]["fields"])
+        self.assertIn("Sin URL", s["qc"]["hint"])
+        self.assertFalse(s["qc"]["how"])                             # con solo base, instalar Whisper no bastaría
+        self.assertEqual(s["service"]["args"], [])
+        self.assertIn("no se revisará", s["generate"]["warned"][0])
+        self.assertEqual(s["generate"]["started"], ["service"])
+
+    def test_servicio_ofrece_instalar_whisper_si_con_eso_basta(self):
+        s = self.see(xtts=XTTS + ["numpy", "soundfile"], config={"engine": "service", "service": self.SVC, "qc_auto": True})
+        self.assertTrue(s["qc"]["how"])
+        self.assertTrue(any(".venv-xtts" in h for h in s["how_clicks"]))
 
     def test_una_frase_sin_revisar_se_ve(self):
         s = self.see(xtts=XTTS)

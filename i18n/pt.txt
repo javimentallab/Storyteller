@@ -1,6 +1,6 @@
 # Português. NN|texto, NN = posição em st_lang.SOURCE; \n = quebra de linha; manter {0}, {1}…
 0|F5 Espanhol
-1|Espanhol peninsular, alta qualidade. É a voz A.
+1|Espanhol peninsular, alta qualidade.
 2|F5 Inglês (oficial)
 3|Inglês (modelo base oficial F5-TTS). Melhor com uma voz de referência em inglês.
 4|XTTS v2 (multilíngue)
@@ -20,7 +20,7 @@
 18|Galego
 19|Basco
 20|O QC está ativado, mas não há modelo Whisper baixado. Baixe um em “Modelos” para revisar a qualidade. Narrando sem QC.
-21|Voz A — grave (F5 Espanhol)
+21|Narrador — grave (F5 Espanhol)
 22|calculando o tempo restante…
 23|menos de 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Importar audiolivro…
 77|Adicionar um audiolivro/áudio existente e transcrevê-lo (Whisper) para legendas
 78|Abrir EPUB…
-79|Ainda não há livros.\nToque em “Abrir EPUB…” e o Storyteller vai narrá-lo com a voz A.
+79|Ainda não há livros.\nToque em “Abrir EPUB…” e o Storyteller vai narrá-lo.
 80|Parar e salvar
 81|Cancelar
 82|Excluir livro
@@ -358,3 +358,16 @@
 356|Para narrar com um serviço, basta poder ler o EPUB. Para instalar isso, execute isto em um terminal:\n\n{0}
 357|O QC não conseguiu revisar {0} frases: elas ficam como saíram do modelo. O motivo está no gen.log do livro.
 358|sem revisão (QC)
+359|Sim
+360|Não
+361|OK
+362|Copiar
+363|Whisper para verificar:
+364|Vazio: o Whisper deste computador, na CPU
+365|Chave do Whisper:
+366|Modelo do Whisper:
+367|Cada frase recebida é transcrita e, se não coincidir com o texto, pedida de novo até mais 2 vezes: demora mais e, em um serviço pago, custa mais.
+368|Sem URL do Whisper, o QC precisa do Whisper no ambiente de um motor deste computador, e ele não está lá.
+369|Neste ambiente, o QC compara o que o Whisper ouve com o texto, mas não mede a voz a mais no fim de cada frase, porque falta numpy.
+370|O QC está ativo, mas não há com o que verificar: nem URL do Whisper nem Whisper neste computador. Esta narração não será verificada.
+371|Esse endereço não é criptografado: a chave e o áudio viajariam às claras. Fora da sua rede doméstica, use https.

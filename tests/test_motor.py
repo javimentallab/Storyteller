@@ -251,6 +251,8 @@ class Textos(unittest.TestCase):
         for lang in [l for l in L.available() if l != "es"]:
             table = L.load(lang)
             for n in range(342, len(L.SOURCE)):
+                if (lang, L.SOURCE[n]) in (("en", "No"), ("it", "No"), ("pt", "Copiar")):
+                    continue                                  # se escriben igual que en español
                 with self.subTest(lang=lang, n=n):
                     self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])
 

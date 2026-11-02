@@ -1,6 +1,6 @@
 # Deutsch. NN|Text, NN = Position in st_lang.SOURCE; \n = Zeilenumbruch; {0}, {1}… beibehalten
 0|F5 Spanisch
-1|Spanisch aus Spanien, hohe Qualität. Das ist Stimme A.
+1|Spanisch aus Spanien, hohe Qualität.
 2|F5 Englisch (offiziell)
 3|Englisch (offizielles F5-TTS-Basismodell). Am besten mit einer englischen Referenzstimme.
 4|XTTS v2 (mehrsprachig)
@@ -20,7 +20,7 @@
 18|Galicisch
 19|Baskisch
 20|QC ist an, aber es ist kein Whisper-Modell heruntergeladen. Lade eins unter „Modelle“ herunter, damit die Qualität geprüft wird. Ich erzähle ohne QC.
-21|Stimme A — tief (F5 Spanisch)
+21|Erzähler — tief (F5 Spanisch)
 22|berechne die Restzeit…
 23|weniger als 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Hörbuch importieren…
 77|Ein vorhandenes Hörbuch/Audio hinzufügen und für Untertitel transkribieren (Whisper)
 78|EPUB öffnen…
-79|Noch keine Bücher.\nKlicke auf „EPUB öffnen…“ und Storyteller erzählt es mit Stimme A.
+79|Noch keine Bücher.\nKlicke auf „EPUB öffnen…“ und Storyteller erzählt es.
 80|Anhalten und speichern
 81|Abbrechen
 82|Buch löschen
@@ -358,3 +358,16 @@
 356|Zum Erzählen mit einem Dienst genügt es, das EPUB lesen zu können. Um das zu installieren, führe dies in einem Terminal aus:\n\n{0}
 357|QC konnte {0} Sätze nicht prüfen: Sie bleiben, wie das Modell sie erzeugt hat. Der Grund steht in der gen.log des Buchs.
 358|ungeprüft (QC)
+359|Ja
+360|Nein
+361|OK
+362|Kopieren
+363|Whisper zum Prüfen:
+364|Leer: das Whisper dieses Computers, auf der CPU
+365|Whisper-Schlüssel:
+366|Whisper-Modell:
+367|Jeder eintreffende Satz wird transkribiert und, wenn er nicht zum Text passt, bis zu 2-mal neu angefordert: Das dauert länger und kostet bei einem kostenpflichtigen Dienst mehr.
+368|Ohne Whisper-URL braucht der QC Whisper in der Umgebung einer Engine auf diesem Computer, und dort ist es nicht.
+369|In dieser Umgebung vergleicht der QC, was Whisper hört, mit dem Text, misst aber keine überschüssige Stimme am Satzende, weil numpy fehlt.
+370|QC ist aktiv, aber es gibt nichts zum Prüfen: weder eine Whisper-URL noch Whisper auf diesem Computer. Diese Vertonung wird nicht geprüft.
+371|Diese Adresse ist nicht verschlüsselt: Schlüssel und Audio würden offen übertragen. Außerhalb deines Heimnetzes nutze https.

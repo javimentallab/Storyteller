@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### New
+- **Quality check with a voice service by URL**: what arrives is checked with the Whisper on this computer or
+  with a Whisper by URL, with its own key, and a sentence that sounds wrong is asked for up to 2 more times. Without
+  numpy in the environment, the check by URL doesn't measure extra voice at the end of a sentence, and the screen
+  says so.
+
+### Changed
+- **Qt's own buttons in your language**: Yes, No, OK and Cancel follow the language of the interface in all
+  15, and so does Qt's copy-and-paste menu where Qt has a translation.
+- **Install commands aren't broken across lines**: they come in their own box, with a *Copy* button.
+- **The list of audio outputs shows each device's whole name**, and the closed box says it in its tooltip.
+- The screen no longer mentions "voice A": that voice is called *Narrator*.
+
 ## 1.1 (2026-11-02)
 
 ### New

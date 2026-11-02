@@ -30,7 +30,7 @@ VOICE_MIN_SECONDS = 3
 LANGUAGES = {"en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh-cn", "ja", "hu", "ko", "hi"}
 IDLE_UNLOAD = 600
 MAX_WORKERS = 3
-# Lo que debe quedar libre para abrir otro XTTS, que ocupa 2,9 GB (medido en una 4070). Si no cabe no
+# Lo que debe quedar libre para abrir otro XTTS, que ocupa 2,9 GB (medido en una GPU de 12 GB). Si no cabe no
 # se abre: desbordado a la RAM va varias veces más lento que con uno menos.
 WORKER_MB = 3500
 MODEL_ID = "xtts-v2"

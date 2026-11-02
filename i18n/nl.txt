@@ -1,6 +1,6 @@
 # Nederlands. NN|tekst, NN = positie in st_lang.SOURCE; \n = nieuwe regel; {0}, {1}… behouden
 0|F5 Spaans
-1|Spaans uit Spanje, hoge kwaliteit. Dit is stem A.
+1|Spaans uit Spanje, hoge kwaliteit.
 2|F5 Engels (officieel)
 3|Engels (officieel F5-TTS-basismodel). Het best met een Engelse referentiestem.
 4|XTTS v2 (meertalig)
@@ -20,7 +20,7 @@
 18|Galicisch
 19|Baskisch
 20|QC staat aan, maar er is geen Whisper-model gedownload. Download er een bij ‘Modellen’ om de kwaliteit te laten controleren. Ik vertel zonder QC.
-21|Stem A — laag (F5 Spaans)
+21|Verteller — laag (F5 Spaans)
 22|resterende tijd berekenen…
 23|minder dan 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Luisterboek importeren…
 77|Een bestaand luisterboek/audio toevoegen en transcriberen (Whisper) voor ondertitels
 78|EPUB openen…
-79|Nog geen boeken.\nKlik op ‘EPUB openen…’ en Storyteller vertelt het met stem A.
+79|Nog geen boeken.\nKlik op ‘EPUB openen…’ en Storyteller vertelt het.
 80|Stoppen en opslaan
 81|Annuleren
 82|Boek verwijderen
@@ -358,3 +358,16 @@
 356|Om met een dienst te vertellen hoef je alleen de EPUB te kunnen lezen. Voer dit uit in een terminal om dat te installeren:\n\n{0}
 357|QC kon {0} zinnen niet controleren: ze blijven zoals het model ze maakte. De reden staat in de gen.log van het boek.
 358|niet gecontroleerd (QC)
+359|Ja
+360|Nee
+361|OK
+362|Kopiëren
+363|Whisper om te controleren:
+364|Leeg: de Whisper van deze computer, op de CPU
+365|Whisper-sleutel:
+366|Whisper-model:
+367|Elke binnengekomen zin wordt getranscribeerd en, als die niet met de tekst overeenkomt, tot 2 keer opnieuw gevraagd: dat duurt langer en kost bij een betaalde dienst meer.
+368|Zonder Whisper-URL heeft de QC Whisper nodig in de omgeving van een engine op deze computer, en daar staat het niet.
+369|In deze omgeving vergelijkt de QC wat Whisper hoort met de tekst, maar meet hij geen extra stem aan het eind van elke zin, omdat numpy ontbreekt.
+370|QC staat aan, maar er is niets om mee te controleren: geen Whisper-URL en geen Whisper op deze computer. Deze voorlezing wordt niet gecontroleerd.
+371|Dat adres is niet versleuteld: de sleutel en de audio zouden onbeschermd reizen. Gebruik buiten je thuisnetwerk https.

@@ -1,6 +1,6 @@
 # Polski. NN|tekst, NN = pozycja w st_lang.SOURCE; \n = nowa linia; zachować {0}, {1}…
 0|F5 hiszpański
-1|Hiszpański z Hiszpanii, wysoka jakość. To głos A.
+1|Hiszpański z Hiszpanii, wysoka jakość.
 2|F5 angielski (oficjalny)
 3|Angielski (oficjalny model bazowy F5-TTS). Najlepszy z angielskim głosem referencyjnym.
 4|XTTS v2 (wielojęzyczny)
@@ -20,7 +20,7 @@
 18|Galicyjski
 19|Baskijski
 20|QC jest włączone, ale nie pobrano modelu Whisper. Pobierz go w „Modelach”, aby sprawdzać jakość. Czytam bez QC.
-21|Głos A — niski (F5 hiszpański)
+21|Lektor — niski (F5 hiszpański)
 22|obliczam pozostały czas…
 23|mniej niż 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Importuj audiobook…
 77|Dodaj istniejący audiobook/dźwięk i przetranskrybuj go (Whisper) na napisy
 78|Otwórz EPUB…
-79|Nie ma jeszcze książek.\nNaciśnij „Otwórz EPUB…”, a Storyteller przeczyta ją głosem A.
+79|Nie ma jeszcze książek.\nNaciśnij „Otwórz EPUB…”, a Storyteller ją przeczyta.
 80|Zatrzymaj i zapisz
 81|Anuluj
 82|Usuń książkę
@@ -358,3 +358,16 @@
 356|Do narracji przez usługę wystarczy możliwość odczytu EPUB. Aby to zainstalować, uruchom to w terminalu:\n\n{0}
 357|QC nie mógł sprawdzić zdań w liczbie {0}: zostają takie, jakie wygenerował model. Powód jest w pliku gen.log książki.
 358|bez sprawdzenia (QC)
+359|Tak
+360|Nie
+361|OK
+362|Kopiuj
+363|Whisper do sprawdzania:
+364|Puste: Whisper na tym komputerze, na CPU
+365|Klucz Whisper:
+366|Model Whisper:
+367|Każde otrzymane zdanie jest transkrybowane i, jeśli nie zgadza się z tekstem, wysyłane do ponownego wygenerowania, do 2 razy: trwa to dłużej, a w płatnej usłudze kosztuje więcej.
+368|Bez adresu URL Whisper QC potrzebuje Whisper w środowisku silnika na tym komputerze, a go tam nie ma.
+369|W tym środowisku QC porównuje to, co słyszy Whisper, z tekstem, ale nie mierzy nadmiarowego głosu na końcu zdania, bo brakuje numpy.
+370|QC jest włączone, ale nie ma czym sprawdzać: ani adresu URL Whisper, ani Whisper na tym komputerze. Ta narracja nie zostanie sprawdzona.
+371|Ten adres nie jest szyfrowany: klucz i dźwięk byłyby przesyłane jawnie. Poza siecią domową używaj https.

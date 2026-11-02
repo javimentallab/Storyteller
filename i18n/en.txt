@@ -1,6 +1,6 @@
 # English. NN|text, NN = position in st_lang.SOURCE; \n = line break; keep {0}, {1}…
 0|F5 Spanish
-1|Peninsular Spanish, high quality. This is voice A.
+1|Peninsular Spanish, high quality.
 2|F5 English (official)
 3|English (official F5-TTS base model). Best with an English reference voice.
 4|XTTS v2 (multilingual)
@@ -20,7 +20,7 @@
 18|Galician
 19|Basque
 20|QC is on but no Whisper model is downloaded. Download one in “Models” to check the quality. Narrating without QC.
-21|Voice A — deep (F5 Spanish)
+21|Narrator — deep (F5 Spanish)
 22|working out the time left…
 23|less than 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Import audiobook…
 77|Add an existing audiobook/audio and transcribe it (Whisper) for subtitles
 78|Open EPUB…
-79|No books yet.\nPress “Open EPUB…” and Storyteller will narrate it with voice A.
+79|No books yet.\nPress “Open EPUB…” and Storyteller will narrate it.
 80|Stop and save
 81|Cancel
 82|Delete book
@@ -358,3 +358,16 @@
 356|To narrate with a service you only need to be able to read the EPUB. To install that, run this in a terminal:\n\n{0}
 357|QC couldn't check {0} sentences: they stay as the model made them. The reason is in the book's gen.log.
 358|not checked (QC)
+359|Yes
+360|No
+361|OK
+362|Copy
+363|Whisper to check with:
+364|Empty: the Whisper on this computer, on the CPU
+365|Whisper key:
+366|Whisper model:
+367|Each sentence that arrives is transcribed and, if it doesn't match the text, asked for again, up to 2 more times: it takes longer and, on a paid service, costs more.
+368|Without a Whisper URL, QC needs Whisper in the environment of an engine on this computer, and it isn't there.
+369|In this environment, QC compares what Whisper hears with the text, but doesn't measure extra voice at the end of each sentence, because numpy is missing.
+370|QC is on, but there is nothing to check with: neither a Whisper URL nor Whisper on this computer. This narration won't be checked.
+371|That address isn't encrypted: the key and the audio would travel in the clear. Outside your home network, use https.

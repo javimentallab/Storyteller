@@ -1,6 +1,6 @@
 # Français. NN|texte, NN = position dans st_lang.SOURCE ; \n = saut de ligne ; garder {0}, {1}…
 0|F5 espagnol
-1|Espagnol d’Espagne, haute qualité. C’est la voix A.
+1|Espagnol d’Espagne, haute qualité.
 2|F5 anglais (officiel)
 3|Anglais (modèle de base officiel F5-TTS). Meilleur avec une voix de référence en anglais.
 4|XTTS v2 (multilingue)
@@ -20,7 +20,7 @@
 18|Galicien
 19|Basque
 20|Le QC est activé mais aucun modèle Whisper n’est téléchargé. Téléchargez-en un dans « Modèles » pour contrôler la qualité. Narration sans QC.
-21|Voix A — grave (F5 espagnol)
+21|Narrateur — grave (F5 espagnol)
 22|calcul du temps restant…
 23|moins de 1 min
 24|~{0} min
@@ -78,7 +78,7 @@
 76|Importer un livre audio…
 77|Ajouter un livre audio/audio existant et le transcrire (Whisper) pour les sous-titres
 78|Ouvrir un EPUB…
-79|Pas encore de livres.\nAppuyez sur « Ouvrir un EPUB… » et Storyteller le narrera avec la voix A.
+79|Pas encore de livres.\nAppuyez sur « Ouvrir un EPUB… » et Storyteller le narrera.
 80|Arrêter et enregistrer
 81|Annuler
 82|Supprimer le livre
@@ -358,3 +358,16 @@
 356|Pour narrer avec un service, il suffit de pouvoir lire l’EPUB. Pour l’installer, exécutez ceci dans un terminal :\n\n{0}
 357|Le QC n’a pas pu vérifier {0} phrases : elles restent telles que le modèle les a produites. La raison est dans le gen.log du livre.
 358|non vérifié (QC)
+359|Oui
+360|Non
+361|OK
+362|Copier
+363|Whisper pour vérifier :
+364|Vide : le Whisper de cet ordinateur, sur le CPU
+365|Clé de Whisper :
+366|Modèle de Whisper :
+367|Chaque phrase reçue est transcrite et, si elle ne correspond pas au texte, redemandée jusqu’à 2 fois : c’est plus long et, avec un service payant, plus cher.
+368|Sans URL de Whisper, le QC a besoin de Whisper dans l’environnement d’un moteur de cet ordinateur, et il n’y est pas.
+369|Dans cet environnement, le QC compare ce qu’entend Whisper au texte, mais ne mesure pas la voix en trop à la fin de chaque phrase, car numpy manque.
+370|Le QC est activé, mais rien ne permet de vérifier : ni URL de Whisper, ni Whisper sur cet ordinateur. Cette narration ne sera pas vérifiée.
+371|Cette adresse n’est pas chiffrée : la clé et l’audio circuleraient en clair. Hors de votre réseau domestique, utilisez https.

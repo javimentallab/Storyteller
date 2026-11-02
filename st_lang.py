@@ -17,7 +17,7 @@ from pathlib import Path
 
 SOURCE = [
     'F5 Español',  # 0
-    'Castellano peninsular, alta calidad. Es la voz A.',  # 1
+    'Castellano peninsular, alta calidad.',  # 1
     'F5 Inglés (oficial)',  # 2
     'Inglés (modelo base oficial F5-TTS). Mejor con una voz de referencia en inglés.',  # 3
     'XTTS v2 (multilingüe)',  # 4
@@ -37,7 +37,7 @@ SOURCE = [
     'Gallego',  # 18
     'Euskera',  # 19
     'QC activado pero no hay modelo Whisper descargado. Descárgalo en «Modelos» para que revise la calidad. Narro sin QC.',  # 20
-    'Voz A — grave (F5 Español)',  # 21
+    'Narrador — grave (F5 Español)',  # 21
     'calculando tiempo restante…',  # 22
     'menos de 1 min',  # 23
     '~{0} min',  # 24
@@ -95,7 +95,7 @@ SOURCE = [
     'Importar audiolibro…',  # 76
     'Añadir un audiolibro/audio existente y transcribirlo (Whisper) para subtítulos',  # 77
     'Abrir EPUB…',  # 78
-    'Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará con la voz A.',  # 79
+    'Todavía no hay libros.\nPulsa «Abrir EPUB…» y Storyteller lo narrará.',  # 79
     'Detener y guardar',  # 80
     'Cancelar',  # 81
     'Eliminar libro',  # 82
@@ -375,6 +375,19 @@ SOURCE = [
     'Para narrar con un servicio solo hace falta poder leer el EPUB. Para instalarlo, ejecuta esto en una terminal:\n\n{0}',  # 356
     'El QC no pudo revisar {0} frases: se quedan como salieron del modelo. El motivo está en el gen.log del libro.',  # 357
     'sin revisar (QC)',  # 358
+    'Sí',  # 359
+    'No',  # 360
+    'Aceptar',  # 361
+    'Copiar',  # 362
+    'Whisper para revisar:',  # 363
+    'Vacío: el Whisper de este equipo, en CPU',  # 364
+    'Clave de Whisper:',  # 365
+    'Modelo de Whisper:',  # 366
+    'Cada frase que llega se transcribe y, si no coincide con el texto, se pide otra vez, hasta 2 veces más: tarda más y, en un servicio de pago, cuesta más.',  # 367
+    'Sin URL de Whisper, el QC necesita Whisper en el entorno de un motor de este equipo, y no está.',  # 368
+    'Con este entorno, el QC compara lo que oye Whisper con el texto, pero no mide la voz de más al final de cada frase, porque falta numpy.',  # 369
+    'QC activado, pero no hay con qué revisar: ni URL de Whisper ni Whisper en este equipo. Esta narración no se revisará.',  # 370
+    'Esa dirección no va cifrada: la clave y el audio viajarían a la vista. Fuera de tu red de casa, usa https.',  # 371
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"
