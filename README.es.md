@@ -38,9 +38,9 @@ o un servicio de voz; **F5 y Whisper son opcionales** y se instalan aparte, solo
   calculado con el ritmo real de cada tramo.
 - **Control de calidad (QC) con Whisper** (opcional, se instala aparte): transcribe cada frase narrada y la regenera
   si faltan palabras, se inventa texto o entra en bucle repitiendo. También mide el audio,
-  porque Whisper no oye el balbuceo sin palabras. Con un servicio de voz por URL, revisa lo que llega con el
-  Whisper de este equipo o con un Whisper por URL, con su propia clave; volver a pedir una frase tarda más y,
-  en un servicio de pago, cuesta más.
+  porque Whisper no oye el balbuceo sin palabras. Con un servicio de voz por URL, revisa lo que llega con un
+  Whisper por URL, con su propia clave, o con el Whisper del entorno de XTTS o F5 de este equipo; volver a pedir
+  una frase tarda más y, en un servicio de pago, cuesta más.
 - **Texto preparado para la voz**: números en palabras en el idioma que se narra, siglas
   deletreadas, MAYÚSCULAS, puntuación, y un **diccionario de pronunciación** editable
   (`pron.json`, con una parte por idioma) para las palabras que suenen mal.

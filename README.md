@@ -39,8 +39,8 @@ XTTS or a voice service; **F5 and Whisper are optional** and are installed apart
 - **Quality check (QC) with Whisper** (optional, installed apart): transcribes every narrated sentence and
   regenerates it when words are missing, text is made up or it gets stuck repeating. It also
   measures the audio, because Whisper doesn't hear babbling without words. With a voice service by URL, it
-  checks what arrives with the Whisper on this computer or with a Whisper by URL, with its own key; asking for a
-  sentence again takes longer and, on a paid service, costs more.
+  checks what arrives with a Whisper by URL, with its own key, or with the Whisper in the XTTS or F5 environment on
+  this computer; asking for a sentence again takes longer and, on a paid service, costs more.
 - **Text prepared for the voice**: numbers spelled out in the language being narrated,
   acronyms spelled letter by letter, CAPITALS, punctuation, and an editable
   **pronunciation dictionary** (`pron.json`, with a part for each language) for words that

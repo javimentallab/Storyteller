@@ -3,8 +3,8 @@
 ## Unreleased
 
 ### New
-- **Quality check with a voice service by URL**: what arrives is checked with the Whisper on this computer or
-  with a Whisper by URL, with its own key, and a sentence that sounds wrong is asked for up to 2 more times. Without
+- **Quality check with a voice service by URL**: what arrives is checked with a Whisper by URL, with its own key, or
+  with the Whisper in the XTTS or F5 environment on this computer, and a sentence that sounds wrong is asked for up to 2 more times. Without
   numpy in the environment, the check by URL doesn't measure extra voice at the end of a sentence, and the screen
   says so.
 
