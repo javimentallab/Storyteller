@@ -17,11 +17,17 @@ internet, ponlo detrás de un proxy con HTTPS.
 import argparse, atexit, functools, hmac, importlib.util, io, json, multiprocessing, os, re, secrets, shutil, socket, subprocess, sys, threading, time, wave
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import array, tempfile
+from urllib.parse import unquote, urlsplit
 
 __version__ = "1.0"
 DEFAULT_PORT = 8765
 MAX_INPUT = 4096                     # como la API de OpenAI; una frase son unos 200 caracteres
 MAX_BODY = 1024 * 1024
+MAX_VOICE = 32 * 1024 * 1024         # una voz son unos segundos de audio
+VOICE_SECONDS = 30
+VOICE_MIN_SECONDS = 3
+LANGUAGES = {"en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh-cn", "ja", "hu", "ko", "hi"}
 IDLE_UNLOAD = 600
 MAX_WORKERS = 3
 # Lo que debe quedar libre para abrir otro XTTS, que ocupa 2,9 GB (medido en una 4070). Si no cabe no
@@ -37,6 +43,18 @@ ENCODERS = {
     "aac": ("audio/aac", ["-f", "adts", "-b:a", "96k"]),
 }
 VOICE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,100}")
+BOOK_PATH = re.compile(r"/v1/storyteller/books/([^/\\\\]+)/([^/\\\\]+)")
+BOOK_FILE = re.compile(r"cap\d{2,3}\.(?:mp3|m4a|json)|source\.epub")
+CHAPTER_BASE = re.compile(r"cap\d{2,3}")
+CONTENT_TYPES = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".json": "application/json", ".epub": "application/epub+zip"}
+
+
+class VoiceProblem(Exception):
+    """Esa voz no se puede guardar. status: el código HTTP con el que se contesta."""
+
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
 
 
 class EngineBusy(Exception):
@@ -82,11 +100,9 @@ class XttsEngine:
                 E.load_pron(str(self.pron))
             self._load()
         E.NUM_LANG = lang
-        t = E.normalize_text(text).strip().rstrip(",;: ")
+        t = E.with_stop(E.normalize_text(text))  # sin el «stop» XTTS desbarra al final
         if not t:
             return b"", RATE
-        if t[-1] not in ".?!…":                  # sin el «stop» XTTS desbarra al final
-            t += "."
         try:
             w = self.tts.tts(text=t, speaker_wav=str(voice_wav), language=lang)
         except RuntimeError as e:
@@ -302,6 +318,73 @@ class Service:
         except Exception:
             return None
 
+    def add_voice(self, name, audio):
+        """Guarda una voz como las demás: 24 kHz, mono, pico a −1 dBFS y nada más. Sin limpiarla:
+        limpiar la referencia se come la z/c y XTTS cae en otro acento."""
+        d = self.home / "engine" / "voices"
+        if (d / f"{name}.wav").exists():
+            raise VoiceProblem(409, "Ya hay una voz con ese nombre.")
+        if not shutil.which("ffmpeg"):
+            raise VoiceProblem(500, "Este servidor no tiene ffmpeg.")
+        r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(audio), "-vn", "-ac", "1", "-ar", str(RATE),
+                            "-t", str(VOICE_SECONDS), "-f", "s16le", "-"], capture_output=True, timeout=120)
+        pcm = r.stdout[:len(r.stdout) // 2 * 2]
+        if r.returncode or not pcm:
+            raise VoiceProblem(400, "Ese fichero no es un audio que se pueda leer.")
+        samples = array.array("h", pcm)
+        if len(samples) < VOICE_MIN_SECONDS * RATE:
+            raise VoiceProblem(400, f"La voz necesita al menos {VOICE_MIN_SECONDS} segundos de audio.")
+        peak = max(max(samples), -min(samples))
+        if peak < 300:
+            raise VoiceProblem(400, "Ese audio está en silencio.")
+        gain = 29204 / peak                      # 32767 a −1 dBFS
+        samples = array.array("h", (max(-32768, min(32767, int(s * gain))) for s in samples))
+        d.mkdir(parents=True, exist_ok=True)
+        tmp = d / f"{name}.wav.tmp"
+        with wave.open(str(tmp), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(RATE)
+            w.writeframes(samples.tobytes())
+        os.replace(tmp, d / f"{name}.wav")
+        txt = d / f"{name}.txt"                  # la app de escritorio lista las voces que lo tienen
+        if not txt.exists():
+            txt.write_text("", "utf-8")
+
+    def book(self, folder):
+        """Lo que se puede llevar de un libro: solo los capítulos terminados."""
+        try:
+            manifest = json.loads((folder / "manifest.json").read_text("utf-8"))
+        except (OSError, ValueError):
+            return None
+        done = [e for e in manifest if isinstance(e, dict) and e.get("done") and CHAPTER_BASE.fullmatch(str(e.get("base", "")))]
+        if not done:
+            return None
+        try:
+            state = json.loads((folder / "gen_state.json").read_text("utf-8"))
+        except (OSError, ValueError):
+            state = {}
+        try:
+            title = (folder / "title.txt").read_text("utf-8").strip()
+        except OSError:
+            title = ""
+        names = [f"{e['base']}.{x}" for e in done for x in ("mp3", "m4a", "json")] + ["source.epub"]
+        files = [{"name": n, "size": (folder / n).stat().st_size} for n in names if (folder / n).is_file()]
+        return {"id": folder.name, "title": title or folder.name, "manifest": done, "state": state, "files": files}
+
+    def books(self):
+        d = self.home / "books"
+        found = [self.book(f) for f in sorted(d.iterdir()) if f.is_dir()] if d.is_dir() else []
+        return [b for b in found if b]
+
+    def book_file(self, book, name):
+        """El fichero de un libro, o None: el nombre viene de fuera y no sale de la carpeta del libro."""
+        root = (self.home / "books").resolve()
+        folder = (root / book).resolve()
+        if folder.parent != root or not BOOK_FILE.fullmatch(name) or not (folder / name).is_file():
+            return None
+        return folder / name
+
 
 def encode(pcm, rate, fmt):
     """(bytes, tipo). Sin ffmpeg sale WAV, que todo cliente sabe leer por su cabecera."""
@@ -348,6 +431,17 @@ class Api(BaseHTTPRequestHandler):
     def send_json(self, obj, status=200, extra=None):
         self.send_bytes(status, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", extra)
 
+    def send_file(self, path):
+        self.send_response(200)
+        self.send_header("Content-Type", CONTENT_TYPES.get(path.suffix, "application/octet-stream"))
+        self.send_header("Content-Length", str(path.stat().st_size))
+        self.end_headers()
+        try:
+            with open(path, "rb") as f:
+                shutil.copyfileobj(f, self.wfile, 1024 * 1024)
+        except ConnectionError:                  # el cliente se ha ido: otra vez será
+            self.close_connection = True
+
     def error(self, status, message, extra=None):
         self.send_json({"error": {"message": message}}, status, extra)
 
@@ -361,28 +455,81 @@ class Api(BaseHTTPRequestHandler):
         self.close_connection = "Content-Length" in self.headers
         if not self.guarded():
             return
-        if self.path == "/v1/models":
+        path = unquote(urlsplit(self.path).path)
+        book_file = BOOK_PATH.fullmatch(path)
+        if path == "/v1/models":
             self.send_json({"object": "list", "data": [{"id": MODEL_ID, "object": "model", "owned_by": "storyteller"}]})
-        elif self.path == "/v1/audio/voices":
+        elif path == "/v1/audio/voices":
             self.send_json({"voices": list(self.svc.voices())})
+        elif path == "/v1/storyteller/books":
+            self.send_json({"books": self.svc.books()})
+        elif book_file:
+            found = self.svc.book_file(*book_file.groups())
+            if found:
+                self.send_file(found)
+            else:
+                self.error(404, "No tengo ese fichero.")
         else:
             self.error(404, "No existe esa ruta.")
 
-    def do_POST(self):
+    def body_length(self, limit):
+        """Lo que dice que va a mandar, o None si ya se ha contestado que es demasiado."""
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             length = -1
-        if length < 0 or length > MAX_BODY:
-            self.close_connection = True
-            # Lo leído se tira, hasta un tope: si se cierra sin leer, el cliente no ve la respuesta.
-            left = min(max(length, 0), 16 * MAX_BODY)
-            while left > 0:
-                chunk = self.rfile.read(min(65536, left))
-                if not chunk:
-                    break
-                left -= len(chunk)
-            return self.error(413, "Petición demasiado grande.")
+        if 0 <= length <= limit:
+            return length
+        self.close_connection = True
+        # Lo leído se tira, hasta un tope: si se cierra sin leer, el cliente no ve la respuesta.
+        left = min(max(length, 0), 16 * limit)
+        while left > 0:
+            chunk = self.rfile.read(min(65536, left))
+            if not chunk:
+                break
+            left -= len(chunk)
+        self.error(413, "Petición demasiado grande.")
+        return None
+
+    def do_PUT(self):
+        length = self.body_length(MAX_VOICE)
+        if length is None:
+            return
+        m = re.fullmatch(r"/v1/audio/voices/([^/]+)", unquote(urlsplit(self.path).path))
+        fd, tmp = tempfile.mkstemp(suffix=".voice")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                left = length
+                while left > 0:
+                    chunk = self.rfile.read(min(65536, left))
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    left -= len(chunk)
+            if not self.guarded():
+                return
+            if not m:
+                return self.error(404, "No existe esa ruta.")
+            name = m.group(1)
+            if not VOICE_ID.fullmatch(name):
+                return self.error(400, "Ese nombre no vale: solo letras, números, punto, guion y guion bajo.")
+            if not length:
+                return self.error(400, "Falta el audio.")
+            try:
+                self.svc.add_voice(name, tmp)
+            except VoiceProblem as e:
+                return self.error(e.status, str(e))
+            self.send_json({"id": name}, 201)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+    def do_POST(self):
+        length = self.body_length(MAX_BODY)
+        if length is None:
+            return
         body = self.rfile.read(length)
         if not self.guarded():
             return
@@ -414,8 +561,11 @@ class Api(BaseHTTPRequestHandler):
         name = q.get("voice") or self.svc.default_voice() or next(iter(voices))
         if not isinstance(name, str) or not VOICE_ID.fullmatch(name) or name not in voices:
             return self.error(400, "No tengo esa voz. Tengo: " + ", ".join(voices))
+        lang = q.get("language") or self.svc.lang
+        if q.get("language") and lang not in LANGUAGES:
+            return self.error(400, f"No conozco ese idioma. Conozco: {', '.join(sorted(LANGUAGES))}.")
         try:
-            pcm, rate = self.server.service.engine.synth(text, voices[name], self.svc.lang)
+            pcm, rate = self.server.service.engine.synth(text, voices[name], lang)
         except EngineBusy:
             return self.error(503, "La tarjeta gráfica no tiene memoria libre ahora mismo.", {"Retry-After": "30"})
         except Exception as e:
@@ -461,7 +611,7 @@ def main():
     ap.add_argument("--home", default=str(Path.home() / "cuentacuentos"), help="data folder, with engine/voices")
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
-    ap.add_argument("--lang", default="es", help="language of the text (the API doesn't carry one)")
+    ap.add_argument("--lang", default="es", help="language of the text when the request doesn't say")
     ap.add_argument("--workers", type=int, default=MAX_WORKERS,
                     help="most XTTS at once; each takes about 3 GB and only opens if it fits (default: %(default)s)")
     ap.add_argument("--verbose", action="store_true")

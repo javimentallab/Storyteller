@@ -53,6 +53,19 @@ class Troceo(unittest.TestCase):
     def test_sin_letras_no_es_un_trozo(self):
         self.assertEqual(E.split_chunks("* * *\n---\n。"), [])
 
+    def test_el_tope_depende_del_idioma(self):
+        texto = "палата " * 80
+        try:
+            E.NUM_LANG = "ru"
+            trozos = E.split_sentences(texto)
+            self.assertTrue(all(len(t) <= 170 for t in trozos), [len(t) for t in trozos])
+            E.NUM_LANG = "zh-cn"
+            trozos = E.split_sentences("这" * 300)
+            self.assertTrue(all(len(t) <= 75 for t in trozos), [len(t) for t in trozos])
+            self.assertEqual("".join(trozos), "这" * 300)
+        finally:
+            E.NUM_LANG = "es"
+
     def test_clausula_enorme_se_corta_en_un_espacio(self):
         trozos = E.split_sentences("palabra " * 60)
         self.assertGreater(len(trozos), 1)

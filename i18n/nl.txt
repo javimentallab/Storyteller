@@ -336,3 +336,8 @@
 334|De verbinding met de server is verbroken. Wat daar is verteld, blijft bewaard: klik op Hervatten om door te gaan.
 335|Verzoeken tegelijk:
 336|Hoeveel zinnen tegelijk bij de dienst worden opgevraagd. Meer is sneller als de dienst het toestaat: je eigen (st_server.py) opent tot 3 XTTS als ze op de videokaart passen, en een openbare kan het aantal verzoeken per minuut beperken.
+337|Taal van de vertelling:
+338|De taal waarin het boek wordt voorgelezen. Kies ook een stem die daarin goed klinkt. F5-modellen lezen alleen hun eigen taal.
+339|Om in die taal te vertellen moet dit in de XTTS-omgeving worden geïnstalleerd:\n\n{0}
+340|Voor een andere taal, binnen "langs": {"en": {"pron": {"nginx": "engine x"}}}
+341|Er is al een boek bezig. Stoppen en overschakelen naar ‘{0}’? Wat klaar is blijft bewaard en kan worden hervat.

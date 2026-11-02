@@ -363,5 +363,114 @@ class TestRealProcesses(unittest.TestCase):
         self.p.waiting.clear()
 
 
+def tone(seconds=4, rate=16000):
+    import math
+    b = io.BytesIO()
+    with wave.open(b, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"".join(int(8000 * math.sin(i / 8)).to_bytes(2, "little", signed=True) for i in range(seconds * rate)))
+    return b.getvalue()
+
+
+class TestLanguage(Base):
+    def test_the_request_can_choose_it(self):
+        status, _p, _h = self.speech(input="Привет.", language="ru")
+        self.assertEqual(status, 200)
+        self.assertEqual(self.engine.calls[-1][2], "ru")
+
+    def test_without_saying_the_server_decides(self):
+        self.speech(input="Hola.")
+        self.assertEqual(self.engine.calls[-1][2], "es")
+
+    def test_an_unknown_one_is_refused(self):
+        status, payload, _h = self.speech(input="Hola.", language="xx")
+        self.assertEqual(status, 400)
+        self.assertIn("ru", self.message(payload))
+        self.assertEqual(self.engine.calls, [])
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "hace falta ffmpeg")
+class TestUploadVoice(Base):
+    def test_it_becomes_a_voice_like_the_others(self):
+        status, payload, _h = self.req("PUT", "/v1/audio/voices/mi-voz", raw=tone())
+        self.assertEqual((status, json.loads(payload)["id"]), (201, "mi-voz"))
+        with wave.open(str(self.home / "engine" / "voices" / "mi-voz.wav")) as w:
+            self.assertEqual((w.getframerate(), w.getnchannels(), w.getsampwidth()), (24000, 1, 2))
+            self.assertAlmostEqual(w.getnframes() / 24000, 4.0, places=1)
+            frames = w.readframes(w.getnframes())
+        peak = max(abs(int.from_bytes(frames[i:i + 2], "little", signed=True)) for i in range(0, len(frames), 2))
+        self.assertAlmostEqual(peak, 29204, delta=120)     # −1 dBFS
+        self.assertTrue((self.home / "engine" / "voices" / "mi-voz.txt").exists())   # el escritorio la lista
+        _s, payload, _h = self.req("GET", "/v1/audio/voices")
+        self.assertIn("mi-voz", json.loads(payload)["voices"])
+        self.assertEqual(self.speech(input="Hola.", voice="mi-voz")[0], 200)
+        self.assertEqual(self.engine.calls[-1][1], "mi-voz")
+
+    def test_it_does_not_overwrite(self):
+        before = (self.home / "engine" / "voices" / "narrator.wav").read_bytes()
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/narrator", raw=tone())[0], 409)
+        self.assertEqual((self.home / "engine" / "voices" / "narrator.wav").read_bytes(), before)
+
+    def test_what_it_refuses(self):
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/corta", raw=tone(1))[0], 400)
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/nada", raw=b"esto no es audio")[0], 400)
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/vacia", raw=b"")[0], 400)
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/..%2F..%2Fmala", raw=tone())[0], 404)
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/m%C3%A1la", raw=tone())[0], 400)
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/sinclave", raw=tone(), key=False)[0], 401)
+        self.assertFalse((self.home / "engine" / "voices" / "sinclave.wav").exists())
+        names = {p.name for p in (self.home / "engine" / "voices").iterdir()}
+        self.assertEqual(names, {"narrator.wav", "voz-b.wav"})
+
+
+class TestBooks(Base):
+    def setUp(self):
+        super().setUp()
+        b = self.home / "books" / "un libro"
+        b.mkdir(parents=True)
+        manifest = [{"id": 1, "base": "cap01", "title": "Uno", "n": 2, "duration": 3.0, "done": True, "frames": 0},
+                    {"id": 2, "base": "cap02", "title": "Dos", "n": 1, "duration": 1.0, "done": False, "frames": 9}]
+        (b / "manifest.json").write_text(json.dumps(manifest), "utf-8")
+        (b / "gen_state.json").write_text(json.dumps({"total": 5, "complete": False}), "utf-8")
+        (b / "title.txt").write_text("Un libro", "utf-8")
+        (b / "cap01.mp3").write_bytes(b"audio-1")
+        (b / "cap01.json").write_text('{"cues": []}', "utf-8")
+        (b / "cap02.mp3").write_bytes(b"a medias")
+        (b / "cap02.wav").write_bytes(b"a medias")
+        (b / "source.epub").write_bytes(b"PK")
+        (b / "playback.json").write_text("{}", "utf-8")
+        (self.home / "books" / "vacio").mkdir()
+        (self.home / "secreto.mp3").write_bytes(b"no")
+
+    def listing(self):
+        status, payload, _h = self.req("GET", "/v1/storyteller/books")
+        self.assertEqual(status, 200)
+        return json.loads(payload)["books"]
+
+    def test_only_what_is_finished(self):
+        books = self.listing()
+        self.assertEqual([b["id"] for b in books], ["un libro"])
+        b = books[0]
+        self.assertEqual((b["title"], b["state"]["total"], b["state"]["complete"]), ("Un libro", 5, False))
+        self.assertEqual([e["id"] for e in b["manifest"]], [1])
+        self.assertEqual({f["name"]: f["size"] for f in b["files"]}, {"cap01.mp3": 7, "cap01.json": 12, "source.epub": 2})
+
+    def test_a_file_comes_whole(self):
+        status, payload, head = self.req("GET", "/v1/storyteller/books/un%20libro/cap01.mp3")
+        self.assertEqual((status, payload, head["Content-Type"]), (200, b"audio-1", "audio/mpeg"))
+
+    def test_nothing_else_comes_out(self):
+        for path in ("/v1/storyteller/books/..%2F/secreto.mp3", "/v1/storyteller/books/../secreto.mp3",
+                     "/v1/storyteller/books/un%20libro/playback.json", "/v1/storyteller/books/un%20libro/cap02.wav",
+                     "/v1/storyteller/books/un%20libro/..%2F..%2Fserver.json", "/v1/storyteller/books/no/cap01.mp3"):
+            self.assertEqual(self.req("GET", path)[0], 404, path)
+
+    def test_it_asks_for_the_key(self):
+        self.assertEqual(self.req("GET", "/v1/storyteller/books", key=False)[0], 401)
+        self.assertEqual(self.req("GET", "/v1/storyteller/books/un%20libro/cap01.mp3", key=False)[0], 401)
+
+
 if __name__ == "__main__":
     unittest.main()

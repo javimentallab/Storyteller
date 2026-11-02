@@ -82,13 +82,13 @@ Mozilla Public License 2.0:
   certifi; tqdm (MPL-2.0 AND MIT); orjson (MPL-2.0 AND (Apache-2.0 OR MIT))
 MIT License:
   annotated-doc, annotated-types, anyio, attrs, audioread, bitsandbytes, brotli,
-  charset-normalizer, coqpit-config, ctranslate2, docopt, einops, ema-pytorch,
-  et-xmlfile, fastapi, filelock, fonttools, groovy, h11, hf-gradio, hydra-core,
-  inflect, jaraco.functools, jmespath, loguru, markdown-it-py, mdurl,
+  charset-normalizer, coqpit-config, ctranslate2, cutlet, docopt, einops, ema-pytorch,
+  et-xmlfile, fastapi, filelock, fonttools, fugashi, groovy, h11, hf-gradio, hydra-core,
+  inflect, jaconv, jaraco.functools, jmespath, loguru, markdown-it-py, mdurl,
   monotonic-alignment-search, more-itertools, narwhals, onnxruntime, platformdirs,
   pydantic, pydantic-core, pydub, pyparsing, pypinyin, pysbd, python-fire, pytz,
   pyyaml, rich, rjieba, safehttpx, six, soupsieve, tabulate, termcolor, tomli,
-  tomlkit, torchdiffeq, truststore, typeguard, typer, typing-inspection, urllib3,
+  tomlkit, torchdiffeq, truststore, typeguard, typer, typing-inspection, unidic-lite, urllib3,
   wandb, win32-setctime
 BSD licences:
   antlr4-python3-runtime, av (see below), click, cloudpickle, colorama, contourpy,
@@ -105,7 +105,7 @@ Apache License 2.0:
   cwevals, datasets, distro, fire, flatbuffers, frozenlist, google-api-core,
   google-auth, google-cloud-core, google-cloud-storage, google-crc32c,
   google-resumable-media, googleapis-common-protos, gradio, gradio-client, grpcio,
-  hf-xet, huggingface-hub, ko-speech-tools, msgpack, multidict, opentelemetry-api,
+  hf-xet, huggingface-hub, ko-speech-tools, mojimoji, msgpack, multidict, opentelemetry-api,
   opentelemetry-exporter-http-transport, opentelemetry-exporter-otlp-common,
   opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http,
   opentelemetry-proto, opentelemetry-sdk, opentelemetry-semantic-conventions,

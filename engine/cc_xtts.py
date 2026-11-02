@@ -40,7 +40,20 @@ def _clean_clip(w, sr=24000, prop=0.75):
     return np.asarray(nr.reduce_noise(y=w, sr=sr, stationary=True, prop_decrease=prop),
                       dtype="float32")
 
+# Lo que XTTS necesita para estos idiomas y no instala por defecto: (módulo, paquete).
+NEEDS = {"ja": (("cutlet", "cutlet"), ("fugashi", "fugashi"), ("unidic_lite", "unidic-lite")),
+         "zh-cn": (("pypinyin", "pypinyin"),)}
+
+def missing_for(lang):
+    """Los paquetes que faltan para ese idioma."""
+    import importlib.util
+    return [pkg for mod, pkg in NEEDS.get(lang, ()) if importlib.util.find_spec(mod) is None]
+
 def cmd_generate(a):
+    missing = missing_for(a.lang)
+    if missing:                                  # mejor decirlo que caer en la primera frase
+        print("XTTS-NEEDS " + json.dumps({"lang": a.lang, "packages": missing}), flush=True)
+        sys.exit(4)
     import numpy as np, soundfile as sf, torch
     from TTS.api import TTS
     E.NUM_LANG = a.lang or "es"
@@ -88,10 +101,7 @@ def cmd_generate(a):
     def infer(gen_text):
         # cerrar con punto si no acaba en signo de fin: XTTS necesita el "stop" para
         # no desbarrar al final (principal causa de la alucinación final).
-        t = (gen_text or "").strip().rstrip(",;: ")          # ",." al final le hacía comerse la cola
-        if t and t[-1] not in ".?!…":
-            t += "."
-        w = tts.tts(text=t, speaker_wav=a.voice, language=a.lang or "es")
+        w = tts.tts(text=E.with_stop(gen_text), speaker_wav=a.voice, language=a.lang or "es")
         w = E.trim_clip(_clean_clip(np.asarray(w, dtype="float32"), 24000), 24000)
         return E.cap_silences(w, 24000), 24000
 

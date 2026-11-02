@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
-from st_lang import _  # interface texts in the user's language
+from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, live_manifest,
                      merge_stream_manifests, read_gen_state, recover_interrupted, slug,
@@ -174,6 +174,34 @@ def qc_args_local(cfg=None):
                     "«Modelos» para que revise la calidad. Narro sin QC."))
     return (["--qc-whisper-dir", str(model_dir(w["id"])),
              "--qc-threshold", "0.85", "--qc-retries", "2"], None)
+# Los idiomas de XTTS v2, cada uno escrito en el suyo: así los encuentra quien los habla.
+NARRATION_LANGS = [("es", "Español"), ("en", "English"), ("fr", "Français"), ("de", "Deutsch"), ("it", "Italiano"),
+                   ("pt", "Português"), ("nl", "Nederlands"), ("pl", "Polski"), ("cs", "Čeština"), ("hu", "Magyar"),
+                   ("tr", "Türkçe"), ("ru", "Русский"), ("ar", "العربية"), ("hi", "हिन्दी"), ("zh-cn", "中文"),
+                   ("ja", "日本語"), ("ko", "한국어")]
+
+def narration_language(cfg=None):
+    """El que ha elegido el usuario; hasta que elija, el de la interfaz si XTTS lo tiene."""
+    cfg = cfg or load_config()
+    known = dict(NARRATION_LANGS)
+    if cfg.get("narration_lang") in known:
+        return cfg["narration_lang"]
+    ui = "zh-cn" if LANG == "zh" else LANG
+    return ui if ui in known else "en"
+
+def model_language(model, cfg=None):
+    """F5 solo lee el idioma de su modelo; XTTS y los servicios, el que se elija."""
+    return narration_language(cfg) if model.get("backend") in ("xtts", "service") else model.get("lang", "es")
+
+def xtts_needs_text(line):
+    """Lo que dice cc_xtts cuando a su entorno le falta algo para ese idioma."""
+    try:
+        packages = json.loads(line.partition(" ")[2]).get("packages", [])
+    except ValueError:
+        packages = []
+    return _("Para narrar en ese idioma falta instalar esto en el entorno de XTTS:\n\n{0}").format(
+        "python -m pip install " + " ".join(packages))
+
 def active_language(cfg=None):
     cfg = cfg or load_config(); return cfg.get("language", "es")
 def lang_name(code):
@@ -466,7 +494,7 @@ class GenWorker(QThread):
             if self.xtts:
                 qc = f"CC_QC_MODEL={self.qc_model} " if self.qc_model else ""
                 cmd = (f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_xtts.sh 'inbox/{self.name}.epub' 'out/{self.name}' "
-                       f"'voices-xtts/{self.voice['id']}.wav' '{self.model.get('lang', 'es')}'")
+                       f"'voices-xtts/{self.voice['id']}.wav' '{model_language(self.model)}'")
             else:
                 qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
                 cmd = f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
@@ -649,7 +677,7 @@ class LocalGenWorker(QThread):
                 # de referencia la clona del wav de la voz activa.
                 cmd = [str(VPY_XTTS), "-I", str(CC_XTTS), "generate",
                        "--epub", str(epub), "--out", str(dest),
-                       "--lang", self.model.get("lang", "es")]
+                       "--lang", model_language(self.model)]
                 if self.voice:
                     cmd += ["--voice", str(self.voice["wav"])]
                 if self.resume:
@@ -756,6 +784,8 @@ class LocalGenWorker(QThread):
             except Exception: pass
             if line.startswith("SERVICE-"):
                 self._service_line(line); continue
+            if line.startswith("XTTS-NEEDS "):
+                self.error = xtts_needs_text(line); continue
             last = line or last
             m = re.search(r"capitulos:\s*(\d+)", line)
             if m: cap_tot = int(m.group(1))
@@ -833,6 +863,7 @@ class LocalGenWorker(QThread):
                 with self._lock:
                     try: logf.write(f"[t{idx}] {line}\n"); logf.flush()
                     except Exception: pass
+                    if line.startswith("XTTS-NEEDS "): self.error = xtts_needs_text(line)
                     cm = re.search(r"\[cap (\d+)\]", line)
                     if cm: self._caps_seen.add(int(cm.group(1)))   # capítulos CON contenido (= los que salen en "ir a capítulo"); en paralelo/reanudación cuadra con la lista del reproductor
                     mm = re.search(r"\[cap \d+\].*->\s*(\d+) frases", line)
@@ -1565,6 +1596,17 @@ class ModelsScreen(QWidget):
         self.serviceBox = self._service_box()
         self.col.addWidget(self.serviceBox)
 
+        self.narrLangRow = QWidget()
+        nl = QHBoxLayout(self.narrLangRow); nl.setContentsMargins(0, 0, 0, 0); nl.setSpacing(10)
+        nlb = QLabel(_("Idioma de la narración:")); nlb.setObjectName("booksub")
+        self.narrLangSel = QComboBox()
+        for code, name in NARRATION_LANGS: self.narrLangSel.addItem(name, code)
+        self.narrLangSel.setToolTip(_("El idioma en el que se lee el libro. Elige también una voz que suene bien en él. "
+                                      "Los modelos F5 solo leen el suyo."))
+        self.narrLangSel.currentIndexChanged.connect(self._narr_lang_changed)
+        nl.addWidget(nlb); nl.addWidget(self.narrLangSel); nl.addStretch(1)
+        self.col.addWidget(self.narrLangRow)
+
         self.qcChk = QCheckBox(_("Revisar y regenerar frases que suenen mal (QC Whisper)"))
         self.qcChk.setToolTip(_("Tras narrar cada frase, la transcribe con Whisper y, si no coincide con el "
                               "texto, la regenera. Más lento pero caza alucinaciones. Usa el Whisper del "
@@ -1748,6 +1790,7 @@ class ModelsScreen(QWidget):
         self.serviceBox.setVisible(cfg["engine"] == "service")
         self.qcChk.setVisible(cfg["engine"] != "service")   # sin Whisper que escuche lo que llega
         self.parRow.setVisible(cfg["engine"] != "service")  # el servicio lleva su selector en serviceBox
+        self.narrLangRow.setVisible(cfg["engine"] == "service" or model_by_id(cfg.get("model"), cfg).get("backend") == "xtts")
         self._streams_texts(cfg["engine"] == "local")
         if cfg["engine"] == "service":
             self.note.setText(_("Cada frase se pide al servicio de esa URL: el tuyo (st_server.py) o uno público con su clave. Aquí no hace falta GPU ni modelo de voz. La transcripción de audiolibros sigue en este equipo."))
@@ -1775,6 +1818,9 @@ class ModelsScreen(QWidget):
         self.streamsSel.blockSignals(True)
         si = {1: 0, 2: 1, 3: 2}.get(int(cfg.get("parallel_streams", 1) or 1), 0)
         self.streamsSel.setCurrentIndex(si); self.streamsSel.blockSignals(False)
+        self.narrLangSel.blockSignals(True)
+        self.narrLangSel.setCurrentIndex(max(0, self.narrLangSel.findData(narration_language(cfg))))
+        self.narrLangSel.blockSignals(False)
         self.langSel.blockSignals(True)
         li = next((i for i, (c, _n) in enumerate(LANGS) if c == active_language(cfg)), 0)
         self.langSel.setCurrentIndex(li); self.langSel.blockSignals(False)
@@ -1975,6 +2021,9 @@ class ModelsScreen(QWidget):
     def _streams_changed(self, _arg):
         cfg = load_config(); cfg["parallel_streams"] = int(self.streamsSel.currentData() or 1); save_config(cfg)
 
+    def _narr_lang_changed(self, _arg):
+        cfg = load_config(); cfg["narration_lang"] = self.narrLangSel.currentData(); save_config(cfg)
+
     def _lang_changed(self, _arg):
         cfg = load_config(); cfg["language"] = self.langSel.currentData(); save_config(cfg)
 
@@ -1985,7 +2034,8 @@ class ModelsScreen(QWidget):
         except Exception: cur = json.dumps(DEFAULT_PRON, ensure_ascii=False, indent=2)
         txt, ok = QInputDialog.getMultiLineText(self, _("Diccionario de pronunciación"),
             _("pron: palabra → cómo se dice · say_letters: siglas deletreadas · "
-            "say_word: siglas como palabra"), cur)
+            "say_word: siglas como palabra") + "\n" +
+            _('Para otro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}'), cur)
         if not ok: return
         try:
             data = json.loads(txt)
@@ -2962,6 +3012,7 @@ class Cuentacuentos(QMainWindow):
 
     def _start_import(self, worker, resume=False):
         self.imp = worker
+        self._imp_busy = True
         local = load_config().get("engine", "local") != "remote"
         first = _("Preparando…") if not resume else (
             _("Reanudando transcripción con {0}…").format(whisper_by_id(active_whisper_id())["name"]) if local
@@ -2988,23 +3039,47 @@ class Cuentacuentos(QMainWindow):
         self.library.set_generating(False)
         self.library.refresh()
         QMessageBox.warning(self, _("Importar audiolibro"), msg)
+        self._next_after_switch()
 
     def _import_canceled(self):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
+        self._next_after_switch()
 
     def _import_done(self, folder):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
-        self.open_book(folder)
+        if not self._next_after_switch():
+            self.open_book(folder)
 
     def _regen(self, epubpath):
         self.show_library()
         self._generate(epubpath, name=Path(epubpath).parent.name)
 
+    def _work_running(self):
+        """Narrar y transcribir se reparten la barra de progreso y sus botones: uno cada vez."""
+        return getattr(self, "_gen_busy", False) or getattr(self, "_imp_busy", False)
+
+    def _next_after_switch(self):
+        """Si se pidió pasar a otro libro, ahora le toca. Devuelve si era el caso."""
+        target, self._switch_to = getattr(self, "_switch_to", None), None
+        if target:
+            QTimer.singleShot(0, lambda: self._resume_gen(target))
+        return bool(target)
+
     def _resume_gen(self, folder):
+        if self._work_running():
+            try: title = (Path(folder) / "title.txt").read_text("utf-8").strip()
+            except OSError: title = ""
+            r = QMessageBox.question(self, _("Reanudar"), _(
+                "Ya hay un libro en marcha. ¿Lo detengo y paso a «{0}»? Lo hecho queda guardado y se puede reanudar."
+            ).format(title or Path(folder).name))
+            if r == QMessageBox.StandardButton.Yes:
+                self._switch_to = str(folder)
+                self.library.stopBtn.click()     # lo mismo que «Detener y guardar»
+            return
         st = read_gen_state(folder) or {}
         if st.get("kind") == "import":                       # reanudar una transcripción Whisper
             self.show_library()
@@ -3025,7 +3100,7 @@ class Cuentacuentos(QMainWindow):
         # se pisaban en la GPU. Usamos una bandera y no worker.isRunning(), porque el
         # hilo tarda un instante en figurar como "running" tras start() y el 2º disparo
         # se colaba en ese hueco. La bandera se marca aquí, antes de arrancar nada.
-        if getattr(self, "_gen_busy", False):
+        if self._work_running():
             QMessageBox.information(self, "Storyteller",
                 _("Ya hay una narración en marcha. Espera a que termine o deténla "
                 "antes de empezar otra."))
@@ -3055,7 +3130,7 @@ class Cuentacuentos(QMainWindow):
                     "o cambia a «Servidor propio» en Modelos."))
                 return
             m = {"id": "service", "name": host, "backend": "service", "python": py, "url": s["url"],
-                 "model": s["model"], "voice": s["voice"], "parallel": s["parallel"], "lang": active_language(cfg)}
+                 "model": s["model"], "voice": s["voice"], "parallel": s["parallel"], "lang": narration_language(cfg)}
             self.worker = LocalGenWorker(path, m, name=name, resume=resume)
         else:
             self.worker = GenWorker(path, name=name, resume=resume)
@@ -3088,7 +3163,7 @@ class Cuentacuentos(QMainWindow):
         self.player.set_gen_progress(True, text, pct)
 
     def _cleanup_gen_conns(self):
-        self._gen_busy = False                            # libera el candado de narración
+        self._gen_busy = self._imp_busy = False           # libera el candado
         for btn in (self.library.stopBtn, self.library.cancelBtn):
             try: btn.clicked.disconnect()
             except Exception: pass
@@ -3101,16 +3176,20 @@ class Cuentacuentos(QMainWindow):
         self.library.set_generating(False)
         self.library.refresh()
         QMessageBox.warning(self, "Storyteller", msg)
+        self._next_after_switch()
 
     def _gen_canceled(self):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
+        self._next_after_switch()
 
     def _gen_done(self, folder):
         self._cleanup_gen_conns()
         self.library.set_generating(False)
         self.library.refresh()
+        if self._next_after_switch():
+            return
         # Si estaba escuchando (este u otro libro) no se le corta: el reproductor ya
         # recoge solo el final de la narración.
         if self.stack.currentWidget() is not self.player:

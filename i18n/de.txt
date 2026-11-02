@@ -336,3 +336,8 @@
 334|Die Verbindung zum Server ist abgebrochen. Das dort Erzählte bleibt erhalten: Klicke auf Fortsetzen, um weiterzumachen.
 335|Anfragen gleichzeitig:
 336|Wie viele Sätze gleichzeitig beim Dienst angefordert werden. Mehr ist schneller, wenn der Dienst es zulässt: Dein eigener (st_server.py) öffnet bis zu 3 XTTS, wenn sie auf die Grafikkarte passen, und ein öffentlicher kann die Anfragen pro Minute begrenzen.
+337|Sprache der Erzählung:
+338|Die Sprache, in der das Buch gelesen wird. Wähle auch eine Stimme, die darin gut klingt. F5-Modelle lesen nur ihre eigene.
+339|Um in dieser Sprache zu erzählen, muss dies in der XTTS-Umgebung installiert werden:\n\n{0}
+340|Für eine andere Sprache, innerhalb von "langs": {"en": {"pron": {"nginx": "engine x"}}}
+341|Es läuft bereits ein Buch. Soll ich es anhalten und zu „{0}“ wechseln? Das Fertige bleibt gespeichert und kann fortgesetzt werden.

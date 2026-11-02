@@ -72,7 +72,8 @@ Narration can also use **any voice service by URL**: your own or a public one wi
   `num2words`, `beautifulsoup4`, `lxml`). For NVIDIA GPUs, PyTorch with CUDA.
 - XTTS engine in a separate venv, `engine/.venv-xtts` (its dependencies clash with
   F5's): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (for the
-  QC), **without** `torchcodec` (torch ≥ 2.9 requires it and it fails on Windows).
+  QC), **without** `torchcodec` (torch ≥ 2.9 requires it and it fails on Windows). To
+  narrate in Japanese or Chinese it also needs `cutlet fugashi unidic-lite` or `pypinyin`.
 - Translation: installs itself from its own screen (`engine/.venv-translate` and
   `engine/llama.cpp`). In server mode, Ollama on the server.
 

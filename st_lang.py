@@ -353,6 +353,11 @@ SOURCE = [
     'Se perdió la conexión con el servidor. Lo narrado allí se conserva: pulsa Reanudar para seguir.',  # 334
     'Peticiones a la vez:',  # 335
     'Cuántas frases se piden al servicio a la vez. Más es más rápido si el servicio lo permite: el tuyo (st_server.py) abre hasta 3 XTTS si caben en la tarjeta gráfica, y uno público puede limitar las peticiones por minuto.',  # 336
+    'Idioma de la narración:',  # 337
+    'El idioma en el que se lee el libro. Elige también una voz que suene bien en él. Los modelos F5 solo leen el suyo.',  # 338
+    'Para narrar en ese idioma falta instalar esto en el entorno de XTTS:\n\n{0}',  # 339
+    'Para otro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}',  # 340
+    'Ya hay un libro en marcha. ¿Lo detengo y paso a «{0}»? Lo hecho queda guardado y se puede reanudar.',  # 341
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

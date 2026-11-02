@@ -129,13 +129,14 @@ def _kind_of(status):
 
 
 class Client:
-    def __init__(self, url, key="", model="", voice="", tries=TRIES, sleep=time.sleep, on_wait=None):
+    def __init__(self, url, key="", model="", voice="", tries=TRIES, sleep=time.sleep, on_wait=None, language=""):
         self.base = api_base(url)
         if not self.base:
             raise ServiceError("url")
         self.key, self.model, self.voice = key or "", model or "", voice or ""
         self.tries, self.sleep, self.on_wait = tries, sleep, on_wait
         self.format = "wav"                      # sin pérdidas; si no lo da, mp3 (ver _audio)
+        self.language = language or ""           # la API estándar no lo lleva; si lo rechaza, se deja de mandar
 
     def _call(self, path, body=None, timeout=TIMEOUT):
         head = {"User-Agent": "Storyteller/1.0"}  # Cloudflare corta el de Python
@@ -181,6 +182,16 @@ class Client:
             body["model"] = self.model
         if self.voice:
             body["voice"] = self.voice
+        if self.language:
+            try:
+                return self._in_some_format({**body, "language": self.language})
+            except ServiceError as e:
+                if e.kind != "refused":
+                    raise
+            self.language = ""                   # el servicio saca el idioma del propio texto
+        return self._in_some_format(body)
+
+    def _in_some_format(self, body):
         try:
             return self._call("/audio/speech", {**body, "response_format": self.format})
         except ServiceError as e:
@@ -395,7 +406,7 @@ def cmd_generate(a):
                        json.dumps(manifest + later, ensure_ascii=False, indent=2))
 
     client = Client(a.url, os.environ.get(KEY_ENV, ""), a.model, a.voice,
-                    on_wait=lambda s: say(f"SERVICE-RETRY {s}"))
+                    on_wait=lambda s: say(f"SERVICE-RETRY {s}"), language=a.lang if a.lang != "auto" else "")
     try:
         for ci, ch in enumerate(chaps, 1):
             pe = prev.get(ci)

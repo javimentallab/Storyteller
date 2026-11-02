@@ -336,3 +336,8 @@
 334|La connexion au serveur a été perdue. Ce qui y a été narré est conservé : cliquez sur Reprendre pour continuer.
 335|Requêtes simultanées :
 336|Nombre de phrases demandées au service en même temps. Plus il y en a, plus c’est rapide, si le service le permet : le vôtre (st_server.py) ouvre jusqu’à 3 XTTS s’ils tiennent sur la carte graphique, et un service public peut limiter les requêtes par minute.
+337|Langue de la narration :
+338|La langue dans laquelle le livre est lu. Choisissez aussi une voix qui y sonne bien. Les modèles F5 ne lisent que la leur.
+339|Pour narrer dans cette langue, il faut installer ceci dans l’environnement XTTS :\n\n{0}
+340|Pour une autre langue, dans "langs" : {"en": {"pron": {"nginx": "engine x"}}}
+341|Un livre est déjà en cours. L’arrêter et passer à « {0} » ? Ce qui est fait reste enregistré et peut être repris.

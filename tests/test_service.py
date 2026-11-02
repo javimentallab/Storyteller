@@ -393,6 +393,19 @@ class TestClient(unittest.TestCase):
         self.assertEqual([s[2]["response_format"] for s in Answers.seen], ["wav", "mp3", "mp3"])
 
     @unittest.skipUnless(FFMPEG, "hace falta ffmpeg")
+    def test_the_language_goes_along_until_the_service_refuses_it(self):
+        Answers.script = [(200, {}, silence_wav()), (400, {}, b'{"error": "language no"}'), (400, {}, b'{"error": "language no"}'),
+                          (200, {}, silence_wav()), (200, {}, silence_wav())]
+        c = self.client(language="ru")
+        c.say("Да.")
+        self.assertEqual(Answers.seen[0][2]["language"], "ru")
+        c.say("Нет.")                            # lo rechaza: con wav y con mp3, y sin idioma ya vale
+        self.assertEqual(["language" in s[2] for s in Answers.seen[1:4]], [True, True, False])
+        self.assertEqual(Answers.seen[3][2]["response_format"], "wav")
+        c.say("Да.")
+        self.assertNotIn("language", Answers.seen[4][2])
+
+    @unittest.skipUnless(FFMPEG, "hace falta ffmpeg")
     def test_what_is_sent(self):
         Answers.script = [(200, {}, silence_wav())]
         self.client().say("Hola, ñu.")

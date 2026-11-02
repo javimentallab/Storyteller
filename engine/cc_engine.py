@@ -19,25 +19,55 @@ for _s in (sys.stdout, sys.stderr):
     except Exception: pass
 
 FLUSH_EVERY = 6
-NUM_LANG = "es"   # idioma para expandir números (lo fija cmd_generate según el modelo)
+NUM_LANG = "es"   # idioma del texto: el que elige el usuario, o el del modelo (lo fija cmd_generate)
 
 # palabra para el separador decimal por idioma (coma/point/…)
 _DEC_WORD = {"es": "coma", "en": "point", "fr": "virgule", "de": "Komma",
-             "it": "virgola", "pt": "vírgula", "ca": "coma", "gl": "coma"}
+             "it": "virgola", "pt": "vírgula", "ca": "coma", "gl": "coma",
+             "pl": "przecinek", "tr": "virgül", "ru": "запятая", "nl": "komma", "cs": "celá",
+             "hu": "egész", "ar": "فاصلة", "zh-cn": "点", "ja": "点", "ko": "점", "hi": "दशमलव"}
+_DECIMAL_POINT = {"en", "zh-cn", "ja", "ko", "hi", "ar"}     # se escribe 3.5; en los demás, 3,5
+
+# num2words no tiene hindi, y con cifras XTTS se cae en ese idioma: los números se escriben aquí.
+_HI_0_99 = ("शून्य एक दो तीन चार पाँच छह सात आठ नौ दस ग्यारह बारह तेरह चौदह पंद्रह सोलह सत्रह अठारह उन्नीस "
+            "बीस इक्कीस बाईस तेईस चौबीस पच्चीस छब्बीस सत्ताईस अट्ठाईस उनतीस तीस इकतीस बत्तीस तैंतीस चौंतीस "
+            "पैंतीस छत्तीस सैंतीस अड़तीस उनतालीस चालीस इकतालीस बयालीस तैंतालीस चौवालीस पैंतालीस छियालीस "
+            "सैंतालीस अड़तालीस उनचास पचास इक्यावन बावन तिरपन चौवन पचपन छप्पन सत्तावन अट्ठावन उनसठ साठ इकसठ "
+            "बासठ तिरसठ चौंसठ पैंसठ छियासठ सड़सठ अड़सठ उनहत्तर सत्तर इकहत्तर बहत्तर तिहत्तर चौहत्तर पचहत्तर "
+            "छिहत्तर सतहत्तर अठहत्तर उनासी अस्सी इक्यासी बयासी तिरासी चौरासी पचासी छियासी सत्तासी अट्ठासी "
+            "नवासी नब्बे इक्यानवे बानवे तिरानवे चौरानवे पचानवे छियानवे सत्तानवे अट्ठानवे निन्यानवे").split()
+
+def _hi_number(n):
+    """Con lakh y crore, como se cuenta en hindi: 1999 = एक हज़ार नौ सौ निन्यानवे."""
+    if n < 100:
+        return _HI_0_99[n]
+    parts = []
+    for size, word in ((10 ** 7, "करोड़"), (10 ** 5, "लाख"), (1000, "हज़ार"), (100, "सौ")):
+        if n >= size:
+            parts.append(f"{_hi_number(n // size)} {word}")
+            n %= size
+    if n:
+        parts.append(_HI_0_99[n])
+    return " ".join(parts)
+
+def _to_words(n, lang):
+    from num2words import num2words
+    return _hi_number(n) if lang == "hi" else num2words(n, lang=lang)
 
 def _n2w(mobj):
     from num2words import num2words
     s = mobj.group(0)
     lang = NUM_LANG
-    if "," in s:
-        ent, dec = s.split(",", 1)
+    sep = "." if lang in _DECIMAL_POINT else ","
+    if sep in s:
+        ent, dec = s.split(sep, 1)
         try:
-            ent_w = num2words(int(ent), lang=lang) if ent else num2words(0, lang=lang)
-            dec_w = " ".join(num2words(int(d), lang=lang) for d in dec)
+            ent_w = _to_words(int(ent) if ent else 0, lang)
+            dec_w = " ".join(_to_words(int(d), lang) for d in dec)
         except Exception:
             return s
         return f"{ent_w} {_DEC_WORD.get(lang, 'coma')} {dec_w}"
-    try: return num2words(int(s), lang=lang)
+    try: return _to_words(int(s), lang)
     except Exception: return s
 
 def normalize_numbers(text):
@@ -47,16 +77,20 @@ def normalize_numbers(text):
         import num2words  # noqa: F401
     except Exception:
         return text
+    es, point = NUM_LANG == "es", NUM_LANG in _DECIMAL_POINT
     # precios: "$74.99" -> "74 dólares con 99"; "$140" -> "140 dólares" (XTTS decía "dólar ciento…")
-    text = re.sub(r"\$\s?(\d+)\.(\d{2})\b", r"\1 dólares con \2", text)
-    text = re.sub(r"\$\s?(\d[\d.,]*\d|\d)", r"\1 dólares", text)
+    if es:
+        text = re.sub(r"\$\s?(\d+)\.(\d{2})\b", r"\1 dólares con \2", text)
+        text = re.sub(r"\$\s?(\d[\d.,]*\d|\d)", r"\1 dólares", text)
     text = re.sub(r"(?<=\d)[   ](?=\d{3}\b)", "", text)  # 3 000 / 3<nbsp>000 -> 3000
-    text = re.sub(r"(?<=\d)\.(?=\d{3}\b)", "", text)      # 1.000 -> 1000
+    if not point:
+        text = re.sub(r"(?<=\d)\.(?=\d{3}\b)", "", text)  # 1.000 -> 1000
     # miles al estilo inglés que dejan las traducciones: 3,000 / 21,000 -> 3000
-    # (solo grupos exactos de 3 cifras; un decimal "3,5" no casa)
-    text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b(?![,.]\d)", lambda m: m.group(0).replace(",", ""), text)
-    text = re.sub(r"\d+(?:,\d+)?", _n2w, text)
-    if NUM_LANG == "es":                                  # 21000 -> veintiún mil, no "veintiuno mil"
+    # (solo grupos exactos de 3 cifras; un decimal "3,5" no casa). En alemán, "1,500" es un decimal.
+    if es or point:
+        text = re.sub(r"\b\d{1,3}(?:,\d{3})+\b(?![,.]\d)", lambda m: m.group(0).replace(",", ""), text)
+    text = re.sub(r"\d+(?:\.\d+)?" if point else r"\d+(?:,\d+)?", _n2w, text)
+    if es:                                                # 21000 -> veintiún mil, no "veintiuno mil"
         text = re.sub(r"\bveintiuno (mil|millones)\b", r"veintiún \1", text)
         text = re.sub(r"\buno (mil|millones)\b", r"un \1", text)
     return text
@@ -76,23 +110,37 @@ _LETTER_ES = {"a": "a", "b": "be", "c": "ce", "d": "de", "e": "e", "f": "efe",
 _SAY_WORD = {"OTAN", "ONU", "OVNI", "OPEP", "UNESCO", "UNICEF", "FIFA", "OMS",
              "RAE", "UVI", "UCI", "PIB", "IVA", "AVE", "RENFE", "PYME", "MIR",
              "ESO", "LOGSE", "SIDA", "LASER", "RADAR", "OTI", "NASA", "FMI"}
-PRON = {}          # diccionario del usuario: palabra(min) -> pronunciación
-SAY_WORD = set()   # siglas extra a leer como palabra
-SAY_LETTERS = set()  # siglas extra a deletrear
+# Diccionario del usuario, por idioma: lo de arriba del JSON es del español y otro idioma va en
+# "langs": {"en": {"pron": {…}, "say_letters": […], "say_word": […]}}. Lo que se escribe para que
+# suene en español («software» -> «sófwer») sonaría mal en cualquier otro.
+_PRON_BY_LANG = {}
+_NO_PRON = ({}, set(), set())
+
+def _pron_entry(d):
+    return ({str(k).lower(): str(v) for k, v in (d.get("pron") or {}).items()},
+            {str(s).upper() for s in (d.get("say_word") or [])},
+            {str(s).upper() for s in (d.get("say_letters") or [])})
 
 def load_pron(path):
     """Carga el diccionario de pronunciación del usuario (JSON)."""
-    global PRON, SAY_WORD, SAY_LETTERS
+    global _PRON_BY_LANG, _PRON_RE
+    _PRON_RE = {}
     try:
         with open(path, encoding="utf-8") as f:
             d = json.load(f)
-        PRON = {str(k).lower(): str(v) for k, v in (d.get("pron") or {}).items()}
-        SAY_WORD = {str(s).upper() for s in (d.get("say_word") or [])}
-        SAY_LETTERS = {str(s).upper() for s in (d.get("say_letters") or [])}
+        _PRON_BY_LANG = {"es": _pron_entry(d)}
+        for lang, entry in (d.get("langs") or {}).items():
+            _PRON_BY_LANG[str(lang).lower()] = _pron_entry(entry)
     except Exception:
-        PRON, SAY_WORD, SAY_LETTERS = {}, set(), set()
+        _PRON_BY_LANG = {}
+
+def _pron_now():
+    """(palabra -> pronunciación, siglas como palabra, siglas deletreadas) del idioma en curso."""
+    return _PRON_BY_LANG.get(NUM_LANG, _NO_PRON)
 
 def _spell_letters(w):
+    if NUM_LANG != "es":                      # el modelo sabe cómo se llaman las letras en su idioma
+        return " ".join(w.lower())
     return " ".join(_LETTER_ES.get(c, c) for c in w.lower())
 
 # Palabras cortas que en MAYÚSCULAS son palabras, no siglas (títulos y
@@ -137,10 +185,14 @@ def _fix_caps(token):
     if len(core) < 2 or not core.isupper() or not core.isalpha():
         return token
     up = core.upper()
-    if up in SAY_LETTERS:
+    _pron, say_word, say_letters = _pron_now()
+    es = NUM_LANG == "es"
+    if up in say_letters:
         rep = _spell_letters(core)
-    elif up in SAY_WORD or up in _SAY_WORD:
+    elif up in say_word or (es and up in _SAY_WORD):
         rep = core.capitalize()
+    elif not es:                                # lo de las sílabas solo vale para el español
+        return token
     elif _pronounceable(core):
         rep = core.capitalize()                 # p. ej. PREFACIO -> Prefacio
     else:
@@ -160,8 +212,9 @@ def normalize_punct(text):
     text = re.sub(r"[()\[\]{}]", ", ", text)                # paréntesis/corchetes: XTTS los lee raro -> pausa
     text = re.sub(r"(?<!\d):|:(?!\d)", ", ", text)          # "Yo: hola" -> pausa (10:30 se queda)
     text = re.sub(r"(?<!\d)\s*/\s*(?!\d)", ", ", text)      # "lujo/caro", versos "a / b" (1/2 se queda)
-    text = re.sub(r"\s*=\s*", " igual a ", text)
-    text = re.sub(r"(?<=[A-Za-z])\+", " más", text)         # A+
+    if NUM_LANG == "es":
+        text = re.sub(r"\s*=\s*", " igual a ", text)
+        text = re.sub(r"(?<=[A-Za-z])\+", " más", text)     # A+
     text = text.replace("©", "").replace("®", "").replace("™", "").replace("*", " ")
     text = text.replace("；", ";").replace("，", ",")
     text = re.sub(r"\s*;\s*", ", ", text)        # ; como pausa de coma
@@ -178,19 +231,26 @@ def normalize_punct(text):
     text = re.sub(r"[\s,]+$", "", text)                      # sin coma colgando al final: XTTS hacía ",." y comía la cola
     return text.strip()
 
+_PRON_RE = {}
+
 def _apply_pron(text):
-    """Sustituye términos del diccionario del usuario (palabra completa)."""
-    if not PRON:
+    """Sustituye términos del diccionario del usuario: palabra completa, de cualquier alfabeto."""
+    pron = _pron_now()[0]
+    if not pron:
         return text
-    def rep(m):
-        return PRON.get(m.group(0).lower(), m.group(0))
-    return re.sub(r"[A-Za-zÀ-ÿ]+", rep, text)
+    rx = _PRON_RE.get(NUM_LANG)
+    if rx is None:
+        alt = "|".join(re.escape(k) for k in sorted(pron, key=len, reverse=True))
+        rx = _PRON_RE[NUM_LANG] = re.compile(rf"(?<!\w)(?:{alt})(?!\w)", re.IGNORECASE)
+    return rx.sub(lambda m: pron.get(m.group(0).lower(), m.group(0)), text)
 
 def _lower_initial(text):
     """Baja a minúscula la 1ª letra del trozo (inicio de frase): F5 a veces lee
     raro la mayúscula inicial y fonéticamente es idéntico en minúscula."""
     for i, ch in enumerate(text):
         if ch.isalpha():
+            if NUM_LANG != "es" and text[i+1:i+2].isupper():   # una sigla: en español ya la ha resuelto _fix_caps
+                return text
             return text[:i] + ch.lower() + text[i+1:]
         if ch.isdigit():
             break
@@ -198,8 +258,9 @@ def _lower_initial(text):
 
 def normalize_text(text):
     """Pipeline completo para el audio (no toca el subtítulo)."""
-    for pat, rep in _ABBR:                    # antes que la puntuación: el punto de "Sr." no es fin
-        text = re.sub(pat, rep, text)
+    if NUM_LANG == "es":                      # en otro idioma, sus abreviaturas las sabe el modelo
+        for pat, rep in _ABBR:                # antes que la puntuación: el punto de "Sr." no es fin
+            text = re.sub(pat, rep, text)
     text = re.sub(r"\b(\d{1,2}):(\d{2})\b", r"\1 \2", text)   # 10:30 -> "diez treinta"
     text = normalize_punct(text)
     text = " ".join(_fix_caps(t) for t in text.split(" "))
@@ -211,10 +272,15 @@ def normalize_text(text):
 
 # ---- QC de alucinaciones: transcribe la frase generada y mide el recall de
 # palabras contra el texto que debería decir. Si baja del umbral, se regenera.
+_NO_SPACES = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]")
+
 def _words(s):
+    """Las palabras de un texto, sin acentos, en cualquier alfabeto. Chino y japonés no separan
+    palabras: ahí cuenta cada carácter."""
     import unicodedata
-    s = unicodedata.normalize("NFKD", s.lower()).encode("ascii", "ignore").decode()
-    return re.findall(r"[a-z0-9]+", s)
+    s = unicodedata.normalize("NFKD", s.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.findall(r"[^\W_]+", _NO_SPACES.sub(lambda m: f" {m.group(0)} ", s))
 
 def _recall(ref_text, hyp_text):
     ref = set(_words(ref_text))
@@ -310,6 +376,10 @@ def _qc_tail(rf, rh):
         return 0, False
     return 0, True
 
+def _whisper_lang(lang):
+    """El código que entiende Whisper: «zh», no «zh-cn»."""
+    return (lang or "").split("-")[0] or None
+
 def qc_transcribe(wav, sr, url, timeout=60, lang="es"):
     """Sube un fragmento WAV a un Whisper por HTTP (voz-server). Devuelve (texto, instante en
     que acaba la última palabra, si el servidor lo da); (None, None) si no hay respuesta."""
@@ -318,9 +388,10 @@ def qc_transcribe(wav, sr, url, timeout=60, lang="es"):
     try:
         sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
         # El prompt evita el del servidor, que es vocabulario de su dictado, no de un libro.
+        prompt = "Lectura de un libro." if (lang or "es") == "es" else "."
         p = subprocess.run(["curl", "-s", "-m", str(timeout), "-F", f"file=@{tmp}",
-                            "-F", "response_format=verbose_json", "-F", f"language={lang or 'es'}",
-                            "-F", "prompt=Lectura de un libro.", url],
+                            "-F", "response_format=verbose_json", "-F", f"language={_whisper_lang(lang) or 'es'}",
+                            "-F", f"prompt={prompt}", url],
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         if p.returncode != 0: return None, None
         d = json.loads(p.stdout.decode("utf-8", "replace")) or {}
@@ -352,7 +423,7 @@ def qc_transcribe_local(wav, sr, model_dir, lang=None):
     try:
         sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
         model = qc_load_local(model_dir)
-        segs, _ = model.transcribe(tmp, language=(lang or None), vad_filter=True, beam_size=1,
+        segs, _ = model.transcribe(tmp, language=_whisper_lang(lang), vad_filter=True, beam_size=1,
                                    word_timestamps=True)
         segs = list(segs)
         words = [w for s in segs for w in (s.words or [])]
@@ -513,11 +584,26 @@ _ABBR_END = re.compile(r"(?:\b(?:[Ss]r|[Ss]ra|[Ss]rta|[Dd]r|[Dd]ra|[Mm]r|[Mm]rs|
 # Fin de frase: signo, quizá una comilla o un paréntesis que cierra, y espacio. Si sigue
 # minúscula no es fin ("¿Qué hora es? —dijo él", "etc. y", "Bueno… quizá"). En chino y
 # japonés no hay espacio tras el signo: sin cortar ahí, un párrafo entero iría de una vez.
-_SENT_SPLIT = re.compile(r"(?:(?<=[.!?…।؟])|(?<=[.!?…।؟][»”\"’)\]]))\s+(?![—–-]?\s*[a-záéíóúüñ])"
+_SENT_SPLIT = re.compile(r"(?:(?<=[.!?…।؟])|(?<=[.!?…।؟][»”\"’)\]]))\s+(?![—–-]?\s*[a-zà-öø-ÿа-яёα-ω])"
                          r"|(?:(?<=[。！？])(?![」』”）])|(?<=[。！？][」』”）]))\s*")
 _SENT_END = re.compile(r"[.!?…。！？।؟][»”\"’)\]」』）]*$")
 _CLAUSE_SPLIT = re.compile(r"(?<=[,;:،؛])\s+|(?<=[，、；：])\s*")
 _CLAUSE_END_TIGHT = "，、；："                     # tras estos no se escribe espacio
+
+# Tope de caracteres por trozo: XTTS corta el audio si se pasa (char_limits en coqui; aquí algo
+# menos, porque los números se escriben luego en letra). El resto de idiomas admite 240 o más.
+_HARD = {"zh-cn": 75, "ja": 65, "ko": 85, "hi": 140, "ar": 155, "ru": 170, "cs": 175, "pt": 190,
+         "it": 200, "pl": 210, "hu": 210, "tr": 210}
+
+# Signos con los que un trozo ya acaba: sin uno, XTTS desbarra al final.
+STOPS = ".?!…。！？।؟"
+
+def with_stop(text):
+    """Lo que se le da a XTTS: sin coma colgando (se comía la cola) y con su signo de fin."""
+    t = (text or "").strip().rstrip(",;: ，、；：،؛")
+    if t and t[-1] not in STOPS:
+        t += "."
+    return t
 
 # Silencio que se añade tras cada trozo según cómo acabe; lo marca la puntuación del
 # libro, no el modelo. trim_clip deja además 40 ms por lado: se oyen 0,30 / 0,63 / 0,98 s.
@@ -547,7 +633,7 @@ def _split_paragraph(text, hard=240, short=20):
                 clauses.append(p)
         for p in clauses:
             while len(p) > hard:                      # cláusula monstruosa: corte en un espacio
-                cut = p.rfind(" ", 60, hard)
+                cut = p.rfind(" ", min(60, hard // 2), hard)
                 if cut < 0: cut = hard
                 out.append(p[:cut].strip()); p = p[cut:].strip()
             out.append(p)
@@ -557,7 +643,7 @@ def split_chunks(text):
     """[(trozo, clave de PAUSES)]. Cada línea del texto es un párrafo (_blocks_text)."""
     out = []
     for para in text.split("\n"):
-        parts = _split_paragraph(para)
+        parts = _split_paragraph(para, hard=_HARD.get(NUM_LANG, 240))
         for i, c in enumerate(parts):
             kind = "parrafo" if i == len(parts) - 1 else ("frase" if _SENT_END.search(c) else "coma")
             out.append((c, kind))
