@@ -30,8 +30,8 @@
   and from there it also transcribes; without an engine, in `engine/.venv`. It uses the graphics card
   only if that environment has PyTorch.
 - On *Models*, an engine that isn't installed says so on its card, with a *How to install it* button
-  that gives the exact commands, and no button is left disabled. Importing an audiobook, narrating and
-  downloading a model say the same instead of failing.
+  that gives the exact commands, instead of a disabled *Download*. Importing an audiobook and narrating
+  say the same instead of failing.
 - **Exact versions**: `requirements.txt` for the interface and `engine/deps/<engine>/requirements.txt`
   for each engine, also for what the app installs for translation. The README installs from them.
 - F5 moves to PyTorch 2.8.0, the same as XTTS.
@@ -72,8 +72,8 @@
 - Fixed by replacing the setuptools 65.5.0 that `python -m venv` leaves on Python 3.11: CVE-2022-40897,
   CVE-2024-6345, CVE-2025-47273, CVE-2026-59890 and GHSA-xmj3-9gf7-h52w.
 - Known and still open: PyTorch 2.8.0 (XTTS and F5) has CVE-2025-2999, CVE-2025-3000, CVE-2025-3001,
-  CVE-2025-55551, CVE-2025-55552, CVE-2025-55554, CVE-2026-4538 and CVE-2026-24747; the fixes need 2.9 or
-  later, which requires torchcodec, and that fails on Windows. The optional F5 environment has
+  CVE-2025-55551, CVE-2025-55552, CVE-2025-55554, CVE-2026-4538 and CVE-2026-24747. CVE-2026-4538 has no
+  fix yet; the others need 2.9 or later, which requires torchcodec, and that fails on Windows. The optional F5 environment has
   Pillow 12.3.0 and filelock 3.32.7 with known advisories, because gradio (`pillow<13`) and cached-path
   (`filelock<4`) hold them back.
 
