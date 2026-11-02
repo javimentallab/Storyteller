@@ -35,6 +35,9 @@
 - **Exact versions**: `requirements.txt` for the interface and `engine/deps/<engine>/requirements.txt`
   for each engine, also for what the app installs for translation. The README installs from them.
 - F5 moves to PyTorch 2.8.0, the same as XTTS.
+- **F5 is installed without gradio** (`pip install --no-deps`). It is only F5's web interface, which Storyteller doesn't
+  use, and together with cached-path it held back Pillow and filelock. `pip check` complains about gradio and cached-path:
+  that is expected.
 
 ### Fixed
 - **The QC could look as if it was checking when it wasn't**: if Whisper couldn't load, each sentence
@@ -67,15 +70,31 @@
   `CONTRIBUTING.md`. Trivy now sees the Python dependencies, because they are in `requirements.txt` files.
 - Fixed by moving F5's environment from PyTorch 2.6.0 to 2.8.0: CVE-2025-2148, CVE-2025-2149, CVE-2025-2953,
   CVE-2025-2998, CVE-2025-3730, CVE-2025-46148, CVE-2025-46149, CVE-2025-46150, CVE-2025-46152,
-  CVE-2025-46153, CVE-2025-55553, CVE-2025-55557, CVE-2025-55558 and CVE-2025-55560. To get this on an
-  existing installation, run the F5 commands of the README again.
+  CVE-2025-46153, CVE-2025-55553, CVE-2025-55557, CVE-2025-55558 and CVE-2025-55560.
+- Fixed by moving F5's environment from Pillow 12.3.0 to 13.0.0: CVE-2026-96636, CVE-2026-96637, CVE-2026-96638,
+  CVE-2026-96639, CVE-2026-96640, CVE-2026-96641, CVE-2026-96642, CVE-2026-96643, CVE-2026-96644, CVE-2026-96778,
+  CVE-2026-112390, CVE-2026-112391, CVE-2026-112392, CVE-2026-112393, CVE-2026-112394, CVE-2026-112395, CVE-2026-112396,
+  CVE-2026-112397, CVE-2026-112398, CVE-2026-112399, CVE-2026-112400, CVE-2026-112401, CVE-2026-112402, CVE-2026-112403,
+  CVE-2026-112404, CVE-2026-112405, CVE-2026-112406, CVE-2026-112891, CVE-2026-112892, CVE-2026-112893, CVE-2026-112894,
+  CVE-2026-112895, CVE-2026-112896, CVE-2026-112897, CVE-2026-112898, CVE-2026-112899, CVE-2026-112900, CVE-2026-112901,
+  CVE-2026-112902, CVE-2026-114501 and GHSA-78g4-xqwv-q3g8.
+- Fixed by moving F5's environment from filelock 3.32.7 to 4.2.4: CVE-2026-112907, CVE-2026-112908, CVE-2026-112909,
+  CVE-2026-112910, CVE-2026-112911, CVE-2026-112912, CVE-2026-112913, CVE-2026-112915, CVE-2026-112935, CVE-2026-112936,
+  CVE-2026-112938, CVE-2026-112939 and CVE-2026-112940.
+- To get these on an existing F5 installation, run the F5 commands of the README again.
 - Fixed by replacing the setuptools 65.5.0 that `python -m venv` leaves on Python 3.11: CVE-2022-40897,
   CVE-2024-6345, CVE-2025-47273, CVE-2026-59890 and GHSA-xmj3-9gf7-h52w.
-- Known and still open: PyTorch 2.8.0 (XTTS and F5) has CVE-2025-2999, CVE-2025-3000, CVE-2025-3001,
-  CVE-2025-55551, CVE-2025-55552, CVE-2025-55554, CVE-2026-4538 and CVE-2026-24747. CVE-2026-4538 has no
-  fix yet; the others need 2.9 or later, which requires torchcodec, and that fails on Windows. The optional F5 environment has
-  Pillow 12.3.0 and filelock 3.32.7 with known advisories, because gradio (`pillow<13`) and cached-path
-  (`filelock<4`) hold them back.
+- `st_server` wrote an uploaded voice, up to 32 MB, to a temporary file before checking the key. It now
+  checks the key first: without a valid one nothing reaches the disk, and the body is read and thrown away,
+  up to that limit, only so that the client sees the 401.
+- **Known and not fixed: PyTorch 2.8.0**, used by XTTS and F5. The ones with a high score (CVSS, from OSV):
+  - CVE-2026-24747 (8.8), fixed in PyTorch 2.10.
+  - CVE-2026-4538 (7.8), with no fix published in any version.
+  - CVE-2025-55551 (7.5) and CVE-2025-55552 (7.5), fixed in PyTorch 2.9.
+
+  Also CVE-2025-55554, CVE-2025-2999, CVE-2025-3000 and CVE-2025-3001. Storyteller stays on 2.8.0 because
+  PyTorch 2.9 and later require torchcodec, and that fails on Windows. Trivy does not rate these as high or
+  critical, so they don't stop its check; they are listed here so that they aren't hidden.
 
 ## 1.0 (2026-11-01)
 

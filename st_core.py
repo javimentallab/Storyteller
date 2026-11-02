@@ -320,8 +320,12 @@ VENV_MAIN, VENV_XTTS = ".venv", ".venv-xtts"
 # Leer el EPUB: lo mínimo para narrar por URL.
 BASE_PACKAGES = ("num2words", "beautifulsoup4", "lxml")
 XTTS_PACKAGES = BASE_PACKAGES + ("torch", "torchaudio", "coqui-tts")
-# Opcional, en engine/.venv.
-F5_PACKAGES = BASE_PACKAGES + ("torch", "f5-tts")
+# Opcional, en engine/.venv. Se instala con --no-deps, y así nadie comprueba que esté todo si la instalación se corta:
+# por eso aquí va cuanto F5 importa para generar (sale de recorrer su código desde f5_tts.api; lo vigila test_requisitos).
+F5_PACKAGES = BASE_PACKAGES + ("torch", "torchaudio", "f5-tts", "accelerate", "cached-path", "datasets", "ema-pytorch",
+                               "huggingface-hub", "hydra-core", "librosa", "matplotlib", "numpy", "omegaconf", "pydub",
+                               "pypinyin", "rjieba", "safetensors", "soundfile", "torchdiffeq", "tqdm", "transformers",
+                               "vocos", "wandb", "x-transformers")
 # Opcional, para transcribir audiolibros y para el QC. El QC corre dentro del proceso del motor que narra, así que
 # tiene que estar en SU venv; desde ahí sirve también para transcribir.
 WHISPER_PACKAGES = ("faster-whisper", "av")
@@ -336,17 +340,17 @@ def install_commands(what, windows=os.name == "nt"):
     def new(venv):
         return rf"python -m venv engine\{venv}" if windows else f"python3 -m venv engine/{venv}"
 
-    def pip_r(venv, name):
+    def pip_r(venv, name, flags=""):
         path = rf"engine\deps\{name}\requirements.txt" if windows else f"engine/deps/{name}/requirements.txt"
-        return f"{py(venv)} -m pip install -r {path}"
+        return f"{py(venv)} -m pip install {flags}-r {path}"
 
     return {"xtts": [new(VENV_XTTS), f"{py(VENV_XTTS)} -m pip install {TORCH_INSTALL}", pip_r(VENV_XTTS, "xtts")],
             "xtts-languages": [pip_r(VENV_XTTS, "xtts-languages")],
-            "f5": [new(VENV_MAIN), f"{py(VENV_MAIN)} -m pip install {TORCH_INSTALL}", pip_r(VENV_MAIN, "f5")],
+            "f5": [new(VENV_MAIN), f"{py(VENV_MAIN)} -m pip install {TORCH_INSTALL}", pip_r(VENV_MAIN, "f5", "--no-deps ")],
             "base": [new(VENV_MAIN), pip_r(VENV_MAIN, "base")],
             "whisper-xtts": [pip_r(VENV_XTTS, "whisper")],
             "whisper-f5": [pip_r(VENV_MAIN, "whisper")],
-            "whisper-alone": [new(VENV_MAIN), pip_r(VENV_MAIN, "whisper-alone")]}[what]
+            "whisper-alone": [new(VENV_MAIN), pip_r(VENV_MAIN, "whisper")]}[what]
 
 
 def whisper_venv(engine_dir, windows=os.name == "nt"):

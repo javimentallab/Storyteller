@@ -8,6 +8,9 @@ import importlib.util, json, os, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+import st_core as C
+
 QT = importlib.util.find_spec("PySide6") is not None
 WINDOWS = os.name == "nt"
 DIST = {"torch": "torch-2.8.0", "torchaudio": "torchaudio-2.8.0", "f5-tts": "f5_tts-1.1.22", "coqui-tts": "coqui_tts-0.28.0",
@@ -15,7 +18,7 @@ DIST = {"torch": "torch-2.8.0", "torchaudio": "torchaudio-2.8.0", "f5-tts": "f5_
         "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
 BASE = ["num2words", "beautifulsoup4", "lxml"]
 XTTS = BASE + ["torch", "torchaudio", "coqui-tts"]
-F5 = BASE + ["torch", "f5-tts"]
+F5 = list(C.F5_PACKAGES)
 WHISPER = ["faster-whisper", "av"]
 
 # Se ejecuta aparte, con su propia carpeta de usuario, y escribe en JSON lo que ve.
@@ -140,7 +143,7 @@ class Combinacion(unittest.TestCase):
             exe.parent.mkdir(parents=True)
             exe.write_bytes(b"")
             for p in packages:
-                info = site / (DIST[p] + ".dist-info")
+                info = site / (DIST.get(p, p.replace("-", "_") + "-1.0") + ".dist-info")
                 info.mkdir(parents=True)
                 (info / "RECORD").write_text("", "utf-8")
         if config is not None:
@@ -185,7 +188,8 @@ class Combinacion(unittest.TestCase):
         self.assertEqual(s["generate"]["started"], [])
         self.assertIn(r"engine\.venv-xtts" if WINDOWS else "engine/.venv-xtts", s["generate"]["how"][0])
         self.assertEqual(s["import"]["asked_file"], False)
-        self.assertIn("whisper-alone", s["import"]["how"][0])
+        self.assertIn("-m venv", s["import"]["how"][0])            # sin motor, en un venv nuevo
+        self.assertIn(os.path.join("deps", "whisper"), s["import"]["how"][0])
 
     def test_el_modelo_de_partida_es_xtts_y_no_f5(self):
         s = self.see(xtts=XTTS)

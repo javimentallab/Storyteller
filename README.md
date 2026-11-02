@@ -187,14 +187,14 @@ Without any engine, only to transcribe. Windows:
 
 ```powershell
 python -m venv engine\.venv
-engine\.venv\Scripts\python -m pip install -r engine\deps\whisper-alone\requirements.txt
+engine\.venv\Scripts\python -m pip install -r engine\deps\whisper\requirements.txt
 ```
 
 Linux/macOS:
 
 ```sh
 python3 -m venv engine/.venv
-engine/.venv/bin/python -m pip install -r engine/deps/whisper-alone/requirements.txt
+engine/.venv/bin/python -m pip install -r engine/deps/whisper/requirements.txt
 ```
 
 On its own it transcribes on the CPU. It uses an NVIDIA graphics card if that environment has PyTorch with CUDA, as
@@ -224,7 +224,7 @@ Only to narrate with an F5 model. It brings packages under other licences, such 
 ```powershell
 python -m venv engine\.venv
 engine\.venv\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-engine\.venv\Scripts\python -m pip install -r engine\deps\f5\requirements.txt
+engine\.venv\Scripts\python -m pip install --no-deps -r engine\deps\f5\requirements.txt
 ```
 
 Linux/macOS:
@@ -232,8 +232,12 @@ Linux/macOS:
 ```sh
 python3 -m venv engine/.venv
 engine/.venv/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-engine/.venv/bin/python -m pip install -r engine/deps/f5/requirements.txt
+engine/.venv/bin/python -m pip install --no-deps -r engine/deps/f5/requirements.txt
 ```
+
+It is installed with `--no-deps` to leave out `gradio`, F5's web interface, which Storyteller doesn't use, and to get past the
+limits that `gradio` and `cached-path` put on `pillow` and `filelock`, whose older versions have known vulnerabilities. So
+`pip check` complains about `gradio` and `cached-path`: that is expected, not a fault.
 
 Then start the app and download the models from *Models*. If an engine is missing, its card there
 says so and gives the commands, and the screen notices a new engine the next time you open it, without restarting.

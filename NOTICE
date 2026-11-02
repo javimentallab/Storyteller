@@ -57,9 +57,8 @@ app. Storyteller's own code does not use them; F5-TTS brings them with it:
 
 Optional engine: Whisper
 ------------------------
-Installed only if you ask for it, with engine/deps/whisper/requirements.txt or
-engine/deps/whisper-alone/requirements.txt, to transcribe audiobooks and for the quality
-check (QC):
+Installed only if you ask for it, with engine/deps/whisper/requirements.txt, to transcribe
+audiobooks and for the quality check (QC):
 - faster-whisper and its Whisper models: MIT License,
   https://github.com/SYSTRAN/faster-whisper
 - PyAV (the package av, which faster-whisper requires): its own code is under the
@@ -92,36 +91,33 @@ pip installs these automatically as dependencies of the packages above. The exac
 depends on which engines are installed.
 
 Mozilla Public License 2.0:
-  certifi; tqdm (MPL-2.0 AND MIT); orjson (MPL-2.0 AND (Apache-2.0 OR MIT))
+  certifi; tqdm (MPL-2.0 AND MIT)
 MIT License:
-  annotated-doc, annotated-types, anyio, attrs, audioread, bitsandbytes, brotli,
+  annotated-doc, annotated-types, anyio, attrs, audioread, bitsandbytes,
   charset-normalizer, coqpit-config, ctranslate2, cutlet, docopt, einops, ema-pytorch,
-  et-xmlfile, fastapi, filelock, fonttools, fugashi, groovy, h11, hf-gradio, hydra-core,
-  inflect, jaconv, jaraco.functools, jmespath, loguru, markdown-it-py, mdurl,
-  monotonic-alignment-search, more-itertools, narwhals, onnxruntime, platformdirs,
-  pydantic, pydantic-core, pydub, pyparsing, pypinyin, pysbd, python-fire, pytz,
-  pyyaml, rich, rjieba, safehttpx, setuptools, six, soupsieve, tabulate, termcolor, tomli,
-  tomlkit, torchdiffeq, truststore, typeguard, typer, typing-inspection, unidic-lite, urllib3,
-  wandb, win32-setctime
+  et-xmlfile, filelock, fonttools, fugashi, h11, hydra-core, inflect, jaconv, jmespath,
+  loguru, markdown-it-py, mdurl, monotonic-alignment-search, more-itertools, narwhals,
+  onnxruntime, platformdirs, pydantic, pydantic-core, pydub, pyparsing, pypinyin, pysbd,
+  python-fire, pyyaml, rich, rjieba, setuptools, six, soupsieve, termcolor, tomli,
+  torchdiffeq, typeguard, typer, typing-inspection, unidic-lite, urllib3, wandb,
+  win32-setctime
 BSD licences:
-  antlr4-python3-runtime, click, cloudpickle, colorama, contourpy,
-  cycler, decorator, dill, fsspec, httpcore, httpcore2, httpx, httpx2, idna, jinja2,
-  joblib, kiwisolver, lazy-loader, llvmlite, markdown, markupsafe, mpmath,
-  multiprocess, networkx, numba, omegaconf, pandas, pooch, protobuf, psutil, pyasn1,
-  pyasn1-modules, pycparser, pygments, scikit-learn, semantic-version, starlette,
-  sympy, threadpoolctl, torchcodec, uvicorn, werkzeug, xlsxwriter, xxhash
+  antlr4-python3-runtime, click, cloudpickle, colorama, contourpy, cycler, decorator,
+  dill, fsspec, httpcore, httpx, idna, jinja2, joblib, kiwisolver, lazy-loader,
+  llvmlite, markdown, markupsafe, mpmath, multiprocess, networkx, numba, omegaconf,
+  pandas, pooch, protobuf, psutil, pyasn1, pyasn1-modules, pycparser, pygments,
+  scikit-learn, sympy, threadpoolctl, torchcodec, werkzeug, xlsxwriter, xxhash
 Apache License 2.0:
   absl-py, accelerate, aiosignal, boto3, botocore, cached-path, coqui-tts-trainer,
-  cwevals, datasets, distro, fire, flatbuffers, frozenlist, google-api-core,
-  google-auth, google-cloud-core, google-cloud-storage, google-crc32c,
-  google-resumable-media, googleapis-common-protos, gradio, gradio-client, grpcio,
-  hf-xet, huggingface-hub, ko-speech-tools, mojimoji, msgpack, multidict, opentelemetry-api,
-  opentelemetry-exporter-http-transport, opentelemetry-exporter-otlp-common,
-  opentelemetry-exporter-otlp-proto-common, opentelemetry-exporter-otlp-proto-http,
-  opentelemetry-proto, opentelemetry-sdk, opentelemetry-semantic-conventions,
-  propcache, proto-plus, pyarrow, python-multipart, requests, s3transfer, safetensors,
-  tensorboard, tensorboard-data-server, tokenizers, transformers,
-  transformers-stream-generator, tzdata, yarl
+  datasets, fire, flatbuffers, frozenlist, google-api-core, google-auth,
+  google-cloud-core, google-cloud-storage, google-crc32c, google-resumable-media,
+  googleapis-common-protos, grpcio, hf-xet, huggingface-hub, ko-speech-tools, mojimoji,
+  msgpack, multidict, opentelemetry-api, opentelemetry-exporter-http-transport,
+  opentelemetry-exporter-otlp-common, opentelemetry-exporter-otlp-proto-common,
+  opentelemetry-exporter-otlp-proto-http, opentelemetry-proto, opentelemetry-sdk,
+  opentelemetry-semantic-conventions, propcache, proto-plus, pyarrow, requests,
+  s3transfer, safetensors, tensorboard, tensorboard-data-server, tokenizers,
+  transformers, transformers-stream-generator, tzdata, yarl
 ISC License:
   anyascii, shellingham
 Python Software Foundation License:
@@ -130,8 +126,7 @@ Python Software Foundation License:
 Other permissive licences:
   aiohttp (Apache-2.0 AND MIT), cffi (MIT-0), cryptography (Apache-2.0 OR BSD-3-Clause),
   packaging (Apache-2.0 OR BSD-2-Clause), pillow (MIT-CMU),
-  python-dateutil (Apache-2.0 OR BSD-3-Clause), regex (Apache-2.0 AND CNRI-Python),
-  sniffio (MIT OR Apache-2.0)
+  python-dateutil (Apache-2.0 OR BSD-3-Clause), regex (Apache-2.0 AND CNRI-Python)
 
 The LGPL and MPL packages above are used unmodified, as separately installed libraries;
 you can replace them with any compatible version.

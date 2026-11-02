@@ -445,9 +445,12 @@ class Api(BaseHTTPRequestHandler):
     def error(self, status, message, extra=None):
         self.send_json({"error": {"message": message}}, status, extra)
 
-    def guarded(self):
+    def guarded(self, discard=0):
+        """¿Trae la clave? Si no, contesta 401. Con discard, antes lee y tira hasta ese tope del cuerpo."""
         if self.svc.authorized(self.headers.get("Authorization")):
             return True
+        if discard:
+            self.discard_body(discard)
         self.error(401, "Falta la clave de acceso, o no es esa.")
         return False
 
@@ -481,17 +484,32 @@ class Api(BaseHTTPRequestHandler):
         if 0 <= length <= limit:
             return length
         self.close_connection = True
-        # Lo leído se tira, hasta un tope: si se cierra sin leer, el cliente no ve la respuesta.
-        left = min(max(length, 0), 16 * limit)
+        self.drain(max(length, 0), 16 * limit)
+        self.error(413, "Petición demasiado grande.")
+        return None
+
+    def discard_body(self, limit):
+        """Tira el cuerpo sin guardarlo. Si no cabe en el tope, esta conexión ya no sirve para otra petición."""
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if not 0 <= length <= limit:
+            self.close_connection = True
+        self.drain(max(length, 0), limit)
+
+    def drain(self, length, limit):
+        """Lo leído se tira, hasta un tope: si se cierra sin leer, el cliente no ve la respuesta."""
+        left = min(length, limit)
         while left > 0:
             chunk = self.rfile.read(min(65536, left))
             if not chunk:
                 break
             left -= len(chunk)
-        self.error(413, "Petición demasiado grande.")
-        return None
 
     def do_PUT(self):
+        if not self.guarded(discard=MAX_VOICE):         # sin clave, ni un byte a disco
+            return
         length = self.body_length(MAX_VOICE)
         if length is None:
             return
@@ -506,8 +524,6 @@ class Api(BaseHTTPRequestHandler):
                         break
                     f.write(chunk)
                     left -= len(chunk)
-            if not self.guarded():
-                return
             if not m:
                 return self.error(404, "No existe esa ruta.")
             name = m.group(1)

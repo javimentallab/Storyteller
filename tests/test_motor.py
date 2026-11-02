@@ -21,6 +21,10 @@ DIST_INFO = {"torch": "torch-2.8.0+cu128", "torchaudio": "torchaudio-2.8.0+cu128
              "num2words": "num2words-0.5.14", "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
 # Los textos que mandan a instalar algo, y la ruta que tienen que nombrar.
 FALTA_MOTOR = {118: "engine/.venv-xtts", 348: "engine/.venv-xtts", 349: ""}
+
+
+def dist_info(package):
+    return DIST_INFO.get(package, package.replace("-", "_") + "-1.0")
 COMANDOS = (342, 343, 344, 345, 352, 356)                # los que llevan los comandos en {0}
 
 
@@ -43,7 +47,7 @@ class Base(unittest.TestCase):
             exe.parent.mkdir(parents=True, exist_ok=True)
             exe.write_bytes(b"")
         for p in packages:
-            info = site / (DIST_INFO[p] + ".dist-info")
+            info = site / (dist_info(p) + ".dist-info")
             info.mkdir(exist_ok=True)
             (info / "RECORD").write_text("", "utf-8")
 
@@ -86,7 +90,7 @@ class MotorInstalado(Base):
 
     def test_instalacion_cortada_no_cuenta(self):
         self.crear(True)
-        (self.site(True) / (DIST_INFO["torch"] + ".dist-info") / "RECORD").unlink()
+        (self.site(True) / (dist_info("torch") + ".dist-info") / "RECORD").unlink()
         self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_carpeta_suelta_sin_instalar_no_cuenta(self):
@@ -167,7 +171,16 @@ class PartesOpcionales(Base):
                          [r"engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\whisper\requirements.txt"])
         self.assertEqual(C.install_commands("whisper-alone", False),
                          ["python3 -m venv engine/.venv",
-                          "engine/.venv/bin/python -m pip install -r engine/deps/whisper-alone/requirements.txt"])
+                          "engine/.venv/bin/python -m pip install -r engine/deps/whisper/requirements.txt"])
+        self.assertEqual(C.install_commands("f5", True)[-1],
+                         r"engine\.venv\Scripts\python -m pip install --no-deps -r engine\deps\f5\requirements.txt")
+        self.assertEqual(C.install_commands("f5", False)[-1],
+                         "engine/.venv/bin/python -m pip install --no-deps -r engine/deps/f5/requirements.txt")
+
+    def test_f5_cortado_a_medias_no_cuenta(self):
+        # --no-deps no vigila nada: si la instalación se corta, f5-tts puede estar sin lo que importa.
+        self.crear(True, ("torch", "f5-tts") + C.BASE_PACKAGES)
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
 
 class WhisperSinTorch(unittest.TestCase):
@@ -281,7 +294,16 @@ class Readme(unittest.TestCase):
             for line in (ROOT / name).read_text("utf-8").splitlines():
                 if " -m pip install " in line:
                     with self.subTest(readme=name, line=line):
-                        self.assertRegex(line, r"pip install (-r |torch==)")
+                        self.assertRegex(line, r"pip install (--no-deps -r |-r |torch==)")
+
+    def test_explica_por_que_f5_lleva_no_deps(self):
+        for name, word in (("README.md", "expected"), ("README.es.md", "esperado")):
+            text = (ROOT / name).read_text("utf-8")
+            section = text[text.index("### F5 ("):]
+            section = section[:section.index("\n## ")]
+            with self.subTest(readme=name):
+                for needed in ("--no-deps", "pip check", "gradio", "cached-path", "pillow", "filelock", word):
+                    self.assertIn(needed, section)
 
 
 if __name__ == "__main__":

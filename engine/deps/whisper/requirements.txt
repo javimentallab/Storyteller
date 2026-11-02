@@ -1,8 +1,6 @@
-# Whisper (optional: transcribing audiobooks and the QC), on top of an engine: install it in the venv of the
-# engine that narrates, because the QC runs in that process.
+# Whisper (optional: transcribing audiobooks and the QC). Install it in the venv of the engine that narrates, because
+# the QC runs in that process; without an engine, in engine/.venv.
 # av<19 because faster-whisper 1.2.1 breaks with av 19 (TypeError: metadata_errors).
-# No filelock here: XTTS and F5 need different versions and each pins its own.
-# Without any engine, use ../whisper-alone/requirements.txt instead.
 -r ../base/requirements.txt
 anyio==4.15.1
 av==18.1.0
@@ -11,6 +9,7 @@ click==8.5.0
 colorama==0.4.6; sys_platform == 'win32'
 ctranslate2==4.8.2
 faster-whisper==1.2.1
+filelock==4.2.4
 flatbuffers==25.12.19
 fsspec==2026.6.0
 h11==0.16.0

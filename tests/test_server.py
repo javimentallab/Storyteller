@@ -3,8 +3,9 @@
 
     python -m unittest tests.test_server -v
 """
-import http.client, io, json, os, shutil, sys, tempfile, threading, time, unittest, wave
+import http.client, io, json, os, shutil, socket, sys, tempfile, threading, time, unittest, wave
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -423,6 +424,86 @@ class TestUploadVoice(Base):
         self.assertFalse((self.home / "engine" / "voices" / "sinclave.wav").exists())
         names = {p.name for p in (self.home / "engine" / "voices").iterdir()}
         self.assertEqual(names, {"narrator.wav", "voz-b.wav"})
+
+
+class TestUploadVoiceKey(Base):
+    """Sin clave válida no se escribe nada a disco. No necesita ffmpeg."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(st_server.tempfile, "mkstemp", wraps=tempfile.mkstemp)
+        self.mkstemp = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.voices_before = sorted(p.name for p in (self.home / "engine" / "voices").iterdir())
+
+    def assertNothingWritten(self):
+        self.mkstemp.assert_not_called()
+        self.assertEqual(sorted(p.name for p in (self.home / "engine" / "voices").iterdir()), self.voices_before)
+
+    def raw_put(self, headers, body):
+        """Por el socket: http.client no deja anunciar más cuerpo del que manda."""
+        with socket.create_connection(("127.0.0.1", self.srv.server_address[1]), timeout=20) as s:
+            s.sendall(b"PUT /v1/audio/voices/grande HTTP/1.1\r\nHost: x\r\n" + headers + b"\r\n" + body)
+            answer = b""
+            while True:
+                chunk = s.recv(65536)
+                if not chunk:
+                    return answer
+                answer += chunk
+
+    def test_without_the_key_nothing_reaches_the_disk(self):
+        status, payload, _h = self.req("PUT", "/v1/audio/voices/sinclave", raw=b"x" * 200_000, key=False)
+        self.assertEqual(status, 401)
+        self.assertIn("clave", self.message(payload))
+        self.assertNothingWritten()
+
+    def test_a_wrong_key_is_no_key(self):
+        c = http.client.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=20)
+        c.request("PUT", "/v1/audio/voices/otra", body=b"x" * 1000, headers={"Authorization": "Bearer otra"})
+        self.assertEqual(c.getresponse().status, 401)
+        c.close()
+        self.assertNothingWritten()
+
+    def test_the_body_is_read_so_the_client_sees_the_answer(self):
+        status = self.req("PUT", "/v1/audio/voices/sinclave", raw=b"x" * (5 * 1024 * 1024), key=False)[0]
+        self.assertEqual(status, 401)
+        self.assertNothingWritten()
+
+    def test_after_the_answer_the_connection_still_works(self):
+        c = http.client.HTTPConnection("127.0.0.1", self.srv.server_address[1], timeout=20)
+        c.request("PUT", "/v1/audio/voices/sinclave", body=b"x" * 100_000)
+        r = c.getresponse()
+        r.read()
+        self.assertEqual(r.status, 401)
+        c.request("GET", "/v1/models", headers={"Authorization": "Bearer " + self.svc.key})
+        r = c.getresponse()
+        r.read()
+        self.assertEqual(r.status, 200)                  # lo que se tiró no se confunde con otra petición
+        c.close()
+        self.assertNothingWritten()
+
+    def test_it_reads_no_further_than_the_limit(self):
+        # Anuncia 10 KB y manda solo el tope: si esperase al resto, aquí se quedaría colgado.
+        with mock.patch.object(st_server, "MAX_VOICE", 1024):
+            answer = self.raw_put(b"Content-Length: 10000\r\n", b"x" * 1024)
+        self.assertIn(b" 401 ", answer.split(b"\r\n", 1)[0])
+        self.assertNothingWritten()
+
+    def test_a_length_that_is_not_a_number(self):
+        answer = self.raw_put(b"Content-Length: mucho\r\n", b"")
+        self.assertIn(b" 401 ", answer.split(b"\r\n", 1)[0])
+        self.assertNothingWritten()
+
+    def test_with_the_key_too_big_is_still_too_big(self):
+        with mock.patch.object(st_server, "MAX_VOICE", 1024):
+            answer = self.raw_put(b"Authorization: Bearer " + self.svc.key.encode() + b"\r\nContent-Length: 2048\r\n", b"x" * 2048)
+        self.assertIn(b" 413 ", answer.split(b"\r\n", 1)[0])
+        self.assertNothingWritten()
+
+    def test_with_the_key_it_does_write_the_temporary_file(self):
+        # El control: si esto no pasara, los tests de arriba no probarían nada. El nombre no vale y no hace falta ffmpeg.
+        self.assertEqual(self.req("PUT", "/v1/audio/voices/m%C3%A1la", raw=b"x" * 1000)[0], 400)
+        self.mkstemp.assert_called_once()
 
 
 class TestBooks(Base):

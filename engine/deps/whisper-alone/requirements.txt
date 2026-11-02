@@ -1,3 +1,0 @@
-# Whisper in a venv of its own (engine/.venv), with no voice engine.
--r ../whisper/requirements.txt
-filelock==4.2.4

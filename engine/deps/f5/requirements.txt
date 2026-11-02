@@ -1,7 +1,9 @@
 # F5 engine (optional). Install PyTorch first, as the README shows, to choose its CUDA or CPU build.
+# Install this with pip install --no-deps, because f5-tts requires gradio only for its web interface, which
+# Storyteller doesn't use, and gradio (<13) and cached-path (<4) hold back pillow and filelock, whose older versions
+# have known vulnerabilities. So this file has to list everything F5 needs, and pip check complains about gradio
+# and cached-path, which is expected. tests/test_requisitos.py checks the list.
 # Unidecode, encodec and frozendict come only with this file: see NOTICE.
-# Held back on purpose, both with known advisories: pillow by gradio (<13) and filelock by
-# cached-path (<4). No released version of either lifts its limit.
 -r ../base/requirements.txt
 accelerate==1.15.0
 aiohappyeyeballs==2.7.1
@@ -17,7 +19,6 @@ audioread==3.1.0
 bitsandbytes==0.50.2; platform_machine != 'arm64' and sys_platform != 'darwin'
 boto3==1.43.108
 botocore==1.43.108
-brotli==1.2.1
 cached-path==1.8.10
 certifi==2026.10.18
 cffi==2.1.1
@@ -36,8 +37,7 @@ einx==0.4.3
 ema-pytorch==0.8.3
 encodec==0.1.1
 f5-tts==1.1.22
-fastapi==0.142.2
-filelock==3.32.7
+filelock==4.2.4
 fire==0.7.1
 fonttools==4.66.1
 frozendict==2.4.7
@@ -50,11 +50,7 @@ google-cloud-storage==3.16.0
 google-crc32c==1.9.0
 google-resumable-media==2.11.0
 googleapis-common-protos==1.75.5
-gradio==6.29.1
-gradio-client==2.7.2
-groovy==0.1.2
 h11==0.16.0
-hf-gradio==0.4.1
 hf-xet==1.6.0; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
 httpcore==1.0.9
 httpx==0.28.1
@@ -90,10 +86,9 @@ opentelemetry-exporter-otlp-proto-http==1.45.1
 opentelemetry-proto==1.45.1
 opentelemetry-sdk==1.45.1
 opentelemetry-semantic-conventions==0.66b1
-orjson==3.12.0
 packaging==26.3
 pandas==3.0.6
-pillow==12.3.0
+pillow==13.0.0
 platformdirs==4.12.2
 pooch==1.9.0
 propcache==0.5.4
@@ -112,19 +107,15 @@ pyparsing==3.3.3
 pypinyin==0.55.0
 python-dateutil==2.9.0.post0
 python-fire==0.1.0
-python-multipart==0.0.32
-pytz==2026.4
 pyyaml==6.0.3
 regex==2026.9.29
 requests==2.34.2
 rich==13.9.4
 rjieba==0.2.1
 s3transfer==0.19.2
-safehttpx==0.1.7
 safetensors==0.8.0
 scikit-learn==1.9.1
 scipy==1.17.1
-semantic-version==2.10.0
 shellingham==1.5.4
 six==1.17.0
 soundfile==0.14.0
@@ -132,13 +123,11 @@ soxr==1.1.0
 standard-aifc==3.13.0; python_full_version >= '3.13'
 standard-chunk==3.13.0; python_full_version >= '3.13'
 standard-sunau==3.13.0; python_full_version >= '3.13'
-starlette==1.7.0
 sympy==1.14.0
 termcolor==3.3.0
 threadpoolctl==3.7.0
 tokenizers==0.23.2
 tomli==2.4.1
-tomlkit==0.14.0
 torch==2.8.0
 torchaudio==2.8.0
 torchcodec==0.17.0
@@ -151,7 +140,6 @@ typing-inspection==0.4.4
 tzdata==2026.4; sys_platform == 'emscripten' or sys_platform == 'win32'
 unidecode==1.4.0
 urllib3==2.8.0
-uvicorn==0.54.0
 vocos==0.1.0
 wandb==0.30.0
 win32-setctime==1.2.0; sys_platform == 'win32'
