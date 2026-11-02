@@ -6,14 +6,16 @@ ni modelo en este equipo. Escribe lo mismo que los motores locales, así que la 
 el reproductor, «escuchar mientras narra» y reanudar funcionan igual.
 
   python -I cc_service.py generate --epub E --out O --url U [--model M] [--voice V]
-                                   [--lang es] [--pron P] [--resume]
+                                   [--lang es] [--pron P] [--resume] [--parallel N]
   python -I cc_service.py count --epub E
 
 La clave va en la variable de entorno ST_SERVICE_KEY: en la línea de órdenes se vería en la
 lista de procesos. Este módulo solo usa la biblioteca estándar hasta que hay que leer el EPUB
 (cc_engine), para que la pantalla de Modelos pueda importarlo y probar un servicio.
 """
-import argparse, json, os, re, subprocess, sys, tempfile, time, urllib.error, urllib.request, wave
+import argparse, collections, concurrent.futures, http.client, json, os, re, subprocess, sys, tempfile, threading
+import time, urllib.error, urllib.request, wave
+from itertools import islice
 from urllib.parse import urlsplit
 
 for _s in (sys.stdout, sys.stderr):              # títulos fuera de cp1252 en la consola de Windows
@@ -27,6 +29,8 @@ TIMEOUT = 300                                    # el primer encargo a un servid
 TRIES = 8                                        # con esperas de 2 a 60 s: unos 3 min sin respuesta
 MAX_WAIT = 60
 MAX_RETRY_AFTER = 120
+MAX_PARALLEL = 4                                 # como «Peticiones a la vez» en la app del móvil
+AHEAD = 3                                        # frases por petición a la vez que pueden esperar su turno
 ENDPOINTS = ("/audio/speech", "/audio/voices", "/audio/transcriptions", "/chat/completions", "/models")
 
 
@@ -155,7 +159,7 @@ class Client:
             except ValueError:
                 wait = None
             raise ServiceError(_kind_of(e.code), detail, wait) from None
-        except (urllib.error.URLError, OSError, ValueError) as e:     # sin red, TLS, tiempo agotado…
+        except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as e:     # sin red, TLS, corte…
             raise ServiceError("down", type(e).__name__) from None
 
     def _retrying(self, work):
@@ -231,6 +235,38 @@ def probe(url, key="", model="", voice=""):
 
 
 # ---- narrar -----------------------------------------------------------------------------
+_print = threading.Lock()
+
+
+def say(line):
+    """Una línea entera: un reintento desde otra petición no debe colarse en medio de otra."""
+    with _print:
+        print(line, flush=True)
+
+
+def in_order(work, items, parallel=1):
+    """Los resultados de work(item), en el orden de items, con hasta `parallel` peticiones a la vez.
+    Ventana deslizante: al acabar una se lanza la siguiente, sin esperar a la frase más lenta, y lo que
+    se adelanta aguarda su turno hasta un tope. Un error salta al llegarle el turno, así que todo lo
+    anterior se entrega antes."""
+    items = iter(items)
+    if parallel <= 1:
+        for it in items:
+            yield work(it)
+        return
+    pool = concurrent.futures.ThreadPoolExecutor(parallel)
+    window = collections.deque()
+    try:
+        while True:
+            for it in islice(items, parallel * AHEAD - len(window)):
+                window.append(pool.submit(work, it))
+            if not window:
+                return
+            yield window.popleft().result()
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+
+
 def _engine():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))    # -I no añade la carpeta del script
     import cc_engine
@@ -272,9 +308,9 @@ def narrate_chapter(E, a, client, ci, ch, prev, manifest, save):
     if seed:
         cues, t, pcm = seed
         pending += pcm
-        print(f"[cap {ci}] '{ch['title'][:40]}' -> reanudo en frase {len(cues)+1}, quedan {len(texts)-len(cues)}", flush=True)
+        say(f"[cap {ci}] '{ch['title'][:40]}' -> reanudo en frase {len(cues)+1}, quedan {len(texts)-len(cues)}")
     else:
-        print(f"[cap {ci}] '{ch['title'][:40]}' -> {len(texts)} frases", flush=True)
+        say(f"[cap {ci}] '{ch['title'][:40]}' -> {len(texts)} frases")
     for p in (paths["wav"], paths["mp3"]):       # lo que valía ya está en pending
         try: os.remove(p)
         except OSError: pass
@@ -308,18 +344,18 @@ def narrate_chapter(E, a, client, ci, ch, prev, manifest, save):
     if seed:
         flush()
     try:
-        for si in range(len(cues), len(texts)):
-            spoken = E.normalize_text(texts[si]).strip()
-            pcm = client.say(spoken) if spoken else b""
+        todo = (E.normalize_text(t).strip() for t in texts[len(cues):])
+        answers = in_order(lambda spoken: client.say(spoken) if spoken else b"", todo, a.parallel)
+        for si, pcm in enumerate(answers, len(cues)):
             dur = len(pcm) / 2 / SR
             gap = int(chunks[si][1] * SR)
             cues.append({"i": si, "start": round(t, 3), "end": round(t + dur, 3), "text": texts[si]})
             pending += pcm + b"\0\0" * gap
             t += dur + gap / SR
-            print(f"  frase {si+1}/{len(texts)} {dur:.1f}s", flush=True)
+            say(f"  frase {si+1}/{len(texts)} {dur:.1f}s")
             if (si + 1) % FLUSH_EVERY == 0:
                 flush()
-                print(f"  ...guardado parcial cap {ci} ({len(cues)} frases)", flush=True)
+                say(f"  ...guardado parcial cap {ci} ({len(cues)} frases)")
         flush()
     except ServiceError:
         if cues:                                 # no volver a pagar lo que ya ha llegado
@@ -334,7 +370,7 @@ def narrate_chapter(E, a, client, ci, ch, prev, manifest, save):
     except OSError: pass
     entry.update(done=True, frames=0)
     save()
-    print(f"[cap {ci}] LISTO {t:.1f}s -> {base}.mp3", flush=True)
+    say(f"[cap {ci}] LISTO {t:.1f}s -> {base}.mp3")
 
 
 def cmd_generate(a):
@@ -359,18 +395,18 @@ def cmd_generate(a):
                        json.dumps(manifest + later, ensure_ascii=False, indent=2))
 
     client = Client(a.url, os.environ.get(KEY_ENV, ""), a.model, a.voice,
-                    on_wait=lambda s: print(f"SERVICE-RETRY {s}", flush=True))
+                    on_wait=lambda s: say(f"SERVICE-RETRY {s}"))
     try:
         for ci, ch in enumerate(chaps, 1):
             pe = prev.get(ci)
             if pe and pe.get("done"):
                 manifest.append(pe); save()
-                print(f"[cap {ci}] ya hecho, lo mantengo", flush=True)
+                say(f"[cap {ci}] ya hecho, lo mantengo")
                 continue
             narrate_chapter(E, a, client, ci, ch, pe, manifest, save)
     except ServiceError as e:
-        print("SERVICE-ERROR " + json.dumps({"kind": e.kind, "detail": e.detail}, ensure_ascii=False), flush=True)
-        sys.exit(3)
+        say("SERVICE-ERROR " + json.dumps({"kind": e.kind, "detail": e.detail}, ensure_ascii=False))
+        os._exit(3)                              # lo llegado ya está guardado; no esperar a las que sigan en marcha
     E.write_state(a.out, len(chaps), True)
     print("EPUB-DONE", len(manifest), flush=True)
 
@@ -390,6 +426,7 @@ def main():
     g.add_argument("--url", required=True); g.add_argument("--model", default="")
     g.add_argument("--voice", default=""); g.add_argument("--lang", default="es")
     g.add_argument("--pron", default=""); g.add_argument("--resume", action="store_true")
+    g.add_argument("--parallel", type=lambda v: max(1, min(int(v), MAX_PARALLEL)), default=1)
     g.set_defaults(func=cmd_generate)
     c = sub.add_parser("count")
     c.add_argument("--epub", required=True)

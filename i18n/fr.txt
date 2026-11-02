@@ -334,3 +334,5 @@
 332|XTTS n’est pas installé sur le serveur. Choisissez un autre modèle dans « Modèles » ou installez-le sur le serveur.
 333|Envoi de ce qui a été narré au serveur…
 334|La connexion au serveur a été perdue. Ce qui y a été narré est conservé : cliquez sur Reprendre pour continuer.
+335|Requêtes simultanées :
+336|Nombre de phrases demandées au service en même temps. Plus il y en a, plus c’est rapide, si le service le permet : le vôtre (st_server.py) ouvre jusqu’à 3 XTTS s’ils tiennent sur la carte graphique, et un service public peut limiter les requêtes par minute.

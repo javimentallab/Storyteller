@@ -3,7 +3,7 @@
 
     python -m unittest tests.test_service -v
 """
-import http.server, json, os, shutil, subprocess, sys, tempfile, threading, unittest, wave, zipfile
+import http.server, json, os, shutil, subprocess, sys, tempfile, threading, time, unittest, wave, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,12 +38,22 @@ class Engine:
     def __init__(self):
         self.calls = []
         self.then = None
+        self.varied = False                      # cada frase dura y tarda según su texto
+        self.lock = threading.Lock()
+        self.running = self.peak = 0
 
     def synth(self, text, voice, lang):
-        self.calls.append(text)
-        if self.then:
-            self.then(len(self.calls))
-        return b"\0\0" * 12000, 24000
+        with self.lock:
+            self.calls.append(text)
+            self.running += 1
+            self.peak = max(self.peak, self.running)
+            if self.then:
+                self.then(len(self.calls))
+        if self.varied:
+            time.sleep(0.03 + 0.05 * (len(text) % 4))    # unas adelantan a otras
+        with self.lock:
+            self.running -= 1
+        return b"\0\0" * (200 * len(text) if self.varied else 12000), 24000
 
 
 @unittest.skipUnless(PY and FFMPEG, "hace falta el venv de un motor y ffmpeg")
@@ -142,10 +152,133 @@ class TestNarrate(unittest.TestCase):
         for ch in self.manifest():
             self.assertAlmostEqual(self.mp3_seconds(ch["base"]), ch["duration"], delta=0.12)
 
+    def narrated_book(self):
+        return [(ch["id"], ch["n"], ch["duration"], self.cues(ch["base"])["cues"]) for ch in self.manifest()]
+
+    def test_several_at_a_time_gives_the_same_book(self):
+        self.engine.varied = True
+        p = self.run_service()
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        one_by_one = self.narrated_book()
+        self.assertEqual(self.engine.peak, 1)
+
+        self.engine.calls, self.engine.peak = [], 0
+        self.out = self.tmp / "otro"
+        p = self.run_service("--parallel", "3")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertGreater(self.engine.peak, 1)
+        self.assertLessEqual(self.engine.peak, 3)
+        self.assertEqual(self.narrated_book(), one_by_one)        # cada texto con su audio, en su sitio
+        for ch in self.manifest():
+            self.assertAlmostEqual(self.mp3_seconds(ch["base"]), ch["duration"], delta=0.12)
+
+    def test_losing_the_service_with_several_at_a_time_keeps_the_order_and_resumes(self):
+        real_key = self.svc.key
+
+        def lose_the_key(n):
+            if n == 9:
+                self.svc.key = "ya-no"
+        self.engine.then, self.engine.varied = lose_the_key, True
+        p = self.run_service("--parallel", "3")
+        self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+        self.assertEqual(json.loads(p.stdout.split("SERVICE-ERROR ")[1])["kind"], "auth")
+        narrated = sum(ch["n"] for ch in self.manifest())
+        self.assertTrue(0 < narrated <= 9 + 2, narrated)          # + las que ya habían pasado la clave
+
+        self.svc.key, self.engine.then = real_key, None
+        before = len(self.engine.calls)
+        p = self.run_service("--parallel", "3", "--resume")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        again = self.engine.calls[before:]
+        book = [c for ch in self.manifest() for c in self.cues(ch["base"])["cues"]]
+        self.assertEqual(len(book), narrated + len(again))        # nada repetido, nada perdido
+        for ch in self.manifest():
+            cues = self.cues(ch["base"])["cues"]
+            for prev, c in zip(cues, cues[1:]):
+                self.assertEqual(c["i"], prev["i"] + 1)
+                self.assertGreater(c["start"], prev["end"])
+
     def test_count_like_the_engines(self):
         p = subprocess.run([str(PY), "-I", str(ROOT / "engine" / "cc_service.py"), "count", "--epub", str(self.epub)],
                            capture_output=True, text=True, encoding="utf-8", timeout=60)
         self.assertRegex(p.stdout, r"CHAPTERS 2\s+SENTS \d+ \d+")
+
+
+class TestInOrder(unittest.TestCase):
+    """La ventana deslizante, sin red: unas puertas que se abren cuando diga la prueba."""
+
+    def setUp(self):
+        self.gates = {}
+        self.asked = []
+        self.lock = threading.Lock()
+
+    def gate(self, i):
+        with self.lock:
+            return self.gates.setdefault(i, threading.Event())
+
+    def work(self, i):
+        with self.lock:
+            self.asked.append(i)
+        self.assertTrue(self.gate(i).wait(10))
+        return i * 10
+
+    def wait_asked(self, want):
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            with self.lock:
+                if sorted(self.asked) == sorted(want):
+                    return
+            time.sleep(0.005)
+        self.fail(f"pedidas {sorted(self.asked)}, se esperaban {sorted(want)}")
+
+    def test_one_at_a_time_does_not_get_ahead(self):
+        seen = []
+
+        def work(i):
+            seen.append(i)
+            return i * 10
+        it = S.in_order(work, iter(range(3)), 1)
+        self.assertEqual(next(it), 0)
+        self.assertEqual(seen, [0])
+        self.assertEqual(list(it), [10, 20])
+
+    def test_a_slow_sentence_does_not_hold_back_the_others(self):
+        it = S.in_order(self.work, range(100), 2)
+        got = []
+        reader = threading.Thread(target=lambda: got.extend(it), daemon=True)
+        reader.start()
+        self.wait_asked([0, 1])                  # dos a la vez, ni una más
+        self.gate(1).set()                       # acaba la segunda con la primera atascada…
+        self.wait_asked([0, 1, 2])               # …y se pide la siguiente
+        self.gate(2).set()
+        self.wait_asked([0, 1, 2, 3])
+        self.gate(3).set()
+        self.wait_asked([0, 1, 2, 3, 4])
+        self.gate(4).set()
+        self.wait_asked([0, 1, 2, 3, 4, 5])
+        self.gate(5).set()
+        time.sleep(0.1)                          # tope: 2 × AHEAD a la espera de su turno
+        with self.lock:
+            self.assertEqual(sorted(self.asked), [0, 1, 2, 3, 4, 5])
+        self.assertEqual(got, [])                # sin la primera no sale nada
+        for i in range(100):
+            self.gate(i).set()
+        reader.join(10)
+        self.assertEqual(got, [i * 10 for i in range(100)])
+
+    def test_an_error_arrives_after_everything_before_it(self):
+        def work(i):
+            if i == 2:
+                raise S.ServiceError("auth")
+            time.sleep(0.05 if i == 1 else 0)
+            return i
+        it = S.in_order(work, range(10), 3)
+        self.assertEqual([next(it), next(it)], [0, 1])
+        with self.assertRaises(S.ServiceError):
+            next(it)
+
+    def test_nothing_to_do(self):
+        self.assertEqual(list(S.in_order(self.work, [], 3)), [])
 
 
 class Answers(http.server.BaseHTTPRequestHandler):

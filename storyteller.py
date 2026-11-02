@@ -215,7 +215,8 @@ def service_module():
 
 def service_cfg(cfg=None):
     s = (cfg or load_config()).get("service") or {}
-    return {"url": s.get("url", ""), "model": s.get("model", ""), "voice": s.get("voice", "")}
+    return {"url": s.get("url", ""), "model": s.get("model", ""), "voice": s.get("voice", ""),
+            "parallel": max(1, min(int(s.get("parallel", 1) or 1), 4))}
 
 def service_key():
     try: return SERVICE_KEY.read_text("utf-8").strip()
@@ -638,7 +639,7 @@ class LocalGenWorker(QThread):
                 cmd = [str(self.model["python"]), "-I", str(CC_SERVICE), "generate",
                        "--epub", str(epub), "--out", str(dest), "--url", self.model["url"],
                        "--model", self.model["model"], "--voice", self.model["voice"],
-                       "--lang", self.model.get("lang", "es")]
+                       "--lang", self.model.get("lang", "es"), "--parallel", str(self.model.get("parallel", 1))]
                 if self.resume:
                     cmd += ["--resume"]
                 if pron.exists():
@@ -680,7 +681,7 @@ class LocalGenWorker(QThread):
             st0 = read_gen_state(dest) or {}
             if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
                 streams = int(st0["streams"] or 1)
-            if self.service:                                  # el servicio ya reparte su trabajo
+            if self.service:                                  # un solo proceso con varias peticiones (--parallel)
                 streams = 1
             self.progress.emit(_("Contando las frases del libro…"), -1)
             n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
@@ -1746,7 +1747,7 @@ class ModelsScreen(QWidget):
         self.serverRow.setVisible(cfg["engine"] == "remote")
         self.serviceBox.setVisible(cfg["engine"] == "service")
         self.qcChk.setVisible(cfg["engine"] != "service")   # sin Whisper que escuche lo que llega
-        self.parRow.setVisible(cfg["engine"] != "service")  # un servicio ya reparte su trabajo
+        self.parRow.setVisible(cfg["engine"] != "service")  # el servicio lleva su selector en serviceBox
         self._streams_texts(cfg["engine"] == "local")
         if cfg["engine"] == "service":
             self.note.setText(_("Cada frase se pide al servicio de esa URL: el tuyo (st_server.py) o uno público con su clave. Aquí no hace falta GPU ni modelo de voz. La transcripción de audiolibros sigue en este equipo."))
@@ -1766,6 +1767,9 @@ class ModelsScreen(QWidget):
         svc = service_cfg(cfg)
         self.svcUrl.setText(svc["url"]); self.svcKey.setText(service_key())
         self.svcModel.setCurrentText(svc["model"]); self.svcVoice.setCurrentText(svc["voice"])
+        self.svcParallel.blockSignals(True)
+        self.svcParallel.setCurrentIndex(max(0, self.svcParallel.findData(svc["parallel"])))
+        self.svcParallel.blockSignals(False)
         self._service_warn()
         self.qcChk.blockSignals(True); self.qcChk.setChecked(bool(cfg.get("qc_auto"))); self.qcChk.blockSignals(False)
         self.streamsSel.blockSignals(True)
@@ -1902,10 +1906,18 @@ class ModelsScreen(QWidget):
             combo.lineEdit().setPlaceholderText(_("El que use por defecto"))
             combo.activated.connect(self._service_changed)
             combo.lineEdit().editingFinished.connect(self._service_changed)
+        self.svcParallel = QComboBox()
+        for n in range(1, 5):
+            self.svcParallel.addItem(str(n), n)
+        self.svcParallel.setToolTip(_("Cuántas frases se piden al servicio a la vez. Más es más rápido si el servicio "
+                                      "lo permite: el tuyo (st_server.py) abre hasta 3 XTTS si caben en la tarjeta "
+                                      "gráfica, y uno público puede limitar las peticiones por minuto."))
+        self.svcParallel.currentIndexChanged.connect(self._service_changed)
         self.svcUrl.editingFinished.connect(self._service_changed)
         self.svcKey.editingFinished.connect(self._service_changed)
         for row, (text, field) in enumerate(((_("URL:"), self.svcUrl), (_("Clave de acceso:"), self.svcKey),
-                                             (_("Modelo:"), self.svcModel), (_("Voz:"), self.svcVoice))):
+                                             (_("Modelo:"), self.svcModel), (_("Voz:"), self.svcVoice),
+                                             (_("Peticiones a la vez:"), self.svcParallel))):
             lb = QLabel(text); lb.setObjectName("booksub")
             g.addWidget(lb, row, 0); g.addWidget(field, row, 1)
         self.svcTest = QPushButton(_("Probar")); self.svcTest.setObjectName("tb")
@@ -1913,7 +1925,7 @@ class ModelsScreen(QWidget):
         self.svcStatus = QLabel(""); self.svcStatus.setObjectName("hint"); self.svcStatus.setWordWrap(True)
         test = QHBoxLayout(); test.setSpacing(10)
         test.addWidget(self.svcTest); test.addWidget(self.svcStatus, 1)
-        g.addLayout(test, 4, 1)
+        g.addLayout(test, 5, 1)
         self.serviceTested.connect(self._service_tested)
         return box
 
@@ -1926,7 +1938,8 @@ class ModelsScreen(QWidget):
     def _service_changed(self, *_args):
         cfg = load_config()
         cfg["service"] = {"url": self.svcUrl.text().strip(), "model": self.svcModel.currentText().strip(),
-                          "voice": self.svcVoice.currentText().strip()}
+                          "voice": self.svcVoice.currentText().strip(),
+                          "parallel": int(self.svcParallel.currentData() or 1)}
         save_config(cfg); save_service_key(self.svcKey.text().strip())
         self._service_warn()
 
@@ -3041,7 +3054,7 @@ class Cuentacuentos(QMainWindow):
                     "o cambia a «Servidor propio» en Modelos."))
                 return
             m = {"id": "service", "name": host, "backend": "service", "python": py, "url": s["url"],
-                 "model": s["model"], "voice": s["voice"], "lang": active_language(cfg)}
+                 "model": s["model"], "voice": s["voice"], "parallel": s["parallel"], "lang": active_language(cfg)}
             self.worker = LocalGenWorker(path, m, name=name, resume=resume)
         else:
             self.worker = GenWorker(path, name=name, resume=resume)

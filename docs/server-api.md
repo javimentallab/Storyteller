@@ -12,7 +12,7 @@ It loads the model on the first request and frees the graphics card after 10 min
 Several requests at once open more XTTS, each in its own process, so the client decides how many by
 how many it sends. There are at most 3 (`--workers N`), each takes about 3 GB, and another one only opens
 if 3.5 GB are free: spilling over into system memory is slower than having one less. On a card that
-can't report its memory it stays at one.
+can't report its memory it stays at one. In the apps, that number is *Requests at a time*.
 
 There is no TLS: it travels in the clear on your home network. To reach it from the internet, put it
 behind a proxy with HTTPS.

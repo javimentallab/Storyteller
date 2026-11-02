@@ -351,6 +351,8 @@ SOURCE = [
     'El servidor no tiene instalado XTTS. Elige otro modelo en «Modelos» o instálalo en el servidor.',  # 332
     'Enviando lo narrado al servidor…',  # 333
     'Se perdió la conexión con el servidor. Lo narrado allí se conserva: pulsa Reanudar para seguir.',  # 334
+    'Peticiones a la vez:',  # 335
+    'Cuántas frases se piden al servicio a la vez. Más es más rápido si el servicio lo permite: el tuyo (st_server.py) abre hasta 3 XTTS si caben en la tarjeta gráfica, y uno público puede limitar las peticiones por minuto.',  # 336
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

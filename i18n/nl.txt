@@ -334,3 +334,5 @@
 332|XTTS is niet op de server geïnstalleerd. Kies een ander model bij ‘Modellen’ of installeer het op de server.
 333|Wat al is verteld wordt naar de server gestuurd…
 334|De verbinding met de server is verbroken. Wat daar is verteld, blijft bewaard: klik op Hervatten om door te gaan.
+335|Verzoeken tegelijk:
+336|Hoeveel zinnen tegelijk bij de dienst worden opgevraagd. Meer is sneller als de dienst het toestaat: je eigen (st_server.py) opent tot 3 XTTS als ze op de videokaart passen, en een openbare kan het aantal verzoeken per minuut beperken.

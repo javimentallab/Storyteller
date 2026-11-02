@@ -334,3 +334,5 @@
 332|Na serwerze nie zainstalowano XTTS. Wybierz inny model w „Modelach” lub zainstaluj go na serwerze.
 333|Wysyłanie przeczytanego fragmentu na serwer…
 334|Utracono połączenie z serwerem. To, co tam przeczytano, zostaje zachowane: naciśnij Wznów, aby kontynuować.
+335|Żądań naraz:
+336|Ile zdań jest zamawianych w usłudze naraz. Więcej oznacza szybciej, jeśli usługa na to pozwala: własna (st_server.py) otwiera do 3 XTTS, jeśli zmieszczą się na karcie graficznej, a publiczna może ograniczać liczbę żądań na minutę.
