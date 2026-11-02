@@ -2905,11 +2905,12 @@ class Cuentacuentos(QMainWindow):
         self.player.stop()
         self.library.refresh()
         self.stack.setCurrentWidget(self.library)
+        QTimer.singleShot(0, self._fit_min_width)   # su cabecera ha podido crecer mientras estaba oculta
 
     def _dl_state(self, t):
         """La biblioteca también enseña cómo va la descarga."""
         self.library.voicesBtn.setText(_("Modelos") + (f" · {t}" if t else ""))
-        self._fit_min_width()
+        QTimer.singleShot(0, self._fit_min_width)
 
     def show_models(self):
         self.models.refresh()
