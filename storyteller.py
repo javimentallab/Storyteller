@@ -205,7 +205,7 @@ def xtts_needs_text(line):
 def active_language(cfg=None):
     cfg = cfg or load_config(); return cfg.get("language", "es")
 def lang_name(code):
-    return dict(LANGS).get(code, (code or "es"))
+    return dict(LANGS).get(code) or dict(NARRATION_LANGS).get(code, code or "es")
 def engine_ready(): return (HOME_CC / "engine" / ".ready").exists()
 
 def voices():
@@ -1849,7 +1849,7 @@ class ModelsScreen(QWidget):
         state = QLabel(_("✓ Instalado") if model_installed(mdl) else _('Sin descargar · {0}').format(mdl.get('size','?')))
         state.setObjectName("booksub"); top.addWidget(state)
         lay.addLayout(top)
-        desc = QLabel(_('{0}  · Idioma: {1}  ({2})').format(mdl.get('desc',''), lang_name(mdl.get('lang','es')), mdl['repo']))
+        desc = QLabel(_('{0}  · Idioma: {1}  ({2})').format(mdl.get('desc',''), lang_name(model_language(mdl, cfg)), mdl['repo']))
         desc.setObjectName("booksub"); desc.setWordWrap(True)
         lay.addWidget(desc)
         is_xtts = mdl.get("backend") == "xtts"
@@ -2023,6 +2023,7 @@ class ModelsScreen(QWidget):
 
     def _narr_lang_changed(self, _arg):
         cfg = load_config(); cfg["narration_lang"] = self.narrLangSel.currentData(); save_config(cfg)
+        self.refresh()                               # la ficha de XTTS dice en qué idioma lee
 
     def _lang_changed(self, _arg):
         cfg = load_config(); cfg["language"] = self.langSel.currentData(); save_config(cfg)
