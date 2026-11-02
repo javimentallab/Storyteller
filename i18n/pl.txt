@@ -108,7 +108,7 @@
 106|Głosy do pobrania
 107|Jak głos czyta pewne słowa: obce terminy, skróty i konkretne słowa, które źle brzmią. Nie zmienia napisów.
 108|Edytuj słownik wymowy…
-109|Lokalny silnik się instaluje (PyTorch + F5). W międzyczasie możesz generować na własnym serwerze.
+109|Silnik F5/Whisper nie jest zainstalowany w engine/.venv: polecenia są w pliku README. W międzyczasie możesz generować na własnym serwerze.
 110|Generuje na tym komputerze z GPU. Wybierz model i głos; pobierz model, jeśli trzeba.
 111|Generowane przez SSH na wskazanym serwerze. XTTS używa silnika i głosu z tego komputera, a na serwerze musi być zainstalowany XTTS. F5 używa silnika i głosu serwera.
 112|✓ Zainstalowany
@@ -117,8 +117,8 @@
 115|Użyj
 116|Usuń
 117|Pobierz  ({0})
-118|Silnik XTTS wciąż się instaluje
-119|Poczekaj, aż lokalny silnik się zainstaluje
+118|Silnik XTTS nie jest zainstalowany w engine/.venv-xtts: zobacz plik README
+119|Silnik F5/Whisper nie jest zainstalowany w engine/.venv: zobacz plik README
 120|Usuń z listy
 121|Słownik wymowy
 122|pron: słowo → jak się je mówi · say_letters: skróty literowane · say_word: skróty jako słowo
@@ -211,7 +211,7 @@
 209|Wznów
 210|Nie znajduję oryginalnego EPUB tej książki, nie da się wznowić.
 211|Czytanie już trwa. Poczekaj, aż się skończy, albo je zatrzymaj, zanim zaczniesz następne.
-212|Silnik wciąż się instaluje. Spróbuj za chwilę albo przełącz na „Własny serwer” w Modelach.
+212|Silnik nie jest zainstalowany: polecenia są w pliku README. W międzyczasie możesz przełączyć na „Własny serwer” w Modelach.
 213|Najpierw pobierz model „{0}” w Modelach.
 214|Wznawiam…
 215|Zatrzymuję i zapisuję wygenerowane…

@@ -108,7 +108,7 @@
 106|Downloadable voices
 107|How the voice reads certain words: foreign terms, acronyms and particular words that sound wrong. Doesn't change the subtitles.
 108|Edit pronunciation dictionary…
-109|The local engine is being installed (PyTorch + F5). Meanwhile you can generate on your own server.
+109|The F5/Whisper engine is not installed in engine/.venv: the commands are in the README. Meanwhile you can generate on your own server.
 110|Generated on this computer with the GPU. Choose model and voice; download the model if needed.
 111|Generated over SSH on the server you specify. With XTTS it uses this computer’s engine and voice, and the server needs XTTS installed. With F5, the engine and voice are the server’s own.
 112|✓ Installed
@@ -117,8 +117,8 @@
 115|Use
 116|Delete
 117|Download  ({0})
-118|The XTTS engine is still being installed
-119|Wait for the local engine to finish installing
+118|The XTTS engine is not installed in engine/.venv-xtts: see the README
+119|The F5/Whisper engine is not installed in engine/.venv: see the README
 120|Remove
 121|Pronunciation dictionary
 122|pron: word → how it's said · say_letters: acronyms spelled out · say_word: acronyms read as a word
@@ -211,7 +211,7 @@
 209|Resume
 210|Can't find this book's original EPUB, so it can't be resumed.
 211|A narration is already running. Wait for it to finish or stop it before starting another.
-212|The engine is still being installed. Try again in a while, or switch to “Own server” in Models.
+212|The engine is not installed: the commands are in the README. Meanwhile you can switch to “Own server” in Models.
 213|First download the model “{0}” in Models.
 214|Resuming…
 215|Stopping and saving what was generated…

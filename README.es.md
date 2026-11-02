@@ -66,19 +66,85 @@ Los **modelos y las voces no vienen incluidos**: se **descargan desde la propia 
 
 ## Requisitos
 
-- **Python 3.11+** con `PySide6` y `PySide6-Addons` (QtMultimedia, backend ffmpeg).
+- **Python 3.11, 3.12 o 3.13** con `PySide6` y `PySide6-Addons` (QtMultimedia, backend
+  ffmpeg). Las versiones de PyTorch de abajo no tienen paquetes para la 3.14.
 - **ffmpeg** y **ffprobe** y **curl** en el `PATH`.
 - Motor F5/Whisper en `engine/.venv` (PyTorch, `f5-tts`, `faster-whisper`,
   `num2words`, `beautifulsoup4`, `lxml`). Para GPU NVIDIA, PyTorch con CUDA.
 - Motor XTTS en un venv aparte, `engine/.venv-xtts` (sus dependencias chocan con las de
   F5): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (para el
-  QC), **sin** `torchcodec` (torch ≥ 2.9 lo exige y en Windows falla).
+  QC) + `beautifulsoup4` + `lxml` (para leer el EPUB), **sin** `torchcodec` (torch ≥ 2.9 lo
+  exige y en Windows falla). Para narrar en japonés o chino necesita además
+  `cutlet fugashi unidic-lite` o `pypinyin`.
 
 - Traducción: se instala sola desde su pantalla (`engine/.venv-translate` y
   `engine/llama.cpp`). En modo servidor, Ollama en el servidor.
 
 Los pesos de los modelos y las voces se descargan desde *Modelos* a `~/cuentacuentos/`
 (no están en el repositorio).
+
+## Instalación
+
+La app siempre busca sus motores, modelos y libros en `~/cuentacuentos`, así que el clon tiene
+que ir en esa carpeta. En una terminal (PowerShell en Windows):
+
+```sh
+cd ~
+git clone https://github.com/javimentallab/Storyteller.git cuentacuentos
+cd cuentacuentos
+python -m pip install PySide6-Essentials PySide6-Addons
+```
+
+En Linux/macOS usa `python3`. Si Linux se niega con `externally-managed-environment`, instala
+PySide6 en un venv propio y abre la app desde la terminal donde esté activo:
+
+```sh
+python3 -m venv ~/storyteller-app
+. ~/storyteller-app/bin/activate
+python3 -m pip install PySide6-Essentials PySide6-Addons
+```
+
+Después, los motores, uno o los dos; cada uno ocupa varios GB. Instala primero PyTorch, como
+se indica, para que pip no traiga una versión más nueva. Sin GPU NVIDIA, cambia `--index-url`
+por `https://download.pytorch.org/whl/cpu`.
+
+**F5/Whisper** (voces F5 y transcribir audiolibros). Windows:
+
+```powershell
+python -m venv engine\.venv
+engine\.venv\Scripts\python -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+engine\.venv\Scripts\python -m pip install f5-tts faster-whisper num2words beautifulsoup4 lxml
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv engine/.venv
+engine/.venv/bin/python -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+engine/.venv/bin/python -m pip install f5-tts faster-whisper num2words beautifulsoup4 lxml
+```
+
+**XTTS** (la voz multilingüe). Windows:
+
+```powershell
+python -m venv engine\.venv-xtts
+engine\.venv-xtts\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv-xtts\Scripts\python -m pip install coqui-tts faster-whisper beautifulsoup4 lxml noisereduce
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv engine/.venv-xtts
+engine/.venv-xtts/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv-xtts/bin/python -m pip install coqui-tts faster-whisper beautifulsoup4 lxml noisereduce
+```
+
+Para narrar en japonés o chino, añade `cutlet fugashi unidic-lite` o `pypinyin` a ese último
+comando. `noisereduce` limpia el ruido de cada clip; sin él quedan tal como salen.
+
+Luego abre la app y descarga los modelos desde *Modelos*. Si falta un motor, esa pantalla dice
+cuál, y nota el motor nuevo la próxima vez que la abras, sin reiniciar.
 
 ## Uso
 

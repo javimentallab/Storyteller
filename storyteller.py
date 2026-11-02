@@ -22,7 +22,7 @@ from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, live_manifest,
                      merge_stream_manifests, read_gen_state, recover_interrupted, slug,
-                     split_ranges, snapshot_chapter as core_snapshot_chapter)
+                     split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, ENGINE_PACKAGES)
 
 __version__ = "1.0"
 
@@ -206,7 +206,7 @@ def active_language(cfg=None):
     cfg = cfg or load_config(); return cfg.get("language", "es")
 def lang_name(code):
     return dict(LANGS).get(code) or dict(NARRATION_LANGS).get(code, code or "es")
-def engine_ready(): return (HOME_CC / "engine" / ".ready").exists()
+def engine_ready(): return venv_has(_VENV, ENGINE_PACKAGES)
 
 def voices():
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
@@ -1795,7 +1795,7 @@ class ModelsScreen(QWidget):
         if cfg["engine"] == "service":
             self.note.setText(_("Cada frase se pide al servicio de esa URL: el tuyo (st_server.py) o uno público con su clave. Aquí no hace falta GPU ni modelo de voz. La transcripción de audiolibros sigue en este equipo."))
         elif cfg["engine"] == "local" and not engine_ready():
-            self.note.setText(_("El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio."))
+            self.note.setText(_("Falta instalar el motor F5/Whisper en engine/.venv: los comandos están en el README. Mientras tanto puedes generar en un servidor propio."))
         elif cfg["engine"] == "local":
             self.note.setText(_("Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta."))
         else:
@@ -1866,8 +1866,8 @@ class ModelsScreen(QWidget):
             ready = xtts_ready() if is_xtts else engine_ready()
             dl.setEnabled(ready)
             if not ready:
-                dl.setToolTip(_("El motor XTTS aún se está instalando") if is_xtts
-                              else _("Espera a que termine de instalarse el motor local"))
+                dl.setToolTip(_("Falta instalar el motor XTTS en engine/.venv-xtts: mira el README") if is_xtts
+                              else _("Falta instalar el motor F5/Whisper en engine/.venv: mira el README"))
             dl.clicked.connect((lambda _checked, m=mdl: self._download_xtts(m)) if is_xtts
                                else (lambda _checked, m=mdl: self._download(m)))
             self._mark_dl_button(dl, mdl["id"])
@@ -1904,7 +1904,7 @@ class ModelsScreen(QWidget):
         else:
             dl = QPushButton(_('Descargar  ({0})').format(wm.get('size','?'))); dl.setObjectName("open")
             dl.setEnabled(engine_ready())
-            if not engine_ready(): dl.setToolTip(_("Espera a que termine de instalarse el motor local"))
+            if not engine_ready(): dl.setToolTip(_("Falta instalar el motor F5/Whisper en engine/.venv: mira el README"))
             dl.clicked.connect(lambda _checked, m=wm: self._download_whisper(m))
             self._mark_dl_button(dl, wm["id"])
             btns.addWidget(dl)
@@ -3112,8 +3112,8 @@ class Cuentacuentos(QMainWindow):
             ready = xtts_ready() if m.get("backend") == "xtts" else engine_ready()
             if not ready:
                 QMessageBox.information(self, "Storyteller",
-                    _("El motor todavía se está instalando. Prueba dentro de un rato, "
-                    "o cambia a «Servidor propio» en Modelos."))
+                    _("Falta instalar el motor: los comandos están en el README. Mientras tanto puedes "
+                    "cambiar a «Servidor propio» en Modelos."))
                 return
             if not model_installed(m):
                 QMessageBox.information(self, "Storyteller",
@@ -3127,8 +3127,8 @@ class Cuentacuentos(QMainWindow):
                 self.show_models(); return
             if not py:
                 QMessageBox.information(self, "Storyteller",
-                    _("El motor todavía se está instalando. Prueba dentro de un rato, "
-                    "o cambia a «Servidor propio» en Modelos."))
+                    _("Falta instalar el motor: los comandos están en el README. Mientras tanto puedes "
+                    "cambiar a «Servidor propio» en Modelos."))
                 return
             m = {"id": "service", "name": host, "backend": "service", "python": py, "url": s["url"],
                  "model": s["model"], "voice": s["voice"], "parallel": s["parallel"], "lang": narration_language(cfg)}

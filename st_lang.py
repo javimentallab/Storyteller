@@ -125,7 +125,7 @@ SOURCE = [
     'Voces descargables',  # 106
     'Cómo lee la voz ciertas palabras: términos extranjeros, siglas y palabras concretas que suenen mal. No cambia los subtítulos.',  # 107
     'Editar diccionario de pronunciación…',  # 108
-    'El motor local se está instalando (PyTorch + F5). Mientras tanto puedes generar en un servidor propio.',  # 109
+    'Falta instalar el motor F5/Whisper en engine/.venv: los comandos están en el README. Mientras tanto puedes generar en un servidor propio.',  # 109
     'Se genera en este equipo con la GPU. Elige modelo y voz; descarga el modelo si hace falta.',  # 110
     'Se genera por SSH en el servidor que indiques. Con XTTS usa el motor y la voz de este equipo, y el servidor necesita tener XTTS instalado. Con F5, el motor y la voz son los del servidor.',  # 111
     '✓ Instalado',  # 112
@@ -134,8 +134,8 @@ SOURCE = [
     'Usar',  # 115
     'Borrar',  # 116
     'Descargar  ({0})',  # 117
-    'El motor XTTS aún se está instalando',  # 118
-    'Espera a que termine de instalarse el motor local',  # 119
+    'Falta instalar el motor XTTS en engine/.venv-xtts: mira el README',  # 118
+    'Falta instalar el motor F5/Whisper en engine/.venv: mira el README',  # 119
     'Quitar',  # 120
     'Diccionario de pronunciación',  # 121
     'pron: palabra → cómo se dice · say_letters: siglas deletreadas · say_word: siglas como palabra',  # 122
@@ -228,7 +228,7 @@ SOURCE = [
     'Reanudar',  # 209
     'No encuentro el EPUB original de este libro, no puedo reanudar.',  # 210
     'Ya hay una narración en marcha. Espera a que termine o deténla antes de empezar otra.',  # 211
-    'El motor todavía se está instalando. Prueba dentro de un rato, o cambia a «Servidor propio» en Modelos.',  # 212
+    'Falta instalar el motor: los comandos están en el README. Mientras tanto puedes cambiar a «Servidor propio» en Modelos.',  # 212
     'Antes descarga el modelo «{0}» en Modelos.',  # 213
     'Reanudando…',  # 214
     'Deteniendo y guardando lo generado…',  # 215

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Storyteller — lógica de la biblioteca compartida por la app de escritorio y el servidor.
-Sin Qt ni textos de interfaz: solo el formato de los libros en disco.
+Sin Qt ni textos de interfaz: el formato de los libros en disco y si el motor está instalado.
 """
 import json, os, re, shutil, time, unicodedata, wave
 from pathlib import Path
@@ -313,3 +313,33 @@ def split_ranges(n, streams):
         ranges.append((start, start + size - 1))
         start += size
     return ranges
+
+
+# Lo que hace falta en engine/.venv para narrar con F5 y transcribir, con su nombre en pip.
+# Los comandos para instalarlo están en el README.
+ENGINE_PACKAGES = ("torch", "f5-tts", "faster-whisper", "num2words", "beautifulsoup4", "lxml")
+
+
+def venv_has(venv, packages, windows=os.name == "nt"):
+    """True si el venv tiene su Python y esos paquetes instalados del todo. Solo mira qué hay en
+    site-packages, sin importar nada: la pantalla de Modelos lo pregunta en cada ficha."""
+    venv = Path(venv)
+    if not (venv / ("Scripts/python.exe" if windows else "bin/python")).is_file():
+        return False
+
+    def name(text):
+        return re.sub(r"[-_.]+", "-", text).lower()       # f5-tts se guarda como f5_tts
+
+    missing = {name(p) for p in packages}
+    for site in [venv / "Lib" / "site-packages"] if windows else venv.glob("lib/python*/site-packages"):
+        try:
+            entries = os.listdir(site)
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.endswith(".dist-info"):
+                package = name(entry[:-len(".dist-info")].rsplit("-", 1)[0])
+                # pip escribe RECORD lo último: sin él, la instalación de ese paquete se cortó.
+                if package in missing and (site / entry / "RECORD").is_file():
+                    missing.discard(package)
+    return not missing

@@ -108,7 +108,7 @@
 106|Herunterladbare Stimmen
 107|Wie die Stimme bestimmte Wörter liest: Fremdwörter, Abkürzungen und einzelne Wörter, die falsch klingen. Ändert die Untertitel nicht.
 108|Aussprachewörterbuch bearbeiten…
-109|Die lokale Engine wird gerade installiert (PyTorch + F5). In der Zwischenzeit kannst du auf einem eigenen Server erzeugen.
+109|Die F5/Whisper-Engine ist in engine/.venv nicht installiert: Die Befehle stehen in der README. In der Zwischenzeit kannst du auf einem eigenen Server erzeugen.
 110|Erzeugt auf diesem Computer mit der GPU. Wähle Modell und Stimme; lade das Modell herunter, falls nötig.
 111|Wird per SSH auf dem angegebenen Server erzeugt. Mit XTTS werden Engine und Stimme dieses Computers verwendet, und auf dem Server muss XTTS installiert sein. Mit F5 sind Engine und Stimme die des Servers.
 112|✓ Installiert
@@ -117,8 +117,8 @@
 115|Verwenden
 116|Löschen
 117|Herunterladen  ({0})
-118|Die XTTS-Engine wird noch installiert
-119|Warte, bis die lokale Engine installiert ist
+118|Die XTTS-Engine ist in engine/.venv-xtts nicht installiert: siehe README
+119|Die F5/Whisper-Engine ist in engine/.venv nicht installiert: siehe README
 120|Entfernen
 121|Aussprachewörterbuch
 122|pron: Wort → wie es gesagt wird · say_letters: buchstabierte Abkürzungen · say_word: Abkürzungen als Wort
@@ -211,7 +211,7 @@
 209|Fortsetzen
 210|Ich finde das ursprüngliche EPUB dieses Buchs nicht, Fortsetzen geht nicht.
 211|Es läuft schon eine Erzählung. Warte, bis sie fertig ist, oder halte sie an, bevor du eine neue startest.
-212|Die Engine wird noch installiert. Versuch es gleich noch mal oder wechsle unter Modelle auf „Eigener Server“.
+212|Die Engine ist nicht installiert: Die Befehle stehen in der README. In der Zwischenzeit kannst du unter Modelle auf „Eigener Server“ wechseln.
 213|Lade zuerst das Modell „{0}“ unter Modelle herunter.
 214|Setze fort…
 215|Halte an und speichere das Erzeugte…

@@ -108,7 +108,7 @@
 106|Downloadbare stemmen
 107|Hoe de stem bepaalde woorden leest: vreemde termen, afkortingen en losse woorden die verkeerd klinken. Verandert de ondertitels niet.
 108|Uitspraakwoordenboek bewerken…
-109|De lokale engine wordt geïnstalleerd (PyTorch + F5). Intussen kun je op een eigen server maken.
+109|De F5/Whisper-engine is niet geïnstalleerd in engine/.venv: de opdrachten staan in de README. Intussen kun je op een eigen server maken.
 110|Maakt op deze computer met de GPU. Kies model en stem; download het model als dat nodig is.
 111|Wordt via SSH gegenereerd op de opgegeven server. Met XTTS worden de engine en stem van deze computer gebruikt en moet XTTS op de server zijn geïnstalleerd. Met F5 zijn de engine en stem die van de server.
 112|✓ Geïnstalleerd
@@ -117,8 +117,8 @@
 115|Gebruiken
 116|Verwijderen
 117|Downloaden  ({0})
-118|De XTTS-engine wordt nog geïnstalleerd
-119|Wacht tot de lokale engine klaar is met installeren
+118|De XTTS-engine is niet geïnstalleerd in engine/.venv-xtts: zie de README
+119|De F5/Whisper-engine is niet geïnstalleerd in engine/.venv: zie de README
 120|Weghalen
 121|Uitspraakwoordenboek
 122|pron: woord → hoe je het zegt · say_letters: gespelde afkortingen · say_word: afkortingen als woord
@@ -211,7 +211,7 @@
 209|Hervatten
 210|Ik vind de oorspronkelijke EPUB van dit boek niet, hervatten kan niet.
 211|Er loopt al een vertelling. Wacht tot die klaar is of stop hem voordat je een nieuwe begint.
-212|De engine wordt nog geïnstalleerd. Probeer het zo opnieuw, of kies ‘Eigen server’ bij Modellen.
+212|De engine is niet geïnstalleerd: de opdrachten staan in de README. Intussen kun je ‘Eigen server’ kiezen bij Modellen.
 213|Download eerst het model ‘{0}’ bij Modellen.
 214|Hervatten…
 215|Stoppen en het gemaakte opslaan…

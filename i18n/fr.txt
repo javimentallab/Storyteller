@@ -108,7 +108,7 @@
 106|Voix téléchargeables
 107|Comment la voix lit certains mots : termes étrangers, sigles et mots précis qui sonnent mal. Ne change pas les sous-titres.
 108|Modifier le dictionnaire de prononciation…
-109|Le moteur local est en cours d’installation (PyTorch + F5). En attendant, vous pouvez générer sur un serveur personnel.
+109|Le moteur F5/Whisper n’est pas installé dans engine/.venv : les commandes sont dans le README. En attendant, vous pouvez générer sur un serveur personnel.
 110|Génère sur cet ordinateur avec le GPU. Choisissez modèle et voix ; téléchargez le modèle si besoin.
 111|Généré par SSH sur le serveur indiqué. Avec XTTS, il utilise le moteur et la voix de cet ordinateur, et XTTS doit être installé sur le serveur. Avec F5, le moteur et la voix sont ceux du serveur.
 112|✓ Installé
@@ -117,8 +117,8 @@
 115|Utiliser
 116|Supprimer
 117|Télécharger  ({0})
-118|Le moteur XTTS est encore en cours d’installation
-119|Attendez la fin de l’installation du moteur local
+118|Le moteur XTTS n’est pas installé dans engine/.venv-xtts : voir le README
+119|Le moteur F5/Whisper n’est pas installé dans engine/.venv : voir le README
 120|Retirer
 121|Dictionnaire de prononciation
 122|pron : mot → comment il se dit · say_letters : sigles épelés · say_word : sigles lus comme un mot
@@ -211,7 +211,7 @@
 209|Reprendre
 210|Je ne trouve pas l’EPUB d’origine de ce livre, impossible de reprendre.
 211|Une narration est déjà en cours. Attendez la fin ou arrêtez-la avant d’en lancer une autre.
-212|Le moteur est encore en cours d’installation. Réessayez dans un moment ou passez à « Serveur personnel » dans Modèles.
+212|Le moteur n’est pas installé : les commandes sont dans le README. En attendant, vous pouvez passer à « Serveur personnel » dans Modèles.
 213|Téléchargez d’abord le modèle « {0} » dans Modèles.
 214|Reprise…
 215|Arrêt et enregistrement de ce qui a été généré…
