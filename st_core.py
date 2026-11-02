@@ -315,9 +315,63 @@ def split_ranges(n, streams):
     return ranges
 
 
-# Lo que hace falta en engine/.venv para narrar con F5 y transcribir, con su nombre en pip.
-# Los comandos para instalarlo están en el README.
-ENGINE_PACKAGES = ("torch", "f5-tts", "faster-whisper", "num2words", "beautifulsoup4", "lxml")
+# Lo que tiene que haber en cada venv, con su nombre en pip. Los comandos, en install_commands() y en el README.
+VENV_MAIN, VENV_XTTS = ".venv", ".venv-xtts"
+# Leer el EPUB: lo mínimo para narrar por URL.
+BASE_PACKAGES = ("num2words", "beautifulsoup4", "lxml")
+XTTS_PACKAGES = BASE_PACKAGES + ("torch", "torchaudio", "coqui-tts")
+# Opcional, en engine/.venv.
+F5_PACKAGES = BASE_PACKAGES + ("torch", "f5-tts")
+# Opcional, para transcribir audiolibros y para el QC. El QC corre dentro del proceso del motor que narra, así que
+# tiene que estar en SU venv; desde ahí sirve también para transcribir.
+WHISPER_PACKAGES = ("faster-whisper", "av")
+TORCH_INSTALL = "torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128"
+
+
+def install_commands(what, windows=os.name == "nt"):
+    """Los comandos para instalar una parte, tal como están en el README (un test lo comprueba)."""
+    def py(venv):
+        return rf"engine\{venv}\Scripts\python" if windows else f"engine/{venv}/bin/python"
+
+    def new(venv):
+        return rf"python -m venv engine\{venv}" if windows else f"python3 -m venv engine/{venv}"
+
+    def pip_r(venv, name):
+        path = rf"engine\deps\{name}\requirements.txt" if windows else f"engine/deps/{name}/requirements.txt"
+        return f"{py(venv)} -m pip install -r {path}"
+
+    return {"xtts": [new(VENV_XTTS), f"{py(VENV_XTTS)} -m pip install {TORCH_INSTALL}", pip_r(VENV_XTTS, "xtts")],
+            "xtts-languages": [pip_r(VENV_XTTS, "xtts-languages")],
+            "f5": [new(VENV_MAIN), f"{py(VENV_MAIN)} -m pip install {TORCH_INSTALL}", pip_r(VENV_MAIN, "f5")],
+            "base": [new(VENV_MAIN), pip_r(VENV_MAIN, "base")],
+            "whisper-xtts": [pip_r(VENV_XTTS, "whisper")],
+            "whisper-f5": [pip_r(VENV_MAIN, "whisper")],
+            "whisper-alone": [new(VENV_MAIN), pip_r(VENV_MAIN, "whisper-alone")]}[what]
+
+
+def whisper_venv(engine_dir, windows=os.name == "nt"):
+    """El venv que tiene Whisper para transcribir, o None."""
+    for venv in (VENV_MAIN, VENV_XTTS):
+        if venv_has(Path(engine_dir) / venv, WHISPER_PACKAGES, windows):
+            return venv
+    return None
+
+
+def qc_can_run(engine_dir, backend, windows=os.name == "nt"):
+    """¿Puede revisar el motor que narra? El QC local corre en su proceso: mira SU venv, no otro."""
+    venv = VENV_XTTS if backend == "xtts" else VENV_MAIN
+    return venv_has(Path(engine_dir) / venv, WHISPER_PACKAGES, windows)
+
+
+def whisper_target(engine_dir, backend=None, windows=os.name == "nt"):
+    """Dónde instalar Whisper: en el venv del motor que narra, así vale para el QC y para transcribir.
+    Sin motor, en engine/.venv. backend es el del modelo activo, si se sabe."""
+    engine_dir = Path(engine_dir)
+    xtts = venv_has(engine_dir / VENV_XTTS, XTTS_PACKAGES, windows)
+    f5 = venv_has(engine_dir / VENV_MAIN, F5_PACKAGES, windows)
+    if xtts and (backend == "xtts" or not f5):
+        return "whisper-xtts"
+    return "whisper-f5" if f5 else "whisper-alone"
 
 
 def venv_has(venv, packages, windows=os.name == "nt"):

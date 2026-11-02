@@ -341,3 +341,20 @@
 339|Um in dieser Sprache zu erzählen, muss dies in der XTTS-Umgebung installiert werden:\n\n{0}
 340|Für eine andere Sprache, innerhalb von "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Es läuft bereits ein Buch. Soll ich es anhalten und zu „{0}“ wechseln? Das Fertige bleibt gespeichert und kann fortgesetzt werden.
+342|QC ist an, aber Whisper ist nicht in der Umgebung dieser Engine: Diese Erzählung wird nicht geprüft. Um es dort zu installieren, führe dies in einem Terminal aus:\n\n{0}
+343|XTTS ist nicht installiert. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu128 durch cpu):\n\n{0}\n\nDu kannst auch auf einem eigenen Server oder mit einem Dienst per URL erzeugen.
+344|F5 ist optional und nicht installiert, daher kann mit diesem Modell nicht erzählt werden. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu128 durch cpu):\n\n{0}\n\nDu kannst auch unter „Modelle“ ein anderes Modell oder einen Dienst per URL wählen.
+345|Whisper ist optional und nicht installiert. Es wird gebraucht, um Hörbücher zu transkribieren und Sätze zu prüfen (QC). Um es zu installieren, führe dies in einem Terminal aus:\n\n{0}
+346|Installationshilfe
+347|Whisper ist optional und nicht installiert. Es wird gebraucht, um Hörbücher zu transkribieren und Sätze zu prüfen (QC).
+348|Zum Erzählen auf diesem Computer fehlt eine Stimm-Engine: XTTS (engine/.venv-xtts) oder F5, das optional ist. Die Befehle stehen auf ihrer Karte und in der README. In der Zwischenzeit kannst du auf einem eigenen Server oder mit einem Dienst per URL erzeugen. Whisper (Hörbücher transkribieren und QC) ist optional und wird separat installiert.
+349|Das aktive Modell braucht eine Engine, die nicht installiert ist. Wähle ein anderes Modell oder installiere sie: Die Befehle stehen auf ihrer Karte und in der README.
+350|QC braucht Whisper in der Umgebung der Engine, die erzählt, und dort ist es nicht.
+351|QC braucht ein Whisper-Modell: Lade weiter unten eins herunter.
+352|Um Sätze zu prüfen (QC), muss Whisper in der Umgebung der Engine sein, die erzählt, und dort ist es nicht. Um es dort zu installieren, führe dies in einem Terminal aus:\n\n{0}
+353|Ohne Whisper schreibst du den Referenztext einer Stimme selbst.
+354|Engine nicht installiert
+355|F5 ist optional und nicht installiert: Mit diesem Modell kann erst nach der Installation erzählt werden.
+356|Zum Erzählen mit einem Dienst genügt es, das EPUB lesen zu können. Um das zu installieren, führe dies in einem Terminal aus:\n\n{0}
+357|QC konnte {0} Sätze nicht prüfen: Sie bleiben, wie das Modell sie erzeugt hat. Der Grund steht in der gen.log des Buchs.
+358|ungeprüft (QC)

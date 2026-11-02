@@ -358,6 +358,23 @@ SOURCE = [
     'Para narrar en ese idioma falta instalar esto en el entorno de XTTS:\n\n{0}',  # 339
     'Para otro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}',  # 340
     'Ya hay un libro en marcha. ¿Lo detengo y paso a «{0}»? Lo hecho queda guardado y se puede reanudar.',  # 341
+    'QC activado, pero Whisper no está en el entorno de este motor: esta narración no se revisará. Para instalarlo ahí, ejecuta esto en una terminal:\n\n{0}',  # 342
+    'XTTS no está instalado. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\nTambién puedes generar en un servidor propio o con un servicio por URL.',  # 343
+    'F5 es opcional y no está instalado, así que no se puede narrar con este modelo. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\nTambién puedes elegir otro modelo en «Modelos» o un servicio por URL.',  # 344
+    'Whisper es opcional y no está instalado. Hace falta para transcribir audiolibros y para revisar las frases (QC). Para instalarlo, ejecuta esto en una terminal:\n\n{0}',  # 345
+    'Cómo instalarlo',  # 346
+    'Whisper es opcional y no está instalado. Hace falta para transcribir audiolibros y para revisar las frases (QC).',  # 347
+    'Para narrar en este equipo falta un motor de voz: XTTS (engine/.venv-xtts) o F5, que es opcional. Los comandos están en su ficha y en el README. Mientras tanto puedes generar en un servidor propio o con un servicio por URL. Whisper (transcribir audiolibros y QC) es opcional y se instala aparte.',  # 348
+    'El modelo activo necesita un motor que no está instalado. Elige otro modelo o instálalo: los comandos están en su ficha y en el README.',  # 349
+    'El QC necesita Whisper en el entorno del motor que narra, y no está.',  # 350
+    'El QC necesita un modelo Whisper: descárgalo más abajo.',  # 351
+    'Para revisar las frases (QC), Whisper tiene que estar en el entorno del motor que narra, y no está. Para instalarlo ahí, ejecuta esto en una terminal:\n\n{0}',  # 352
+    'Sin Whisper instalado, el texto de referencia de una voz lo escribes tú.',  # 353
+    'Motor sin instalar',  # 354
+    'F5 es opcional y no está instalado: no se puede narrar con este modelo hasta instalarlo.',  # 355
+    'Para narrar con un servicio solo hace falta poder leer el EPUB. Para instalarlo, ejecuta esto en una terminal:\n\n{0}',  # 356
+    'El QC no pudo revisar {0} frases: se quedan como salieron del modelo. El motivo está en el gen.log del libro.',  # 357
+    'sin revisar (QC)',  # 358
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

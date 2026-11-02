@@ -12,9 +12,17 @@ Security problems go through [SECURITY.md](SECURITY.md), not through issues.
 
 For anything big, open an issue first so we can agree on the approach.
 
+The tests need only what reads an EPUB, in a venv of its own, not the engines or a graphics card:
+
 ```sh
-python -m unittest discover -s tests
+python -m venv .venv-tests
+.venv-tests/bin/python -m pip install -r engine/deps/base/requirements.txt
+.venv-tests/bin/python -m unittest discover -s tests
 ```
+
+On Windows the Python of that venv is `.venv-tests\Scripts\python`. Tests that convert audio are skipped if `ffmpeg` is
+not on the `PATH`, those that narrate if there is no engine in `engine/`, and those of the *Models* screen without PySide6
+(`python -m pip install -r requirements.txt`).
 
 - **Tests:** anything important that you add comes with a test.
 - **Dependencies:** a new one needs a permissive licence (MIT, BSD, Apache…). Check it before adding it.

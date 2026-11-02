@@ -2,6 +2,7 @@
 engine/.venv/
 engine/.venv-xtts/
 engine/.venv-translate/
+.venv-tests/
 engine/llama.cpp/
 engine/__pycache__/
 engine/.ready

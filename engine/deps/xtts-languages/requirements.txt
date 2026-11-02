@@ -1,0 +1,7 @@
+# On top of XTTS, to narrate in Japanese (cutlet, fugashi, unidic-lite) or Chinese (pypinyin).
+cutlet==0.5.2
+fugashi==1.5.2
+jaconv==0.5.0
+mojimoji==0.0.13
+pypinyin==0.55.0
+unidic-lite==1.0.8

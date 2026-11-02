@@ -14,23 +14,6 @@ Interface
 
 Narration
 ---------
-- F5-TTS: MIT License, https://github.com/SWivid/F5-TTS
-  Only needed to narrate with an F5 model. Storyteller's own code does not use the
-  packages listed here, which F5-TTS brings with it:
-  - Unidecode (F5-TTS requires it): GNU GPL 2.0 or later,
-    https://github.com/avian2/unidecode
-  - vocos (F5-TTS requires it): MIT License, https://github.com/charactr-platform/vocos
-  - encodec (vocos requires it): CC BY-NC 4.0 in version 0.1.1, the one on PyPI (the
-    source on GitHub has since moved to the MIT License),
-    https://github.com/facebookresearch/encodec
-  - x-transformers and einx (F5-TTS requires them): MIT License,
-    https://github.com/lucidrains/x-transformers
-  - frozendict (einx requires it): GNU LGPL 3.0,
-    https://github.com/Marco-Sulla/python-frozendict
-- F5-TTS official weights: CC BY-NC 4.0, https://huggingface.co/SWivid/F5-TTS
-- F5-Spanish weights: CC BY-NC 4.0, https://huggingface.co/jpgallegoar/F5-Spanish
-- Example reference voice (basic_ref_en.wav): downloaded on request from the F5-TTS
-  repository, https://github.com/SWivid/F5-TTS
 - coqui-tts: Mozilla Public License 2.0, https://github.com/idiap/coqui-ai-TTS
 - XTTS v2 weights: Coqui Public Model License (non-commercial),
   https://huggingface.co/coqui/XTTS-v2
@@ -51,10 +34,40 @@ Audio and numbers
 - soxr (librosa requires it): GNU LGPL 2.1 or later, with libsoxr (GNU LGPL 2.1 or later)
   and PFFFT (BSD style) inside, https://github.com/dofuuz/python-soxr
 
-Transcription
--------------
+Optional engine: F5
+-------------------
+Installed only if you ask for it, with engine/deps/f5/requirements.txt, and only needed
+to narrate with an F5 model. None of the packages listed here comes with the rest of the
+app. Storyteller's own code does not use them; F5-TTS brings them with it:
+- F5-TTS: MIT License, https://github.com/SWivid/F5-TTS
+  - Unidecode (F5-TTS requires it): GNU GPL 2.0 or later,
+    https://github.com/avian2/unidecode
+  - vocos (F5-TTS requires it): MIT License, https://github.com/charactr-platform/vocos
+  - encodec (vocos requires it): CC BY-NC 4.0 in version 0.1.1, the one on PyPI (the
+    source on GitHub has since moved to the MIT License),
+    https://github.com/facebookresearch/encodec
+  - x-transformers and einx (F5-TTS requires them): MIT License,
+    https://github.com/lucidrains/x-transformers
+  - frozendict (einx requires it): GNU LGPL 3.0,
+    https://github.com/Marco-Sulla/python-frozendict
+- F5-TTS official weights: CC BY-NC 4.0, https://huggingface.co/SWivid/F5-TTS
+- F5-Spanish weights: CC BY-NC 4.0, https://huggingface.co/jpgallegoar/F5-Spanish
+- Example reference voice (basic_ref_en.wav): downloaded on request from the F5-TTS
+  repository, https://github.com/SWivid/F5-TTS
+
+Optional engine: Whisper
+------------------------
+Installed only if you ask for it, with engine/deps/whisper/requirements.txt or
+engine/deps/whisper-alone/requirements.txt, to transcribe audiobooks and for the quality
+check (QC):
 - faster-whisper and its Whisper models: MIT License,
   https://github.com/SYSTRAN/faster-whisper
+- PyAV (the package av, which faster-whisper requires): its own code is under the
+  BSD 3-Clause License, https://github.com/PyAV-Org/PyAV
+  Its wheels include FFmpeg (GNU LGPL 3.0 or later) and the video encoders libx264 and
+  libx265 (GNU GPL 2.0 or later). These encoders are linked when av loads, although
+  Storyteller never uses them. PyAV distributes those wheels from PyPI; this project
+  does not distribute them.
 
 Reading documents
 -----------------
@@ -87,19 +100,16 @@ MIT License:
   inflect, jaconv, jaraco.functools, jmespath, loguru, markdown-it-py, mdurl,
   monotonic-alignment-search, more-itertools, narwhals, onnxruntime, platformdirs,
   pydantic, pydantic-core, pydub, pyparsing, pypinyin, pysbd, python-fire, pytz,
-  pyyaml, rich, rjieba, safehttpx, six, soupsieve, tabulate, termcolor, tomli,
+  pyyaml, rich, rjieba, safehttpx, setuptools, six, soupsieve, tabulate, termcolor, tomli,
   tomlkit, torchdiffeq, truststore, typeguard, typer, typing-inspection, unidic-lite, urllib3,
   wandb, win32-setctime
 BSD licences:
-  antlr4-python3-runtime, av (see below), click, cloudpickle, colorama, contourpy,
+  antlr4-python3-runtime, click, cloudpickle, colorama, contourpy,
   cycler, decorator, dill, fsspec, httpcore, httpcore2, httpx, httpx2, idna, jinja2,
   joblib, kiwisolver, lazy-loader, llvmlite, markdown, markupsafe, mpmath,
   multiprocess, networkx, numba, omegaconf, pandas, pooch, protobuf, psutil, pyasn1,
   pyasn1-modules, pycparser, pygments, scikit-learn, semantic-version, starlette,
   sympy, threadpoolctl, torchcodec, uvicorn, werkzeug, xlsxwriter, xxhash
-  The wheels of av (PyAV, which faster-whisper requires) include FFmpeg (GNU LGPL 3.0 or
-  later) and the video encoders libx264 and libx265 (GNU GPL 2.0 or later), which
-  Storyteller never uses.
 Apache License 2.0:
   absl-py, accelerate, aiosignal, boto3, botocore, cached-path, coqui-tts-trainer,
   cwevals, datasets, distro, fire, flatbuffers, frozenlist, google-api-core,
@@ -115,7 +125,8 @@ Apache License 2.0:
 ISC License:
   anyascii, shellingham
 Python Software Foundation License:
-  aiohappyeyeballs, matplotlib, typing-extensions
+  aiohappyeyeballs, audioop-lts, matplotlib, standard-aifc, standard-chunk, standard-sunau,
+  typing-extensions
 Other permissive licences:
   aiohttp (Apache-2.0 AND MIT), cffi (MIT-0), cryptography (Apache-2.0 OR BSD-3-Clause),
   packaging (Apache-2.0 OR BSD-2-Clause), pillow (MIT-CMU),

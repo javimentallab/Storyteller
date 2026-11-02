@@ -354,6 +354,7 @@ class TestClient(unittest.TestCase):
         self.assertEqual(self.failure(302, Location=self.url + "/otra").kind, "notfound")
         self.assertEqual(len(Answers.seen), 1)
 
+    @unittest.skipUnless(FFMPEG, "hace falta ffmpeg")
     def test_waits_and_tries_again(self):
         ok = (200, {}, silence_wav())
         Answers.script = [(503, {"Retry-After": "30"}, b""), (500, {}, b""), (429, {}, b""), ok]

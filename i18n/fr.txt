@@ -341,3 +341,20 @@
 339|Pour narrer dans cette langue, il faut installer ceci dans l’environnement XTTS :\n\n{0}
 340|Pour une autre langue, dans "langs" : {"en": {"pron": {"nginx": "engine x"}}}
 341|Un livre est déjà en cours. L’arrêter et passer à « {0} » ? Ce qui est fait reste enregistré et peut être repris.
+342|Le QC est activé, mais Whisper n’est pas dans l’environnement de ce moteur : cette narration ne sera pas vérifiée. Pour l’y installer, exécutez ceci dans un terminal :\n\n{0}
+343|XTTS n’est pas installé. Pour l’installer, exécutez ceci dans un terminal (c’est long et prend plusieurs Go ; sans GPU NVIDIA, remplacez cu128 par cpu) :\n\n{0}\n\nVous pouvez aussi générer sur un serveur personnel ou avec un service par URL.
+344|F5 est facultatif et n’est pas installé : impossible de narrer avec ce modèle. Pour l’installer, exécutez ceci dans un terminal (c’est long et prend plusieurs Go ; sans GPU NVIDIA, remplacez cu128 par cpu) :\n\n{0}\n\nVous pouvez aussi choisir un autre modèle dans « Modèles » ou un service par URL.
+345|Whisper est facultatif et n’est pas installé. Il sert à transcrire les livres audio et à vérifier les phrases (QC). Pour l’installer, exécutez ceci dans un terminal :\n\n{0}
+346|Comment l’installer
+347|Whisper est facultatif et n’est pas installé. Il sert à transcrire les livres audio et à vérifier les phrases (QC).
+348|Pour narrer sur cet ordinateur, il manque un moteur de voix : XTTS (engine/.venv-xtts) ou F5, qui est facultatif. Les commandes sont sur sa fiche et dans le README. En attendant, vous pouvez générer sur un serveur personnel ou avec un service par URL. Whisper (transcrire les livres audio et QC) est facultatif et s’installe à part.
+349|Le modèle actif a besoin d’un moteur qui n’est pas installé. Choisissez un autre modèle ou installez-le : les commandes sont sur sa fiche et dans le README.
+350|Le QC a besoin de Whisper dans l’environnement du moteur qui narre, et il n’y est pas.
+351|Le QC a besoin d’un modèle Whisper : téléchargez-en un plus bas.
+352|Pour vérifier les phrases (QC), Whisper doit être dans l’environnement du moteur qui narre, et il n’y est pas. Pour l’y installer, exécutez ceci dans un terminal :\n\n{0}
+353|Sans Whisper, c’est à vous d’écrire le texte de référence d’une voix.
+354|Moteur non installé
+355|F5 est facultatif et n’est pas installé : impossible de narrer avec ce modèle avant de l’installer.
+356|Pour narrer avec un service, il suffit de pouvoir lire l’EPUB. Pour l’installer, exécutez ceci dans un terminal :\n\n{0}
+357|Le QC n’a pas pu vérifier {0} phrases : elles restent telles que le modèle les a produites. La raison est dans le gen.log du livre.
+358|non vérifié (QC)

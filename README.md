@@ -15,7 +15,8 @@ existing audiobooks** and **transcribes them with Whisper** to make those subtit
 
 Everything runs **locally** (GPU or CPU) or, if you like, on **your own server** over SSH.
 Narration can also use **any voice service by URL**: your own or a public one with its key.
-**Models and voices are not bundled**: they are **downloaded from inside the app**.
+**Models and voices are not bundled**: they are **downloaded from inside the app**. To narrate you only need
+XTTS or a voice service; **F5 and Whisper are optional** and are installed apart, only if you want them.
 
 ## Features
 
@@ -25,7 +26,7 @@ Narration can also use **any voice service by URL**: your own or a public one wi
     Clones the voice from a reference recording. Narrates in **17 languages**, chosen in
     *Models*: English, Spanish, French, German, Italian, Portuguese, Dutch, Polish, Czech,
     Hungarian, Turkish, Russian, Arabic, Hindi, Chinese, Japanese and Korean.
-  - **F5-TTS** (Spanish or English): one model per language.
+  - **F5-TTS** (Spanish or English, optional, installed apart): one model per language.
   - **A voice service by URL**: your own XTTS with `st_server.py` ([API](docs/server-api.md))
     or a public service with its key, with several **requests at a time**. There your own
     server can also receive new voices and hand finished books to other apps.
@@ -35,14 +36,14 @@ Narration can also use **any voice service by URL**: your own or a public one wi
   same GPU; with XTTS, 3 chunks narrate about 2.5 times faster.
 - **Time left** in the progress bar ("~1 h 10 min left, done around 14:35"), worked out
   from each chunk's real pace.
-- **Quality check (QC) with Whisper**: transcribes every narrated sentence and
+- **Quality check (QC) with Whisper** (optional, installed apart): transcribes every narrated sentence and
   regenerates it when words are missing, text is made up or it gets stuck repeating. It also
   measures the audio, because Whisper doesn't hear babbling without words.
 - **Text prepared for the voice**: numbers spelled out in the language being narrated,
   acronyms spelled letter by letter, CAPITALS, punctuation, and an editable
   **pronunciation dictionary** (`pron.json`, with a part for each language) for words that
   sound wrong.
-- **Import an audiobook** (mp3/m4a/…) and transcribe it with Whisper → timed subtitles.
+- **Import an audiobook** (mp3/m4a/…) and transcribe it with Whisper (optional, installed apart) → timed subtitles.
   Language can be chosen or detected.
 - **Player** with synced subtitles, autoscroll, speed control, skips, go to
   chapter/position and a **listening bookmark** (picks up where you left off).
@@ -76,16 +77,11 @@ Narration can also use **any voice service by URL**: your own or a public one wi
 
 ## Requirements
 
-- **Python 3.11, 3.12 or 3.13** with `PySide6` and `PySide6-Addons` (QtMultimedia, ffmpeg
-  backend). The PyTorch versions below have no packages for 3.14.
+- **Python 3.11, 3.12 or 3.13**. The PyTorch version below has no packages for 3.14.
 - **ffmpeg**, **ffprobe** and **curl** on the `PATH`.
-- F5/Whisper engine in `engine/.venv` (PyTorch, `f5-tts`, `faster-whisper`,
-  `num2words`, `beautifulsoup4`, `lxml`). For NVIDIA GPUs, PyTorch with CUDA.
-- XTTS engine in a separate venv, `engine/.venv-xtts` (its dependencies clash with
-  F5's): `torch==2.8.0` + `torchaudio==2.8.0` + `coqui-tts` + `faster-whisper` (for the
-  QC) + `beautifulsoup4` + `lxml` (to read the EPUB), **without** `torchcodec` (torch ≥ 2.9
-  requires it and it fails on Windows). To
-  narrate in Japanese or Chinese it also needs `cutlet fugashi unidic-lite` or `pypinyin`.
+- `PySide6` and `PySide6-Addons` (QtMultimedia, ffmpeg backend), from `requirements.txt`.
+- The engines you want, each in its step under [Installation](#installation). Only XTTS, or a voice service, is
+  needed to narrate; **F5 and Whisper are optional**.
 - Translation: installs itself from its own screen (`engine/.venv-translate` and
   `engine/llama.cpp`). In server mode, Ollama on the server.
 
@@ -101,7 +97,7 @@ has to go in that folder. In a terminal (PowerShell on Windows):
 cd ~
 git clone https://github.com/javimentallab/Storyteller.git cuentacuentos
 cd cuentacuentos
-python -m pip install PySide6-Essentials PySide6-Addons
+python -m pip install -r requirements.txt
 ```
 
 On Linux/macOS use `python3`. If Linux refuses with `externally-managed-environment`, install
@@ -110,35 +106,31 @@ PySide6 in a venv of its own and start the app from the terminal where it is act
 ```sh
 python3 -m venv ~/storyteller-app
 . ~/storyteller-app/bin/activate
-python3 -m pip install PySide6-Essentials PySide6-Addons
+python3 -m pip install -r requirements.txt
 ```
 
-Then the engines, one or both; each takes several GB. Install PyTorch first, as shown, so
-that pip does not bring a newer version. Without an NVIDIA GPU, change the `--index-url` to
-`https://download.pytorch.org/whl/cpu`.
+Then the engines. Install only what you are going to use:
 
-**F5/Whisper** (F5 voices and transcribing audiobooks). Windows:
+| You want to | Install |
+|---|---|
+| Narrate on this computer | [XTTS](#xtts) |
+| Narrate and check every sentence (QC) | [XTTS](#xtts), then [Whisper](#whisper-optional) in its environment |
+| Transcribe audiobooks, without narrating here | [Whisper](#whisper-optional) on its own |
+| Narrate with a voice service by URL | [Reading the EPUB](#reading-the-epub), or XTTS if you already have it |
+| Narrate on your own server | Nothing here |
+| Narrate with an F5 model | [F5](#f5-optional) |
 
-```powershell
-python -m venv engine\.venv
-engine\.venv\Scripts\python -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-engine\.venv\Scripts\python -m pip install f5-tts faster-whisper num2words beautifulsoup4 lxml
-```
+The commands run from the `cuentacuentos` folder. XTTS and F5 take several GB. Install PyTorch first, as shown,
+so that pip does not bring a newer version. Without an NVIDIA GPU, change `cu128` to `cpu` in its `--index-url`.
 
-Linux/macOS:
+### XTTS
 
-```sh
-python3 -m venv engine/.venv
-engine/.venv/bin/python -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-engine/.venv/bin/python -m pip install f5-tts faster-whisper num2words beautifulsoup4 lxml
-```
-
-**XTTS** (the multilingual voice). Windows:
+The multilingual voice, in its own environment. Windows:
 
 ```powershell
 python -m venv engine\.venv-xtts
 engine\.venv-xtts\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-engine\.venv-xtts\Scripts\python -m pip install coqui-tts faster-whisper beautifulsoup4 lxml noisereduce
+engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\xtts\requirements.txt
 ```
 
 Linux/macOS:
@@ -146,14 +138,106 @@ Linux/macOS:
 ```sh
 python3 -m venv engine/.venv-xtts
 engine/.venv-xtts/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-engine/.venv-xtts/bin/python -m pip install coqui-tts faster-whisper beautifulsoup4 lxml noisereduce
+engine/.venv-xtts/bin/python -m pip install -r engine/deps/xtts/requirements.txt
 ```
 
-To narrate in Japanese or Chinese, add `cutlet fugashi unidic-lite` or `pypinyin` to that last
-command. `noisereduce` cleans the noise from each clip; without it they stay as they come out.
+To narrate in Japanese or Chinese, add this. Windows:
 
-Then start the app and download the models from *Models*. If an engine is missing, that screen
-says which one, and it notices a new engine the next time you open it, without restarting.
+```powershell
+engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\xtts-languages\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+engine/.venv-xtts/bin/python -m pip install -r engine/deps/xtts-languages/requirements.txt
+```
+
+### Whisper (optional)
+
+For transcribing audiobooks and for the quality check (QC). It goes **in the environment of the engine that
+narrates**, because the QC runs in that process; from there it also transcribes. Without Whisper you can still narrate,
+without the QC, and a voice's reference text is typed by hand.
+
+With XTTS, for the QC and transcribing. Windows:
+
+```powershell
+engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\whisper\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+engine/.venv-xtts/bin/python -m pip install -r engine/deps/whisper/requirements.txt
+```
+
+With F5, the same in its environment. Windows:
+
+```powershell
+engine\.venv\Scripts\python -m pip install -r engine\deps\whisper\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+engine/.venv/bin/python -m pip install -r engine/deps/whisper/requirements.txt
+```
+
+Without any engine, only to transcribe. Windows:
+
+```powershell
+python -m venv engine\.venv
+engine\.venv\Scripts\python -m pip install -r engine\deps\whisper-alone\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv engine/.venv
+engine/.venv/bin/python -m pip install -r engine/deps/whisper-alone/requirements.txt
+```
+
+On its own it transcribes on the CPU. It uses an NVIDIA graphics card if that environment has PyTorch with CUDA, as
+those of XTTS and F5 do; to add it to `engine/.venv`, use the PyTorch command from [F5](#f5-optional).
+
+### Reading the EPUB
+
+Enough to narrate with a voice service by URL. XTTS and F5 already bring it. Windows:
+
+```powershell
+python -m venv engine\.venv
+engine\.venv\Scripts\python -m pip install -r engine\deps\base\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv engine/.venv
+engine/.venv/bin/python -m pip install -r engine/deps/base/requirements.txt
+```
+
+### F5 (optional)
+
+Only to narrate with an F5 model. It brings packages under other licences, such as a non-commercial one
+([NOTICE](NOTICE)), which stay out if you don't install it. Windows:
+
+```powershell
+python -m venv engine\.venv
+engine\.venv\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv\Scripts\python -m pip install -r engine\deps\f5\requirements.txt
+```
+
+Linux/macOS:
+
+```sh
+python3 -m venv engine/.venv
+engine/.venv/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv/bin/python -m pip install -r engine/deps/f5/requirements.txt
+```
+
+Then start the app and download the models from *Models*. If an engine is missing, its card there
+says so and gives the commands, and the screen notices a new engine the next time you open it, without restarting.
+An installation from an earlier version, with everything in `engine/.venv` and `engine/.venv-xtts`, keeps working as it is.
 
 ## Usage
 
@@ -172,6 +256,7 @@ the system language (English if it is not in the list); to force one, use
 - `storyteller.py` — the app (library + player + model manager).
 - `st_lang.py` + `i18n/<lang>.txt` — interface translations (one `NN|text` line per
   text; checked on load: all texts present and the same `{n}` placeholders).
+- `requirements.txt` and `engine/deps/<engine>/requirements.txt` — the exact versions of the interface and of each engine.
 - `engine/cc_engine.py` — local engine: `download` / `generate` (F5), `count`
   (chapters and sentences, to split chunks and estimate the time), `whisper-download` /
   `whisper` (streaming transcription) and the text preparation shared by the engines.
@@ -189,7 +274,7 @@ the system language (English if it is not in the list); to force one, use
 ## Security
 
 Continuous scanning with **Trivy** (`.github/workflows/trivy.yml`): vulnerabilities,
-secrets and misconfigurations on every push/PR and every week. **CodeQL** analyzes the code,
+secrets and misconfigurations on every push/PR and every week, including every `requirements.txt`. **CodeQL** analyzes the code,
 the tests run in CI, and every Action is pinned by commit.
 
 ## Contributing

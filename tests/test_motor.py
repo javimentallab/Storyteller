@@ -1,42 +1,50 @@
 # -*- coding: utf-8 -*-
-"""Cuándo cuenta el motor como instalado, qué dice la app si falta y si el README da los comandos.
+"""Cuándo cuenta cada motor como instalado, qué dice la app si falta y si el README da los comandos.
 Sin PySide6, sin GPU y sin importar torch.
 
     python -m unittest tests.test_motor -v
 """
-import ast, shutil, sys, tempfile, unittest
+import argparse, ast, contextlib, io, shutil, sys, tempfile, types, unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "engine"))
+import cc_engine as E
 import st_core as C
 import st_lang as L
 
 # Como los nombra pip de verdad: con guion bajo y con la versión local de PyTorch.
-DIST_INFO = {"torch": "torch-2.6.0+cu124", "f5-tts": "f5_tts-1.1.22", "faster-whisper": "faster_whisper-1.2.1",
+DIST_INFO = {"torch": "torch-2.8.0+cu128", "torchaudio": "torchaudio-2.8.0+cu128", "f5-tts": "f5_tts-1.1.22",
+             "coqui-tts": "coqui_tts-0.28.0", "faster-whisper": "faster_whisper-1.2.1", "av": "av-18.1.0",
              "num2words": "num2words-0.5.14", "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
-FALTA_MOTOR = {109: "engine/.venv", 118: "engine/.venv-xtts", 119: "engine/.venv", 212: ""}
+# Los textos que mandan a instalar algo, y la ruta que tienen que nombrar.
+FALTA_MOTOR = {118: "engine/.venv-xtts", 348: "engine/.venv-xtts", 349: ""}
+COMANDOS = (342, 343, 344, 345, 352, 356)                # los que llevan los comandos en {0}
 
 
 class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.venv = self.tmp / "engine" / ".venv"
+        self.engine = self.tmp / "engine"
+        self.venv = self.engine / ".venv"
 
-    def site(self, windows):
-        return self.venv / ("Lib/site-packages" if windows else "lib/python3.11/site-packages")
+    def site(self, windows, venv=None):
+        return (venv or self.venv) / ("Lib/site-packages" if windows else "lib/python3.11/site-packages")
 
-    def crear(self, windows, packages=C.ENGINE_PACKAGES, python=True):
-        site = self.site(windows)
+    def crear(self, windows, packages=C.F5_PACKAGES, python=True, venv=None):
+        venv = venv or self.venv
+        site = self.site(windows, venv)
         site.mkdir(parents=True, exist_ok=True)
         if python:
-            exe = self.venv / ("Scripts/python.exe" if windows else "bin/python")
+            exe = venv / ("Scripts/python.exe" if windows else "bin/python")
             exe.parent.mkdir(parents=True, exist_ok=True)
             exe.write_bytes(b"")
         for p in packages:
             info = site / (DIST_INFO[p] + ".dist-info")
-            info.mkdir()
+            info.mkdir(exist_ok=True)
             (info / "RECORD").write_text("", "utf-8")
 
 
@@ -45,46 +53,46 @@ class MotorInstalado(Base):
         for windows in (True, False):
             with self.subTest(windows=windows):
                 self.crear(windows)
-                self.assertTrue(C.venv_has(self.venv, C.ENGINE_PACKAGES, windows))
+                self.assertTrue(C.venv_has(self.venv, C.F5_PACKAGES, windows))
                 shutil.rmtree(self.venv)
 
     def test_sin_venv_no_cuenta(self):
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, False))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, False))
 
     def test_el_marcador_antiguo_no_basta(self):
         self.venv.parent.mkdir(parents=True)
         (self.venv.parent / ".ready").write_text("", "utf-8")
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_venv_recien_creado_no_cuenta(self):
         self.crear(True, packages=())
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_sin_el_python_del_venv_no_cuenta(self):
         self.crear(True, python=False)
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_el_python_de_otro_sistema_no_cuenta(self):
         self.crear(False)
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_falta_uno_cualquiera(self):
-        for missing in C.ENGINE_PACKAGES:
+        for missing in C.F5_PACKAGES:
             with self.subTest(falta=missing):
-                self.crear(True, [p for p in C.ENGINE_PACKAGES if p != missing])
-                self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+                self.crear(True, [p for p in C.F5_PACKAGES if p != missing])
+                self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
                 shutil.rmtree(self.venv)
 
     def test_instalacion_cortada_no_cuenta(self):
         self.crear(True)
         (self.site(True) / (DIST_INFO["torch"] + ".dist-info") / "RECORD").unlink()
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_carpeta_suelta_sin_instalar_no_cuenta(self):
-        self.crear(True, [p for p in C.ENGINE_PACKAGES if p != "f5-tts"])
+        self.crear(True, [p for p in C.F5_PACKAGES if p != "f5-tts"])
         (self.site(True) / "f5_tts").mkdir()
-        self.assertFalse(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))
+        self.assertFalse(C.venv_has(self.venv, C.F5_PACKAGES, True))
 
     def test_no_importa_nada_del_venv(self):
         self.crear(True)
@@ -93,7 +101,109 @@ class MotorInstalado(Base):
         (pkg / "__init__.py").write_text("raise RuntimeError('no se debe importar')", "utf-8")
         sys.path.insert(0, str(self.site(True)))
         self.addCleanup(sys.path.remove, str(self.site(True)))
-        self.assertTrue(C.venv_has(self.venv, C.ENGINE_PACKAGES, True))   # si lo importara, saltaría el error
+        self.assertTrue(C.venv_has(self.venv, C.F5_PACKAGES, True))   # si lo importara, saltaría el error
+
+
+class PartesOpcionales(Base):
+    """Quién necesita qué: F5 y Whisper son opcionales, y el QC corre en el proceso del motor que narra."""
+
+    def setUp(self):
+        super().setUp()
+        self.xtts = self.engine / ".venv-xtts"
+
+    def test_nada_opcional_en_lo_que_pide_la_base(self):
+        for packages in (C.BASE_PACKAGES, C.XTTS_PACKAGES):
+            for opcional in C.WHISPER_PACKAGES + ("f5-tts",):
+                self.assertNotIn(opcional, packages)
+        self.assertNotIn("torch", C.BASE_PACKAGES)
+        self.assertNotIn("coqui-tts", C.F5_PACKAGES)
+        self.assertNotIn("av", C.F5_PACKAGES)
+
+    def test_un_venv_de_xtts_a_medias_no_cuenta(self):
+        self.crear(True, packages=(), venv=self.xtts)
+        self.assertFalse(C.venv_has(self.xtts, C.XTTS_PACKAGES, True))
+        self.crear(True, [p for p in C.XTTS_PACKAGES if p != "coqui-tts"], venv=self.xtts)
+        self.assertFalse(C.venv_has(self.xtts, C.XTTS_PACKAGES, True))
+        self.crear(True, C.XTTS_PACKAGES, venv=self.xtts)
+        self.assertTrue(C.venv_has(self.xtts, C.XTTS_PACKAGES, True))
+
+    def test_la_instalacion_de_siempre_lo_tiene_todo(self):
+        self.crear(True, C.F5_PACKAGES + C.WHISPER_PACKAGES)
+        self.crear(True, C.XTTS_PACKAGES + C.WHISPER_PACKAGES, venv=self.xtts)
+        self.assertTrue(C.venv_has(self.venv, C.BASE_PACKAGES, True))
+        self.assertTrue(C.venv_has(self.venv, C.F5_PACKAGES, True))
+        self.assertTrue(C.venv_has(self.xtts, C.XTTS_PACKAGES, True))
+        self.assertEqual(C.whisper_venv(self.engine, True), C.VENV_MAIN)
+        self.assertTrue(C.qc_can_run(self.engine, "xtts", True))
+        self.assertTrue(C.qc_can_run(self.engine, "f5", True))
+
+    def test_whisper_para_transcribir_vale_en_cualquiera_de_los_dos(self):
+        self.assertIsNone(C.whisper_venv(self.engine, True))
+        self.crear(True, C.XTTS_PACKAGES + C.WHISPER_PACKAGES, venv=self.xtts)
+        self.assertEqual(C.whisper_venv(self.engine, True), C.VENV_XTTS)
+        self.crear(True, C.WHISPER_PACKAGES)
+        self.assertEqual(C.whisper_venv(self.engine, True), C.VENV_MAIN)
+
+    def test_el_qc_mira_el_venv_del_motor_que_narra(self):
+        self.crear(True, C.WHISPER_PACKAGES)                     # solo en engine/.venv
+        self.crear(True, C.XTTS_PACKAGES, venv=self.xtts)
+        self.assertFalse(C.qc_can_run(self.engine, "xtts", True))
+        self.assertTrue(C.qc_can_run(self.engine, "f5", True))
+        self.assertEqual(C.whisper_venv(self.engine, True), C.VENV_MAIN)  # transcribir, en cambio, sí puede
+
+    def test_whisper_se_instala_en_el_motor_que_narra(self):
+        self.assertEqual(C.whisper_target(self.engine, None, True), "whisper-alone")
+        self.crear(True, C.XTTS_PACKAGES, venv=self.xtts)
+        self.assertEqual(C.whisper_target(self.engine, None, True), "whisper-xtts")
+        self.assertEqual(C.whisper_target(self.engine, "f5", True), "whisper-xtts")  # F5 no está: en XTTS
+        self.crear(True, C.F5_PACKAGES)
+        self.assertEqual(C.whisper_target(self.engine, "xtts", True), "whisper-xtts")
+        self.assertEqual(C.whisper_target(self.engine, "f5", True), "whisper-f5")
+        shutil.rmtree(self.xtts)
+        self.assertEqual(C.whisper_target(self.engine, "xtts", True), "whisper-f5")
+
+    def test_los_comandos_de_cada_sistema(self):
+        self.assertEqual(C.install_commands("whisper-xtts", True),
+                         [r"engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\whisper\requirements.txt"])
+        self.assertEqual(C.install_commands("whisper-alone", False),
+                         ["python3 -m venv engine/.venv",
+                          "engine/.venv/bin/python -m pip install -r engine/deps/whisper-alone/requirements.txt"])
+
+
+class WhisperSinTorch(unittest.TestCase):
+    """Transcribir no puede exigir PyTorch: en engine/.venv puede no estar."""
+
+    def transcribe(self, torch_module):
+        seen = {}
+
+        class Model:
+            def __init__(self, path, device, compute_type):
+                seen.update(device=device, compute=compute_type)
+
+            def transcribe(self, *args, **kwargs):
+                return [types.SimpleNamespace(text="Hola", start=0.0, end=1.0)], None
+
+        modules = {"faster_whisper": types.SimpleNamespace(WhisperModel=Model), "torch": torch_module}
+        args = argparse.Namespace(device="auto", model_dir="m", language="es", audio="a.wav", offset=0.0)
+        out = io.StringIO()
+        with mock.patch.dict(sys.modules, modules), contextlib.redirect_stdout(out):
+            E.cmd_whisper(args)
+        return seen, out.getvalue()
+
+    def test_sin_torch_va_en_cpu(self):
+        seen, out = self.transcribe(None)                        # None en sys.modules: ImportError al importarlo
+        self.assertEqual(seen, {"device": "cpu", "compute": "int8"})
+        self.assertIn("whisper cargado (cpu)", out)
+        self.assertIn('SEG {"start": 0.0, "end": 1.0, "text": "Hola"}', out)
+        self.assertIn("WH-DONE", out)
+
+    def test_con_torch_y_gpu_usa_la_gpu(self):
+        torch = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda: True))
+        self.assertEqual(self.transcribe(torch)[0], {"device": "cuda", "compute": "float16"})
+
+    def test_con_torch_sin_gpu_va_en_cpu(self):
+        torch = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda: False))
+        self.assertEqual(self.transcribe(torch)[0], {"device": "cpu", "compute": "int8"})
 
 
 class Textos(unittest.TestCase):
@@ -111,6 +221,25 @@ class Textos(unittest.TestCase):
                     self.assertIn("README", table[L.SOURCE[n]])
                     self.assertIn(path, table[L.SOURCE[n]])
                     self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])
+            for n in COMANDOS:
+                with self.subTest(lang=lang, n=n):
+                    self.assertIn("{0}", table[L.SOURCE[n]])
+                    self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])
+
+    def test_todos_explican_el_cambio_de_cu128_a_cpu(self):
+        for lang in [l for l in L.available() if l != "es"]:
+            table = L.load(lang)
+            for n in (343, 344):
+                with self.subTest(lang=lang, n=n):
+                    self.assertIn("cu128", table[L.SOURCE[n]])
+                    self.assertIn("cpu", table[L.SOURCE[n]])
+
+    def test_ningun_texto_nuevo_sin_traducir(self):
+        for lang in [l for l in L.available() if l != "es"]:
+            table = L.load(lang)
+            for n in range(342, len(L.SOURCE)):
+                with self.subTest(lang=lang, n=n):
+                    self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])
 
     def test_la_app_usa_estos_textos_y_no_el_marcador(self):
         source = (ROOT / "storyteller.py").read_text("utf-8")
@@ -118,22 +247,41 @@ class Textos(unittest.TestCase):
         used = {c.args[0].value for c in ast.walk(ast.parse(source))
                 if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "_"
                 and c.args and isinstance(c.args[0], ast.Constant) and isinstance(c.args[0].value, str)}
-        for n in FALTA_MOTOR:
+        for n in list(FALTA_MOTOR) + list(range(342, len(L.SOURCE))):
             self.assertIn(L.SOURCE[n], used)
+
+    def test_ya_no_se_dice_que_whisper_y_f5_van_juntos(self):
+        source = (ROOT / "storyteller.py").read_text("utf-8")
+        self.assertNotIn("F5/Whisper", source)
 
 
 class Readme(unittest.TestCase):
+    PARTES = ("xtts", "xtts-languages", "f5", "base", "whisper-xtts", "whisper-f5", "whisper-alone")
+
     def test_da_los_comandos_en_los_dos_idiomas(self):
         for name in ("README.md", "README.es.md"):
+            lines = [l.strip() for l in (ROOT / name).read_text("utf-8").splitlines()]
+            with self.subTest(readme=name):
+                self.assertIn("git clone https://github.com/javimentallab/Storyteller.git cuentacuentos", lines)
+                self.assertIn("python -m pip install -r requirements.txt", lines)
+                for what in self.PARTES:
+                    for windows in (True, False):
+                        for command in C.install_commands(what, windows):
+                            self.assertIn(command, lines)
+
+    def test_f5_y_whisper_salen_como_opcionales(self):
+        for name, word in (("README.md", "optional"), ("README.es.md", "opcional")):
             text = (ROOT / name).read_text("utf-8")
             with self.subTest(readme=name):
-                self.assertIn("git clone https://github.com/javimentallab/Storyteller.git cuentacuentos", text)
-                self.assertIn("python -m pip install PySide6-Essentials PySide6-Addons", text)
-                for py in (r"engine\.venv\Scripts\python", "engine/.venv/bin/python"):
-                    line = next(l for l in text.splitlines() if l.startswith(py) and "f5-tts" in l)
-                    for package in C.ENGINE_PACKAGES[1:]:
-                        self.assertIn(package, line)
-                    self.assertTrue(any(l.startswith(f"{py} -m pip install torch==") for l in text.splitlines()))
+                self.assertIn(f"F5 ({word})", text)
+                self.assertIn(f"Whisper ({word})", text)
+
+    def test_nadie_instala_sin_version(self):
+        for name in ("README.md", "README.es.md"):
+            for line in (ROOT / name).read_text("utf-8").splitlines():
+                if " -m pip install " in line:
+                    with self.subTest(readme=name, line=line):
+                        self.assertRegex(line, r"pip install (-r |torch==)")
 
 
 if __name__ == "__main__":

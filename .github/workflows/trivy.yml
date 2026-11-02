@@ -24,6 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      # Trivy reads requirements.txt in any folder, but only with that exact name: keep it in engine/deps/.
       - name: Trivy, fail on HIGH/CRITICAL
         # Pinned to the commit behind v0.36.0 (tags of this action were
         # hijacked in March 2026).

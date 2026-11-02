@@ -35,8 +35,7 @@ NOWIN      = 0x08000000 if os.name == "nt" else 0
 
 # Versiones fijadas: maduras, sin CVE conocidas y con licencia permisiva (el proyecto es MIT:
 # nada de GPL/AGPL, ni siquiera instalado aparte; por eso no se usa PyMuPDF).
-REQS = ["beautifulsoup4==4.15.0", "lxml==6.1.3", "python-docx==1.2.0", "python-pptx==1.0.2",
-        "openpyxl==3.1.5", "pdfminer.six==20260107"]
+REQS_FILE = HOME_CC / "engine" / "deps" / "translate" / "requirements.txt"
 
 # llama.cpp fijado a una versión probada (no la última del día).
 LLAMA_BUILD = "b11803"
@@ -256,7 +255,7 @@ class InstallWorker(QThread):
                 self.progress.emit(_("Preparando el motor de traducción (una sola vez)…"), -1)
                 if not VPY.exists():
                     self._run([base_python(), "-m", "venv", str(_VENV)], "venv")
-                self._run([str(VPY), "-m", "pip", "install", "--disable-pip-version-check", "-q"] + REQS,
+                self._run([str(VPY), "-m", "pip", "install", "--disable-pip-version-check", "-q", "-r", str(REQS_FILE)],
                           "pip")
                 (_VENV / ".ready").write_text("ok", encoding="utf-8")
             if self.local and find_llama_server() is None:

@@ -1,0 +1,4 @@
+# The interface: run it in the Python that starts the app.
+pyside6-addons==6.11.2
+pyside6-essentials==6.11.2
+shiboken6==6.11.2

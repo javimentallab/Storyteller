@@ -341,3 +341,20 @@
 339|Om in die taal te vertellen moet dit in de XTTS-omgeving worden geïnstalleerd:\n\n{0}
 340|Voor een andere taal, binnen "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Er is al een boek bezig. Stoppen en overschakelen naar ‘{0}’? Wat klaar is blijft bewaard en kan worden hervat.
+342|QC staat aan, maar Whisper staat niet in de omgeving van deze engine: deze vertelling wordt niet gecontroleerd. Voer dit uit in een terminal om het daar te installeren:\n\n{0}
+343|XTTS is niet geïnstalleerd. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu128 door cpu):\n\n{0}\n\nJe kunt ook genereren op een eigen server of met een dienst via URL.
+344|F5 is optioneel en niet geïnstalleerd, dus met dit model kan niet worden verteld. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu128 door cpu):\n\n{0}\n\nJe kunt ook een ander model kiezen bij ‘Modellen’ of een dienst via URL.
+345|Whisper is optioneel en niet geïnstalleerd. Het is nodig om luisterboeken te transcriberen en zinnen te controleren (QC). Voer dit uit in een terminal om het te installeren:\n\n{0}
+346|Hoe installeren
+347|Whisper is optioneel en niet geïnstalleerd. Het is nodig om luisterboeken te transcriberen en zinnen te controleren (QC).
+348|Om op deze computer te vertellen ontbreekt een stem-engine: XTTS (engine/.venv-xtts) of F5, dat optioneel is. De opdrachten staan op de kaart en in de README. Intussen kun je genereren op een eigen server of met een dienst via URL. Whisper (luisterboeken transcriberen en QC) is optioneel en wordt apart geïnstalleerd.
+349|Het actieve model heeft een engine nodig die niet is geïnstalleerd. Kies een ander model of installeer hem: de opdrachten staan op de kaart en in de README.
+350|QC heeft Whisper nodig in de omgeving van de engine die vertelt, en daar staat het niet.
+351|QC heeft een Whisper-model nodig: download er hieronder een.
+352|Om zinnen te controleren (QC) moet Whisper in de omgeving staan van de engine die vertelt, en daar staat het niet. Voer dit uit in een terminal om het daar te installeren:\n\n{0}
+353|Zonder Whisper schrijf je de referentietekst van een stem zelf.
+354|Engine niet geïnstalleerd
+355|F5 is optioneel en niet geïnstalleerd: met dit model kan pas worden verteld als het is geïnstalleerd.
+356|Om met een dienst te vertellen hoef je alleen de EPUB te kunnen lezen. Voer dit uit in een terminal om dat te installeren:\n\n{0}
+357|QC kon {0} zinnen niet controleren: ze blijven zoals het model ze maakte. De reden staat in de gen.log van het boek.
+358|niet gecontroleerd (QC)

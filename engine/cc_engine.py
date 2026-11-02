@@ -471,10 +471,15 @@ def cmd_whisper(a):
     (`SEG {json}`) para poder guardar incremental y detener/reanudar desde la app.
     --offset desplaza los tiempos (para reanudar sobre un recorte del audio)."""
     from faster_whisper import WhisperModel
-    import torch
     dev = a.device
     if dev == "auto":
-        dev = "cuda" if torch.cuda.is_available() else "cpu"
+        # PyTorch es opcional aquí: además de saber si hay GPU, en Windows es quien pone las DLL de CUDA
+        # (cublas) que usa Whisper. Sin él, Whisper va en CPU.
+        try:
+            import torch
+            dev = "cuda" if torch.cuda.is_available() else "cpu"
+        except (ImportError, OSError):
+            dev = "cpu"
     compute = "float16" if dev == "cuda" else "int8"
     try:
         model = WhisperModel(a.model_dir, device=dev, compute_type=compute)
