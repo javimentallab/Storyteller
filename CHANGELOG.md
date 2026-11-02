@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2 (2026-11-02)
 
 ### New
 - **Quality check with a voice service by URL**: what arrives is checked with a Whisper by URL, with its own key, or
