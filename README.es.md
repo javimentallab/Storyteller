@@ -116,6 +116,10 @@ El modo *Servidor propio* usa un motor equivalente en el servidor por SSH (no in
 Escaneo continuo con **Trivy** (`.github/workflows/trivy.yml`): vulnerabilidades,
 secretos y malas configuraciones en cada push/PR.
 
+## Contribuir
+
+Consulta [CONTRIBUTING](CONTRIBUTING.md), en inglés. Para avisar en privado de un problema de seguridad, consulta [SECURITY](SECURITY.md).
+
 ## Licencia
 
 MIT. Ver [LICENSE](LICENSE). Los componentes y modelos que se descargan aparte conservan

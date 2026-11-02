@@ -115,6 +115,10 @@ the system language (English if it is not in the list); to force one, use
 Continuous scanning with **Trivy** (`.github/workflows/trivy.yml`): vulnerabilities,
 secrets and misconfigurations on every push/PR.
 
+## Contributing
+
+See [CONTRIBUTING](CONTRIBUTING.md). To report a security problem privately, see [SECURITY](SECURITY.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE). Components and models that are downloaded separately keep
