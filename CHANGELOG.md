@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1 (2026-11-03)
+
+### Fixed
+- **A book no longer disappears from the library when it comes back from your own server.** With a chapter
+  open in the player, Windows didn't let the app replace the book's folder: everything else had already been
+  deleted, and without its index the book stopped showing up. Now the files are installed one by one and the index
+  goes last, so the library always sees a whole book, and your place in it is kept. If the chapter you're listening
+  to is different in what arrives, the app waits until you stop listening to it.
+- If this already happened to you, the book is still in `books/.incoming-<name>`: close the app and move those files
+  into `books/<name>`, keeping the `playback.json` that is there.
+
 ## 1.2 (2026-11-02)
 
 ### New
