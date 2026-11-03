@@ -21,8 +21,8 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
 from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
-from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, live_manifest,
-                     merge_stream_manifests, read_gen_state, recover_interrupted, slug,
+from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
+                     live_manifest, merge_stream_manifests, read_gen_state, recover_interrupted, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
@@ -761,11 +761,9 @@ class GenWorker(QThread):
             for f in junk:
                 try: f.unlink()
                 except Exception: pass
-            if (dest / "playback.json").exists():              # por dónde iba escuchando
-                try: shutil.copyfile(dest / "playback.json", incoming / "playback.json")
-                except Exception: pass
-            if dest.exists(): shutil.rmtree(dest, ignore_errors=True)
-            os.replace(incoming, dest)
+            # Sin vaciar antes la carpeta: si está escuchando este libro, el capítulo que suena no se
+            # puede borrar y se quedaría sin el resto. Cancelar deja de esperar a ese fichero.
+            install_incoming(incoming, dest, keep_waiting=lambda: self.mode != "cancel")
             try: shutil.copyfile(epub, dest / "source.epub")   # para poder regenerar
             except Exception: pass
             if lost:

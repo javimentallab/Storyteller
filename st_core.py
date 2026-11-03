@@ -3,7 +3,7 @@
 Storyteller — lógica de la biblioteca compartida por la app de escritorio y el servidor.
 Sin Qt ni textos de interfaz: el formato de los libros en disco y si el motor está instalado.
 """
-import json, os, re, shutil, time, unicodedata, wave
+import filecmp, json, os, re, shutil, time, unicodedata, wave
 from pathlib import Path
 
 
@@ -131,6 +131,49 @@ def recover_interrupted(d):
         n = int(m.group(1)) if m else 0
     # Sin total conocido da igual: complete_ok=False y al reanudar se recuenta del EPUB.
     return bool(merge_stream_manifests(d, streams, n, complete_ok=False))
+
+
+def _put(src, dst, keep_waiting):
+    """Mueve src a dst. En Windows no se puede reemplazar un fichero abierto (el capítulo que suena,
+    o alguien leyéndolo justo ahora): si ya es igual que el que llega no hace falta, y si no, se espera."""
+    while True:
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            try:
+                if filecmp.cmp(src, dst, shallow=False):
+                    return
+            except OSError:
+                pass
+            if not keep_waiting():
+                raise
+            time.sleep(0.2)
+
+
+def install_incoming(incoming, dest, keep_waiting=lambda: True):
+    """Deja en dest el libro que ha llegado a incoming, sin vaciar dest antes: si un fichero no se
+    puede reemplazar, nada se ha perdido. El índice va el último, así que hasta entonces la
+    biblioteca ve el libro de antes, entero. El marcador de escucha de aquí no se pisa.
+    keep_waiting() dice si seguir esperando a un fichero ocupado; si no, salta PermissionError."""
+    incoming, dest = Path(incoming), Path(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    arrived = {p.name: p for p in incoming.iterdir() if p.is_file()}
+    index = ("gen_state.json", "manifest.json")
+    for name, p in sorted(arrived.items()):
+        if name in index or (name == "playback.json" and (dest / name).exists()):
+            continue
+        _put(p, dest / name, keep_waiting)
+    for p in dest.iterdir():                              # lo que ya no está en lo traído sobra
+        if p.is_file() and p.name not in arrived and p.name != "playback.json":
+            try:
+                p.unlink()
+            except OSError:
+                pass
+    for name in index:
+        if name in arrived:
+            _put(arrived[name], dest / name, keep_waiting)
+    shutil.rmtree(incoming, ignore_errors=True)
 
 
 def _progress_key(e):
