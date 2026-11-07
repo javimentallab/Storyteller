@@ -375,3 +375,29 @@
 373|Page numbers of the printed book, as the EPUB gives them.
 374|Page {0} of {1} (approximate) · {2}% of the book
 375|Approximate page: this book doesn't carry the page numbers of the printed edition, so a page is counted every {0} letters.
+376|Could not reach GitHub: there is no connection or it is not responding. Try again later; nothing has been changed.
+377|GitHub returned an error ({0}). Try again later; nothing has been changed.
+378|The downloaded file does not match its SHA-256 checksum: it has been deleted and nothing has been changed.
+379|The update could not be installed ({0}). The program has been left as it was.
+380|Download cancelled; nothing has been changed.
+381|What arrived from GitHub is not a valid Storyteller version; nothing has been changed.
+382|Check for updates
+383|Looks on GitHub for a new version. It only checks when you press it.
+384|Checking…
+385|Update Storyteller
+386|You already have the latest version, {0}.
+387|A new version is available: {0}. You have {1}.
+388|A narration, transcription, translation or download is in progress. Finish or stop it, then check for updates again: the app does not update halfway through a task.
+389|This copy is a git clone: to avoid overwriting anything in it, update it with ‘git pull’.
+390|The program is not in its data folder ({0}): it is not changed from here, so that two installations are not mixed.
+391|The program folder cannot be written to ({0}).
+392|The file will be saved in {0} and the release page will open so that you can install it yourself. Continue?
+393|Its SHA-256 checksum is verified before it is installed.
+394|This version does not publish a SHA-256 checksum: the app checks that it arrives encrypted from GitHub and that it is the announced version.
+395|It is downloaded from the Storyteller releases page on GitHub, and only the program files are replaced. Your settings, books, progress in each narration, voices, models and installed engines stay as they are and are not downloaded again.
+396|Update now?
+397|Downloading version {0}…
+398|Verifying and installing…
+399|Saved in {0}. Opening the release page.
+400|Storyteller {0} is installed. The app will now restart to use it.
+401|This version changes the requirements ({0}). What you already have installed is kept; if an engine no longer starts, repeat its installation step from the README.

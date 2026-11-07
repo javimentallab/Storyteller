@@ -9,8 +9,8 @@ resaltada, clic para saltar). La generacion corre en el servidor (GPU) por SSH.
 import sys, os, re, json, shutil, subprocess, time, tempfile, threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer, QTranslator, QLibraryInfo
-from PySide6.QtGui import QShortcut, QKeySequence, QIcon, QFontDatabase, QFontMetrics
+from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer, QTranslator, QLibraryInfo, QProcess, QStandardPaths
+from PySide6.QtGui import QShortcut, QKeySequence, QIcon, QFontDatabase, QFontMetrics, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QComboBox, QSlider, QScrollArea, QFileDialog, QProgressBar,
@@ -22,6 +22,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 from st_pages import FOLLOW_PAUSE, PAGE_LETTERS, Follow, book_pages  # página y seguir lo que suena
+import st_update  # «Buscar actualizaciones»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
                      live_manifest, merge_stream_manifests, prepare_resume, read_gen_state, recover_interrupted, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
@@ -32,6 +33,7 @@ __version__ = "1.2.1"
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "epub-tts"                # relativa al home del usuario del servidor
 HOME_CC    = Path.home() / "cuentacuentos"
+APP_DIR    = Path(__file__).resolve().parent   # donde está el programa (lo que cambia al actualizar)
 LOCAL_BOOKS = HOME_CC / "books"
 ENGINE_DIR = HOME_CC / "engine"
 # Ruta del Python del motor: Windows usa Scripts/, Linux/macOS usan bin/.
@@ -1069,6 +1071,69 @@ class LocalGenWorker(QThread):
         merge_stream_manifests(dest, streams, n, complete_ok=(self.mode == "run"))
 
 
+# ------------------------------------------------------------- actualizaciones
+class UpdateCheck(QThread):
+    """Pregunta a GitHub por la última versión, fuera de la ventana para que no se quede parada."""
+    done = Signal(object)                     # st_update.Release
+    failed = Signal(str, str)                 # tipo de error, detalle
+
+    def run(self):
+        try:
+            self.done.emit(st_update.fetch_latest(__version__))
+        except st_update.UpdateError as e:
+            self.failed.emit(e.kind, e.detail)
+        except Exception as e:
+            self.failed.emit("bad", str(e))
+
+
+class UpdateDownload(QThread):
+    """Baja la versión (y, si es seguro, la instala). progress: 0-100, o -1 mientras instala."""
+    progress = Signal(int)
+    done = Signal(object)                     # instalada: requisitos que cambian; si no, ruta del archivo
+    failed = Signal(str, str)
+
+    def __init__(self, release, dest, install):
+        super().__init__()
+        self.release, self.dest, self.install, self._stop = release, Path(dest), install, False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        def prog(got, total):
+            if total: self.progress.emit(min(99, got * 100 // total))
+        try:
+            st_update.download(self.release.download, self.dest, __version__, progress=prog,
+                               stopped=lambda: self._stop)
+            if not self.install:
+                self.done.emit(str(self.dest)); return
+            self.progress.emit(-1)
+            try:
+                _changed, reqs = st_update.install(self.dest, self.release.version, APP_DIR, __version__)
+            finally:
+                try: self.dest.unlink()
+                except OSError: pass
+            self.done.emit(reqs)
+        except st_update.UpdateError as e:
+            self.failed.emit(e.kind, e.detail)
+        except Exception as e:
+            self.failed.emit("install" if self.install else "network", str(e))
+
+
+def update_error_text(kind, detail=""):
+    if kind == "network":
+        return _("No pude hablar con GitHub: no hay conexión o no responde. Inténtalo más tarde; no he cambiado nada.")
+    if kind == "http":
+        return _("GitHub respondió con un error ({0}). Inténtalo más tarde; no he cambiado nada.").format(detail)
+    if kind == "checksum":
+        return _("El archivo bajado no coincide con su huella SHA-256: lo he borrado y no he cambiado nada.")
+    if kind == "install":
+        return _("No pude instalar la actualización ({0}). He dejado el programa como estaba.").format(detail)
+    if kind == "canceled":
+        return _("Descarga cancelada; no he cambiado nada.")
+    return _("Lo que llegó de GitHub no es una versión válida de Storyteller; no he cambiado nada.")
+
+
 def hf_repo_bytes(repo, keep):
     """Bytes a descargar de un repo de Hugging Face (para dar un porcentaje). None si no se sabe."""
     import urllib.request
@@ -1599,6 +1664,7 @@ class LibraryPage(QWidget):
     resumeBook = Signal(str)
     listenGen = Signal()                                  # abrir el libro que se está narrando
     openTranslate = Signal()
+    checkUpdates = Signal()
 
     def __init__(self):
         super().__init__()
@@ -1609,7 +1675,14 @@ class LibraryPage(QWidget):
         brand = QVBoxLayout(); brand.setSpacing(2)
         w = QLabel("Storyteller"); w.setObjectName("word")
         self.tag = QLabel(_("tu biblioteca narrada")); self.tag.setObjectName("tag")
-        brand.addWidget(w); brand.addWidget(self.tag)
+        # Debajo de la marca y no entre los botones: la cabecera ya marca el ancho mínimo de la ventana,
+        # y el «↻ Actualizar» de al lado es volver a leer la carpeta de libros.
+        self.updateBtn = QPushButton(_("Buscar actualizaciones")); self.updateBtn.setObjectName("ver")
+        self.updateBtn.setToolTip(f"Storyteller {__version__}\n"
+                                  + _("Mira en GitHub si hay una versión nueva. Solo se comprueba cuando lo pulsas."))
+        self.updateBtn.setCursor(Qt.PointingHandCursor)
+        self.updateBtn.clicked.connect(self.checkUpdates.emit)
+        brand.addWidget(w); brand.addWidget(self.tag); brand.addWidget(self.updateBtn, 0, Qt.AlignLeft)
         hb.addLayout(brand); hb.addStretch(1)
         self.refreshBtn = QPushButton(_("↻ Actualizar")); self.refreshBtn.setObjectName("tb")
         self.refreshBtn.setToolTip(_("Volver a leer la carpeta de libros"))
@@ -3322,6 +3395,7 @@ class Cuentacuentos(QMainWindow):
         self.library.importAudio.connect(self.import_audio)
         self.library.resumeBook.connect(self._resume_gen)
         self.library.listenGen.connect(self._listen_gen)
+        self.library.checkUpdates.connect(self.check_updates)
         # Mientras narra, la biblioteca enseña sola el libro y lo que va creciendo.
         self._libTimer = QTimer(self); self._libTimer.setInterval(4000)
         self._libTimer.timeout.connect(self._lib_tick)
@@ -3599,6 +3673,108 @@ class Cuentacuentos(QMainWindow):
         if self.stack.currentWidget() is not self.player:
             self.open_book(folder)
 
+    # ---- actualizaciones --------------------------------------------------
+    def _update_busy(self):
+        """Algo que no debe cambiar de programa a medias: narrar, transcribir, traducir o bajar un modelo."""
+        dl = getattr(self.models, "dl", None)
+        return (self._work_running() or self.translate.busy()
+                or (dl is not None and dl.isRunning()))
+
+    def check_updates(self):
+        """«Buscar actualizaciones»: solo aquí se pregunta a GitHub, nunca en segundo plano."""
+        w = getattr(self, "_updCheck", None)
+        if w is not None and w.isRunning():
+            return
+        btn = self.library.updateBtn
+        btn.setEnabled(False); btn.setText(_("Buscando…"))
+        self._updCheck = w = UpdateCheck()
+        w.done.connect(self._update_found)
+        w.failed.connect(lambda kind, detail: warn(self, update_error_text(kind, detail), _("Actualizar Storyteller")))
+        w.finished.connect(lambda: (btn.setEnabled(True), btn.setText(_("Buscar actualizaciones"))))
+        w.start()
+
+    def _update_found(self, rel):
+        title = _("Actualizar Storyteller")
+        if not st_update.is_newer(rel.version, __version__):
+            QMessageBox.information(self, title, _("Ya tienes la última versión, la {0}.").format(__version__))
+            return
+        head = _("Hay una versión nueva: la {0}. Tienes la {1}.").format(rel.version, __version__)
+        if self._update_busy():
+            QMessageBox.information(self, title, head + "\n\n" + _(
+                "Hay una narración, una transcripción, una traducción o una descarga en marcha. Termínala o "
+                "detenla y vuelve a buscar actualizaciones: no se actualiza a medias."))
+            return
+        Yes = QMessageBox.StandardButton.Yes
+        problem = st_update.install_problem(APP_DIR, HOME_CC)
+        if problem:
+            kind, path = problem
+            why = {"git": _("Esta copia es un clon de git: para no pisar lo que tengas en ella, "
+                            "actualízala con «git pull»."),
+                   "elsewhere": _("El programa no está en la carpeta de sus datos ({0}): no lo cambio desde "
+                                  "aquí para no mezclar dos instalaciones."),
+                   "readonly": _("No puedo escribir en la carpeta del programa ({0}).")}[kind].format(path)
+            folder = (QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+                      or str(Path.home()))
+            if QMessageBox.question(self, title, f"{head}\n\n{why}\n\n" + _(
+                    "Guardaré el archivo en {0} y abriré la página de la versión para que la instales tú. "
+                    "¿Sigo?").format(folder)) == Yes:
+                self._run_update(rel, Path(folder) / rel.download.name, install=False)
+            return
+        check = (_("Antes de instalarla se comprueba su huella SHA-256.") if rel.download.verifiable else
+                 _("Esta versión no publica su huella SHA-256: se comprueba que llega cifrada desde GitHub y "
+                   "que es la versión anunciada."))
+        keep = _("Se baja de la página de versiones de Storyteller en GitHub y solo se cambian los archivos del "
+                 "programa. La configuración, los libros, lo que llevas de cada narración, las voces, los "
+                 "modelos y los motores instalados se quedan como están y no se vuelven a bajar.")
+        if QMessageBox.question(self, title, f"{head}\n\n{keep}\n\n{check}\n\n"
+                                + _("¿Actualizar ahora?")) == Yes:
+            self._run_update(rel, APP_DIR / ".update" / rel.download.name, install=True)
+
+    def _run_update(self, rel, dest, install):
+        if install and self._update_busy():              # por si empezó algo mientras decidía
+            return self._update_found(rel)
+        title = _("Actualizar Storyteller")
+        dlg = QProgressDialog(_("Bajando la versión {0}…").format(rel.version), _("Cancelar"), 0, 100, self)
+        dlg.setWindowTitle(title); dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(0); dlg.setAutoClose(False); dlg.setAutoReset(False); dlg.setValue(0)
+        self._updDl = w = UpdateDownload(rel, dest, install)
+
+        def progress(p):
+            if p >= 0:
+                dlg.setValue(p); return
+            dlg.setCancelButton(None)                    # instalando: ya no se corta a medias
+            dlg.setLabelText(_("Comprobando e instalando…")); dlg.setRange(0, 0)
+
+        def finished_ok(result):
+            dlg.close()
+            if not install:
+                QMessageBox.information(self, title, _("Bajado en {0}. Abro la página de la versión.").format(result))
+                QDesktopServices.openUrl(QUrl(rel.page))
+                return
+            text = _("Storyteller {0} ya está instalado. La aplicación se reinicia ahora para usarlo.").format(rel.version)
+            if result:
+                text = _("Esta versión cambia los requisitos ({0}). Lo que ya tienes instalado se conserva; si un "
+                         "motor deja de arrancar, repite su paso de instalación del README.").format(
+                             ", ".join(result)) + "\n\n" + text
+            QMessageBox.information(self, title, text)
+            self._restart()
+
+        def failed(kind, detail):
+            dlg.close()
+            warn(self, update_error_text(kind, detail), title)
+
+        w.progress.connect(progress); w.done.connect(finished_ok); w.failed.connect(failed)
+        dlg.canceled.connect(w.stop)
+        w.start()
+
+    def _restart(self):
+        """Abre la versión nueva y cierra esta (el cierre guarda por dónde se iba escuchando)."""
+        args = [str(APP_DIR / "storyteller.py")]
+        if "--lang" in sys.argv:
+            i = sys.argv.index("--lang"); args += sys.argv[i:i + 2]
+        QProcess.startDetached(sys.executable, args, str(APP_DIR))
+        self.close()
+
     # ---- cierre de la aplicación -----------------------------------------
     def _stop_worker_and_wait(self, worker, label):
         """Al cerrar la app: detiene y GUARDA el trabajo en curso, esperando a que el
@@ -3638,6 +3814,12 @@ class Cuentacuentos(QMainWindow):
         except Exception: pass
         try: self.models.stop_download()
         except Exception: pass
+        for w in (getattr(self, "_updCheck", None), getattr(self, "_updDl", None)):
+            try:
+                if w is not None and w.isRunning():
+                    if isinstance(w, UpdateDownload): w.stop()
+                    w.wait((st_update.CHECK_TIMEOUT + 2) * 1000)   # su tiempo de espera es corto
+            except Exception: pass
         event.accept()
 
 
@@ -3648,6 +3830,9 @@ QStackedWidget, QWidget { background: #16120d; }
 #word { font-family: "Georgia", serif; font-style: italic; font-size: 21px; font-weight: 600; }
 #word2 { font-family: "Georgia", serif; font-style: italic; font-size: 16px; font-weight: 600; }
 #tag { font-size: 10px; color: #e3a94f; letter-spacing: 1px; }
+QPushButton#ver { background: transparent; border: none; padding: 0; font-size: 11px; color: #a2957f; text-align: left; }
+QPushButton#ver:hover { color: #e3a94f; text-decoration: underline; }
+QPushButton#ver:disabled { color: #6f6553; }
 #open { background: #e3a94f; color: #1a140c; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; }
 #open:disabled { background: #4a3f2c; color: #8a7d64; }
 QComboBox { background: #16120d; border: 1px solid #352d22; border-radius: 8px; padding: 6px 10px; }

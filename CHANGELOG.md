@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+- **Check for updates**, under the Storyteller name in the library. It asks GitHub for the latest release only
+  when you press it and compares versions properly (1.10 is newer than 1.9). After asking, it downloads the
+  release and replaces only the program files: settings, books, the progress of each narration, voices, models
+  and engines stay as they are and are not downloaded again. A git clone is never overwritten: the app saves
+  the archive and opens the release page instead. It does not update while a narration, transcription,
+  translation or download is in progress. See [Updating](README.md#updating).
+
 ### Changed
 - **Narration reads on instead of line by line.** Each sentence now goes to the voice whole, and XTTS makes
   the pauses at its commas; before, every comma was a separate piece with its own closing tone and a fixed

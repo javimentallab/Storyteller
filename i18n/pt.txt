@@ -375,3 +375,29 @@
 373|Numeração de páginas do livro impresso, tal como vem no EPUB.
 374|Página {0} de {1} (aproximada) · {2}% do livro
 375|Página aproximada: este livro não traz a numeração da edição impressa, por isso conta-se uma página a cada {0} letras.
+376|Não consegui me conectar ao GitHub: não há conexão ou ele não responde. Tente mais tarde; nada foi alterado.
+377|O GitHub respondeu com um erro ({0}). Tente mais tarde; nada foi alterado.
+378|O arquivo baixado não corresponde ao seu hash SHA-256: ele foi apagado e nada foi alterado.
+379|Não consegui instalar a atualização ({0}). O programa ficou como estava.
+380|Download cancelado; nada foi alterado.
+381|O que chegou do GitHub não é uma versão válida do Storyteller; nada foi alterado.
+382|Procurar atualizações
+383|Verifica no GitHub se há uma versão nova. Só verifica quando você clica.
+384|Procurando…
+385|Atualizar o Storyteller
+386|Você já tem a versão mais recente, a {0}.
+387|Há uma versão nova: a {0}. Você tem a {1}.
+388|Há uma narração, uma transcrição, uma tradução ou um download em andamento. Termine ou pare e procure atualizações de novo: a atualização não é feita no meio de um trabalho.
+389|Esta cópia é um clone do git: para não sobrescrever nada nela, atualize-a com “git pull”.
+390|O programa não está na pasta dos seus dados ({0}): não o altero daqui para não misturar duas instalações.
+391|Não consigo gravar na pasta do programa ({0}).
+392|Vou salvar o arquivo em {0} e abrir a página da versão para que você a instale. Continuo?
+393|Antes de instalar, o hash SHA-256 dela é verificado.
+394|Esta versão não publica hash SHA-256: verifica-se que chega criptografada do GitHub e que é a versão anunciada.
+395|Ela é baixada da página de versões do Storyteller no GitHub e só os arquivos do programa são trocados. As configurações, os livros, o progresso de cada narração, as vozes, os modelos e os motores instalados ficam como estão e não são baixados de novo.
+396|Atualizar agora?
+397|Baixando a versão {0}…
+398|Verificando e instalando…
+399|Salvo em {0}. Abrindo a página da versão.
+400|O Storyteller {0} está instalado. O aplicativo vai reiniciar agora para usá-lo.
+401|Esta versão muda os requisitos ({0}). O que você já instalou é mantido; se um motor deixar de iniciar, repita a etapa de instalação dele no README.

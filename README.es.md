@@ -257,6 +257,26 @@ neerlandés, polaco, ruso, ucraniano, chino, japonés, coreano, tailandés e hin
 idioma del sistema (inglés si no está en la lista); para forzar uno, `--lang xx`
 (p. ej. `--lang de`) o la variable de entorno `STORYTELLER_LANG`.
 
+### Actualizar
+
+**Buscar actualizaciones**, debajo del nombre de Storyteller en la biblioteca, pregunta a GitHub por la última
+versión solo cuando lo pulsas: la aplicación nunca lo comprueba en segundo plano. No envía datos personales, solo
+el agente `Storyteller-updater/<versión>`. Si hay una versión más nueva, dice cuál y pregunta antes de cambiar
+nada:
+
+- En una carpeta instalada desde el archivo de una versión, baja el archivo de esa versión de este repositorio,
+  comprueba su huella SHA-256 cuando la versión la publica y cambia solo los archivos del programa. La
+  configuración, los libros con lo que lleva cada narración, las voces, los modelos y los entornos de los motores
+  no vienen en el archivo y nunca se escriben, así que no se vuelve a bajar nada. Los archivos anteriores quedan
+  en `.update/backup-<versión>`. Después, la aplicación se reinicia.
+- En un clon de git, como el de [Instalación](#instalación), no pisa nada: guarda el archivo en la carpeta de
+  descargas y abre la página de la versión. El clon se actualiza con `git pull`.
+- Si hay una narración, una transcripción, una traducción o una descarga de modelos en marcha, solo avisa de que
+  hay una versión nueva: hay que terminarla o detenerla antes.
+
+Si una versión cambia el `requirements.txt` de un motor, la aplicación lo dice: repite el paso de instalación de
+ese motor.
+
 ## Estructura
 
 - `storyteller.py` — la aplicación (biblioteca + reproductor + gestor de modelos).
@@ -272,6 +292,8 @@ idioma del sistema (inglés si no está en la lista); para forzar uno, `--lang x
   el mismo formato de salida. En este equipo no hace falta GPU ni modelo de voz.
 - `st_server.py` — ese servicio con tu XTTS y tus voces, para esta aplicación en otro equipo, la
   app del móvil o cualquier otro cliente ([API](docs/server-api.md)).
+- `st_update.py` — *Buscar actualizaciones*: compara versiones, baja una versión y la instala (sin Qt;
+  se prueba con la red simulada).
 - `st_translate.py` + `engine/cc_translate.py` — pantalla y motor de traducción de
   documentos (un lector/escritor por formato; guarda el progreso y reanuda).
 

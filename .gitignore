@@ -31,6 +31,9 @@ pron.json
 # muestras de voz locales
 muestras_voz/
 
+# actualizaciones: descarga, copia de lo anterior y archivos a medio instalar
+.update/
+
 # Audio / EPUB / temporales
 *.wav
 *.mp3

@@ -375,3 +375,29 @@
 373|Numérotation des pages du livre imprimé, telle que l'EPUB la fournit.
 374|Page {0} sur {1} (approximative) · {2} % du livre
 375|Page approximative : ce livre ne contient pas la numérotation de l'édition imprimée, on compte donc une page toutes les {0} lettres.
+376|Impossible de joindre GitHub : pas de connexion ou pas de réponse. Réessayez plus tard ; rien n’a été modifié.
+377|GitHub a répondu par une erreur ({0}). Réessayez plus tard ; rien n’a été modifié.
+378|Le fichier téléchargé ne correspond pas à son empreinte SHA-256 : il a été supprimé et rien n’a été modifié.
+379|Impossible d’installer la mise à jour ({0}). Le programme est resté tel quel.
+380|Téléchargement annulé ; rien n’a été modifié.
+381|Ce qui est arrivé de GitHub n’est pas une version valide de Storyteller ; rien n’a été modifié.
+382|Rechercher des mises à jour
+383|Cherche sur GitHub s’il existe une nouvelle version. La vérification n’a lieu que lorsque vous cliquez.
+384|Recherche…
+385|Mettre à jour Storyteller
+386|Vous avez déjà la dernière version, la {0}.
+387|Une nouvelle version est disponible : la {0}. Vous avez la {1}.
+388|Une narration, une transcription, une traduction ou un téléchargement est en cours. Terminez-le ou arrêtez-le, puis recherchez à nouveau les mises à jour : la mise à jour ne se fait pas en plein travail.
+389|Cette copie est un clone git : pour ne rien y écraser, mettez-la à jour avec « git pull ».
+390|Le programme n’est pas dans son dossier de données ({0}) : il n’est pas modifié d’ici, pour ne pas mélanger deux installations.
+391|Impossible d’écrire dans le dossier du programme ({0}).
+392|Le fichier sera enregistré dans {0} et la page de la version s’ouvrira pour que vous l’installiez vous-même. Continuer ?
+393|Son empreinte SHA-256 est vérifiée avant l’installation.
+394|Cette version ne publie pas d’empreinte SHA-256 : on vérifie qu’elle arrive chiffrée depuis GitHub et qu’il s’agit bien de la version annoncée.
+395|Elle est téléchargée depuis la page des versions de Storyteller sur GitHub, et seuls les fichiers du programme sont remplacés. Les réglages, les livres, l’avancement de chaque narration, les voix, les modèles et les moteurs installés restent tels quels et ne sont pas retéléchargés.
+396|Mettre à jour maintenant ?
+397|Téléchargement de la version {0}…
+398|Vérification et installation…
+399|Enregistré dans {0}. Ouverture de la page de la version.
+400|Storyteller {0} est installé. L’application redémarre maintenant pour l’utiliser.
+401|Cette version modifie les prérequis ({0}). Ce que vous avez déjà installé est conservé ; si un moteur ne démarre plus, refaites son étape d’installation du README.

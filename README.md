@@ -258,6 +258,25 @@ Dutch, Polish, Russian, Ukrainian, Chinese, Japanese, Korean, Thai and Hindi. It
 the system language (English if it is not in the list); to force one, use
 `--lang xx` (e.g. `--lang de`) or the `STORYTELLER_LANG` environment variable.
 
+### Updating
+
+**Check for updates**, under the Storyteller name in the library, asks GitHub for the latest release only when
+you press it: the app never checks in the background. It sends no personal data, only the
+`Storyteller-updater/<version>` User-Agent. If there is a newer version, it says which one and asks before it
+changes anything:
+
+- In a folder installed from a release's archive, it downloads that release's archive from this repository,
+  verifies its SHA-256 checksum when the release publishes one and replaces only the program files. Your settings,
+  books and the progress of each narration, voices, models and engine environments are not in the archive and are
+  never written, so nothing is downloaded again. The previous files are kept in `.update/backup-<version>`. The app
+  then restarts.
+- In a git clone, like the one in [Installation](#installation), it does not overwrite anything: it saves the
+  archive in your Downloads folder and opens the release page. Update the clone with `git pull`.
+- If a narration, transcription, translation or model download is in progress, it only tells you that there is a
+  new version: finish or stop that first.
+
+If a release changes the `requirements.txt` of an engine, the app says so: repeat that engine's installation step.
+
 ## Layout
 
 - `storyteller.py` — the app (library + player + model manager).
@@ -273,6 +292,8 @@ the system language (English if it is not in the list); to force one, use
   standard API, same output format. No graphics card or voice model needed on this computer.
 - `st_server.py` — that service with your own XTTS and voices, for this app on another computer,
   the mobile app or any other client ([API](docs/server-api.md)).
+- `st_update.py` — *Check for updates*: compares versions, downloads a release and installs it (no Qt;
+  tested with a simulated network).
 - `st_translate.py` + `engine/cc_translate.py` — document translation screen and engine
   (one reader/writer per format; saves progress and resumes).
 

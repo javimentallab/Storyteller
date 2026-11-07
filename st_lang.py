@@ -392,6 +392,32 @@ SOURCE = [
     'Numeración de páginas del libro impreso, tal como la trae el EPUB.',  # 373
     'Página {0} de {1} (aproximada) · {2} % del libro',  # 374
     'Página aproximada: este libro no trae la numeración de la edición impresa, así que se cuenta una página cada {0} letras.',  # 375
+    'No pude hablar con GitHub: no hay conexión o no responde. Inténtalo más tarde; no he cambiado nada.',  # 376
+    'GitHub respondió con un error ({0}). Inténtalo más tarde; no he cambiado nada.',  # 377
+    'El archivo bajado no coincide con su huella SHA-256: lo he borrado y no he cambiado nada.',  # 378
+    'No pude instalar la actualización ({0}). He dejado el programa como estaba.',  # 379
+    'Descarga cancelada; no he cambiado nada.',  # 380
+    'Lo que llegó de GitHub no es una versión válida de Storyteller; no he cambiado nada.',  # 381
+    'Buscar actualizaciones',  # 382
+    'Mira en GitHub si hay una versión nueva. Solo se comprueba cuando lo pulsas.',  # 383
+    'Buscando…',  # 384
+    'Actualizar Storyteller',  # 385
+    'Ya tienes la última versión, la {0}.',  # 386
+    'Hay una versión nueva: la {0}. Tienes la {1}.',  # 387
+    'Hay una narración, una transcripción, una traducción o una descarga en marcha. Termínala o detenla y vuelve a buscar actualizaciones: no se actualiza a medias.',  # 388
+    'Esta copia es un clon de git: para no pisar lo que tengas en ella, actualízala con «git pull».',  # 389
+    'El programa no está en la carpeta de sus datos ({0}): no lo cambio desde aquí para no mezclar dos instalaciones.',  # 390
+    'No puedo escribir en la carpeta del programa ({0}).',  # 391
+    'Guardaré el archivo en {0} y abriré la página de la versión para que la instales tú. ¿Sigo?',  # 392
+    'Antes de instalarla se comprueba su huella SHA-256.',  # 393
+    'Esta versión no publica su huella SHA-256: se comprueba que llega cifrada desde GitHub y que es la versión anunciada.',  # 394
+    'Se baja de la página de versiones de Storyteller en GitHub y solo se cambian los archivos del programa. La configuración, los libros, lo que llevas de cada narración, las voces, los modelos y los motores instalados se quedan como están y no se vuelven a bajar.',  # 395
+    '¿Actualizar ahora?',  # 396
+    'Bajando la versión {0}…',  # 397
+    'Comprobando e instalando…',  # 398
+    'Bajado en {0}. Abro la página de la versión.',  # 399
+    'Storyteller {0} ya está instalado. La aplicación se reinicia ahora para usarlo.',  # 400
+    'Esta versión cambia los requisitos ({0}). Lo que ya tienes instalado se conserva; si un motor deja de arrancar, repite su paso de instalación del README.',  # 401
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

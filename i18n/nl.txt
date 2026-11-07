@@ -375,3 +375,29 @@
 373|Paginanummering van het gedrukte boek, zoals de EPUB die meegeeft.
 374|Pagina {0} van {1} (bij benadering) · {2}% van het boek
 375|Pagina bij benadering: dit boek bevat de paginanummering van de gedrukte uitgave niet, dus wordt er elke {0} letters een pagina geteld.
+376|Kan GitHub niet bereiken: geen verbinding of geen antwoord. Probeer het later opnieuw; er is niets gewijzigd.
+377|GitHub gaf een fout terug ({0}). Probeer het later opnieuw; er is niets gewijzigd.
+378|Het gedownloade bestand komt niet overeen met de SHA-256-controlesom: het is verwijderd en er is niets gewijzigd.
+379|De update kon niet worden geïnstalleerd ({0}). Het programma is gebleven zoals het was.
+380|Download geannuleerd; er is niets gewijzigd.
+381|Wat van GitHub kwam, is geen geldige versie van Storyteller; er is niets gewijzigd.
+382|Naar updates zoeken
+383|Kijkt op GitHub of er een nieuwe versie is. Dat gebeurt alleen als je erop klikt.
+384|Zoeken…
+385|Storyteller bijwerken
+386|Je hebt al de nieuwste versie, {0}.
+387|Er is een nieuwe versie: {0}. Jij hebt {1}.
+388|Er loopt een vertelling, transcriptie, vertaling of download. Maak die af of stop hem en zoek daarna opnieuw naar updates: er wordt niet halverwege bijgewerkt.
+389|Deze kopie is een git-kloon: werk hem bij met ‘git pull’, zodat er niets in wordt overschreven.
+390|Het programma staat niet in zijn gegevensmap ({0}): het wordt hiervandaan niet gewijzigd, zodat er geen twee installaties door elkaar raken.
+391|Er kan niet worden geschreven in de programmamap ({0}).
+392|Het bestand wordt opgeslagen in {0} en de pagina van de versie wordt geopend, zodat je het zelf kunt installeren. Doorgaan?
+393|Voor de installatie wordt de SHA-256-controlesom gecontroleerd.
+394|Deze versie publiceert geen SHA-256-controlesom: er wordt gecontroleerd dat ze versleuteld van GitHub komt en dat het de aangekondigde versie is.
+395|Ze wordt gedownload van de versiepagina van Storyteller op GitHub en alleen de programmabestanden worden vervangen. Instellingen, boeken, de voortgang van elke vertelling, stemmen, modellen en geïnstalleerde engines blijven zoals ze zijn en worden niet opnieuw gedownload.
+396|Nu bijwerken?
+397|Versie {0} downloaden…
+398|Controleren en installeren…
+399|Opgeslagen in {0}. De pagina van de versie wordt geopend.
+400|Storyteller {0} is geïnstalleerd. De app start nu opnieuw op om die te gebruiken.
+401|Deze versie wijzigt de vereisten ({0}). Wat je al hebt geïnstalleerd, blijft behouden; als een engine niet meer start, herhaal dan de installatiestap ervan uit de README.
