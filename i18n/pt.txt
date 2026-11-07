@@ -342,8 +342,8 @@
 340|Para outro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Já há um livro em curso. Paro-o e passo para «{0}»? O que está feito fica guardado e pode ser retomado.
 342|O QC está ativado, mas o Whisper não está no ambiente deste motor: esta narração não será revisada. Para instalá-lo lá, execute isto em um terminal:\n\n{0}
-343|O XTTS não está instalado. Para instalá-lo, execute isto em um terminal (demora e ocupa vários GB; sem GPU NVIDIA, troque cu128 por cpu):\n\n{0}\n\nVocê também pode gerar em um servidor próprio ou com um serviço por URL.
-344|O F5 é opcional e não está instalado, então não é possível narrar com este modelo. Para instalá-lo, execute isto em um terminal (demora e ocupa vários GB; sem GPU NVIDIA, troque cu128 por cpu):\n\n{0}\n\nVocê também pode escolher outro modelo em “Modelos” ou um serviço por URL.
+343|O XTTS não está instalado. Para instalá-lo, execute isto em um terminal (demora e ocupa vários GB; sem GPU NVIDIA, troque cu130 por cpu):\n\n{0}\n\nVocê também pode gerar em um servidor próprio ou com um serviço por URL.
+344|O F5 é opcional e não está instalado, então não é possível narrar com este modelo. Para instalá-lo, execute isto em um terminal (demora e ocupa vários GB; sem GPU NVIDIA, troque cu130 por cpu):\n\n{0}\n\nVocê também pode escolher outro modelo em “Modelos” ou um serviço por URL.
 345|O Whisper é opcional e não está instalado. É necessário para transcrever audiolivros e para revisar as frases (QC). Para instalá-lo, execute isto em um terminal:\n\n{0}
 346|Como instalar
 347|O Whisper é opcional e não está instalado. É necessário para transcrever audiolivros e para revisar as frases (QC).

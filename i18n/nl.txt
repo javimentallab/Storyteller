@@ -342,8 +342,8 @@
 340|Voor een andere taal, binnen "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Er is al een boek bezig. Stoppen en overschakelen naar ‘{0}’? Wat klaar is blijft bewaard en kan worden hervat.
 342|QC staat aan, maar Whisper staat niet in de omgeving van deze engine: deze vertelling wordt niet gecontroleerd. Voer dit uit in een terminal om het daar te installeren:\n\n{0}
-343|XTTS is niet geïnstalleerd. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu128 door cpu):\n\n{0}\n\nJe kunt ook genereren op een eigen server of met een dienst via URL.
-344|F5 is optioneel en niet geïnstalleerd, dus met dit model kan niet worden verteld. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu128 door cpu):\n\n{0}\n\nJe kunt ook een ander model kiezen bij ‘Modellen’ of een dienst via URL.
+343|XTTS is niet geïnstalleerd. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu130 door cpu):\n\n{0}\n\nJe kunt ook genereren op een eigen server of met een dienst via URL.
+344|F5 is optioneel en niet geïnstalleerd, dus met dit model kan niet worden verteld. Voer dit uit in een terminal om het te installeren (duurt even en kost enkele GB; zonder NVIDIA-GPU vervang je cu130 door cpu):\n\n{0}\n\nJe kunt ook een ander model kiezen bij ‘Modellen’ of een dienst via URL.
 345|Whisper is optioneel en niet geïnstalleerd. Het is nodig om luisterboeken te transcriberen en zinnen te controleren (QC). Voer dit uit in een terminal om het te installeren:\n\n{0}
 346|Hoe installeren
 347|Whisper is optioneel en niet geïnstalleerd. Het is nodig om luisterboeken te transcriberen en zinnen te controleren (QC).

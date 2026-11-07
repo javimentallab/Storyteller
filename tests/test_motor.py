@@ -16,7 +16,7 @@ import st_core as C
 import st_lang as L
 
 # Como los nombra pip de verdad: con guion bajo y con la versión local de PyTorch.
-DIST_INFO = {"torch": "torch-2.10.0+cu128", "torchaudio": "torchaudio-2.10.0+cu128", "f5-tts": "f5_tts-1.1.22",
+DIST_INFO = {"torch": "torch-2.13.0+cu130", "torchaudio": "torchaudio-2.11.1", "f5-tts": "f5_tts-1.1.22",
              "coqui-tts": "coqui_tts-0.28.0", "faster-whisper": "faster_whisper-1.2.1", "av": "av-18.1.0",
              "num2words": "num2words-0.5.14", "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
 # Los textos que mandan a instalar algo, y la ruta que tienen que nombrar.
@@ -366,12 +366,12 @@ class Textos(unittest.TestCase):
                     self.assertIn("{0}", table[L.SOURCE[n]])
                     self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])
 
-    def test_todos_explican_el_cambio_de_cu128_a_cpu(self):
+    def test_todos_explican_el_cambio_de_cu130_a_cpu(self):
         for lang in [l for l in L.available() if l != "es"]:
             table = L.load(lang)
             for n in (343, 344):
                 with self.subTest(lang=lang, n=n):
-                    self.assertIn("cu128", table[L.SOURCE[n]])
+                    self.assertIn("cu130", table[L.SOURCE[n]])
                     self.assertIn("cpu", table[L.SOURCE[n]])
 
     def test_ningun_texto_nuevo_sin_traducir(self):

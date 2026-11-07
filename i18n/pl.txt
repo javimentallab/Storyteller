@@ -342,8 +342,8 @@
 340|Dla innego języka, wewnątrz "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Inna książka jest już w toku. Zatrzymać ją i przejść do „{0}”? To, co gotowe, zostanie zapisane i można to wznowić.
 342|QC jest włączone, ale Whisper nie znajduje się w środowisku tego silnika: ta narracja nie zostanie sprawdzona. Aby go tam zainstalować, uruchom to w terminalu:\n\n{0}
-343|XTTS nie jest zainstalowany. Aby go zainstalować, uruchom to w terminalu (trwa to długo i zajmuje kilka GB; bez GPU NVIDIA zmień cu128 na cpu):\n\n{0}\n\nMożesz też generować na własnym serwerze lub przez usługę URL.
-344|F5 jest opcjonalny i nie jest zainstalowany, więc nie można narrować tym modelem. Aby go zainstalować, uruchom to w terminalu (trwa to długo i zajmuje kilka GB; bez GPU NVIDIA zmień cu128 na cpu):\n\n{0}\n\nMożesz też wybrać inny model w „Modelach” lub usługę przez URL.
+343|XTTS nie jest zainstalowany. Aby go zainstalować, uruchom to w terminalu (trwa to długo i zajmuje kilka GB; bez GPU NVIDIA zmień cu130 na cpu):\n\n{0}\n\nMożesz też generować na własnym serwerze lub przez usługę URL.
+344|F5 jest opcjonalny i nie jest zainstalowany, więc nie można narrować tym modelem. Aby go zainstalować, uruchom to w terminalu (trwa to długo i zajmuje kilka GB; bez GPU NVIDIA zmień cu130 na cpu):\n\n{0}\n\nMożesz też wybrać inny model w „Modelach” lub usługę przez URL.
 345|Whisper jest opcjonalny i nie jest zainstalowany. Jest potrzebny do transkrypcji audiobooków i sprawdzania zdań (QC). Aby go zainstalować, uruchom to w terminalu:\n\n{0}
 346|Jak zainstalować
 347|Whisper jest opcjonalny i nie jest zainstalowany. Jest potrzebny do transkrypcji audiobooków i sprawdzania zdań (QC).

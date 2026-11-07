@@ -75,17 +75,16 @@ class XttsEngine:
         import cc_xtts as X
         X.use_soundfile()                 # la voz, con soundfile: torchaudio.load necesita torchcodec
         os.environ.setdefault("COQUI_TOS_AGREED", "1")
-        name = "tts_models/multilingual/multi-dataset/xtts_v2"
         device = "cuda" if torch.cuda.is_available() else "cpu"
         try:
-            self.tts = TTS(name).to(device)
+            self.tts = X.new_xtts(TTS).to(device)          # sin rellenar al azar lo que carga el checkpoint
         except Exception as e:
             if "out of memory" in str(e).lower():
                 raise EngineBusy(str(e)) from e
             if device != "cuda":
                 raise
             print(f"la GPU falló al cargar ({type(e).__name__}): sigo en CPU, irá lento", flush=True)
-            self.tts = TTS(name).to("cpu")
+            self.tts = X.new_xtts(TTS).to("cpu")
             device = "cpu"
         print(f"XTTS cargado en {device}", flush=True)
 

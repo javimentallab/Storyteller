@@ -128,7 +128,8 @@ Then the engines. Install only what you are going to use:
 | Narrate with an F5 model | [F5](#f5-optional) |
 
 The commands run from the `cuentacuentos` folder. XTTS and F5 take several GB. Install PyTorch first, as shown,
-so that pip does not bring a newer version. Without an NVIDIA GPU, change `cu128` to `cpu` in its `--index-url`.
+so that pip does not bring a newer version. Without an NVIDIA GPU, change `cu130` to `cpu` in its `--index-url`.
+CUDA 13.0 needs an NVIDIA driver 580 or later.
 
 ### XTTS
 
@@ -136,7 +137,7 @@ The multilingual voice, in its own environment. Windows:
 
 ```powershell
 python -m venv engine\.venv-xtts
-engine\.venv-xtts\Scripts\python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv-xtts\Scripts\python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
 engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\xtts\requirements.txt
 ```
 
@@ -144,7 +145,7 @@ Linux/macOS:
 
 ```sh
 python3 -m venv engine/.venv-xtts
-engine/.venv-xtts/bin/python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv-xtts/bin/python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
 engine/.venv-xtts/bin/python -m pip install -r engine/deps/xtts/requirements.txt
 ```
 
@@ -230,7 +231,7 @@ Only to narrate with an F5 model. It brings packages under other licences, such 
 
 ```powershell
 python -m venv engine\.venv
-engine\.venv\Scripts\python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv\Scripts\python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
 engine\.venv\Scripts\python -m pip install --no-deps -r engine\deps\f5\requirements.txt
 ```
 
@@ -238,7 +239,7 @@ Linux/macOS:
 
 ```sh
 python3 -m venv engine/.venv
-engine/.venv/bin/python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv/bin/python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
 engine/.venv/bin/python -m pip install --no-deps -r engine/deps/f5/requirements.txt
 ```
 

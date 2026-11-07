@@ -13,7 +13,7 @@ import st_core as C
 
 QT = importlib.util.find_spec("PySide6") is not None
 WINDOWS = os.name == "nt"
-DIST = {"torch": "torch-2.10.0", "torchaudio": "torchaudio-2.10.0", "f5-tts": "f5_tts-1.1.22", "coqui-tts": "coqui_tts-0.28.0",
+DIST = {"torch": "torch-2.13.0", "torchaudio": "torchaudio-2.11.1", "f5-tts": "f5_tts-1.1.22", "coqui-tts": "coqui_tts-0.28.0",
         "faster-whisper": "faster_whisper-1.2.1", "av": "av-18.1.0", "num2words": "num2words-0.5.14",
         "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
 BASE = ["num2words", "beautifulsoup4", "lxml"]

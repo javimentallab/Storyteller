@@ -342,8 +342,8 @@
 340|Für eine andere Sprache, innerhalb von "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|Es läuft bereits ein Buch. Soll ich es anhalten und zu „{0}“ wechseln? Das Fertige bleibt gespeichert und kann fortgesetzt werden.
 342|QC ist an, aber Whisper ist nicht in der Umgebung dieser Engine: Diese Erzählung wird nicht geprüft. Um es dort zu installieren, führe dies in einem Terminal aus:\n\n{0}
-343|XTTS ist nicht installiert. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu128 durch cpu):\n\n{0}\n\nDu kannst auch auf einem eigenen Server oder mit einem Dienst per URL erzeugen.
-344|F5 ist optional und nicht installiert, daher kann mit diesem Modell nicht erzählt werden. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu128 durch cpu):\n\n{0}\n\nDu kannst auch unter „Modelle“ ein anderes Modell oder einen Dienst per URL wählen.
+343|XTTS ist nicht installiert. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu130 durch cpu):\n\n{0}\n\nDu kannst auch auf einem eigenen Server oder mit einem Dienst per URL erzeugen.
+344|F5 ist optional und nicht installiert, daher kann mit diesem Modell nicht erzählt werden. Um es zu installieren, führe dies in einem Terminal aus (dauert und belegt mehrere GB; ohne NVIDIA-GPU ersetze cu130 durch cpu):\n\n{0}\n\nDu kannst auch unter „Modelle“ ein anderes Modell oder einen Dienst per URL wählen.
 345|Whisper ist optional und nicht installiert. Es wird gebraucht, um Hörbücher zu transkribieren und Sätze zu prüfen (QC). Um es zu installieren, führe dies in einem Terminal aus:\n\n{0}
 346|Installationshilfe
 347|Whisper ist optional und nicht installiert. Es wird gebraucht, um Hörbücher zu transkribieren und Sätze zu prüfen (QC).

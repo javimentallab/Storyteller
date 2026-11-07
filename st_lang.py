@@ -359,8 +359,8 @@ SOURCE = [
     'Para otro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}',  # 340
     'Ya hay un libro en marcha. ¿Lo detengo y paso a «{0}»? Lo hecho queda guardado y se puede reanudar.',  # 341
     'QC activado, pero Whisper no está en el entorno de este motor: esta narración no se revisará. Para instalarlo ahí, ejecuta esto en una terminal:\n\n{0}',  # 342
-    'XTTS no está instalado. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\nTambién puedes generar en un servidor propio o con un servicio por URL.',  # 343
-    'F5 es opcional y no está instalado, así que no se puede narrar con este modelo. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\nTambién puedes elegir otro modelo en «Modelos» o un servicio por URL.',  # 344
+    'XTTS no está instalado. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\nTambién puedes generar en un servidor propio o con un servicio por URL.',  # 343
+    'F5 es opcional y no está instalado, así que no se puede narrar con este modelo. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\nTambién puedes elegir otro modelo en «Modelos» o un servicio por URL.',  # 344
     'Whisper es opcional y no está instalado. Hace falta para transcribir audiolibros y para revisar las frases (QC). Para instalarlo, ejecuta esto en una terminal:\n\n{0}',  # 345
     'Cómo instalarlo',  # 346
     'Whisper es opcional y no está instalado. Hace falta para transcribir audiolibros y para revisar las frases (QC).',  # 347

@@ -2,6 +2,14 @@
 
 ## 1.3.2 (2026-11-07)
 
+### Security
+- XTTS and F5 move from PyTorch 2.10.0 to 2.13.0, built for CUDA 13.0 instead of 12.8. This fixes CVE-2025-3000 and
+  CVE-2026-4538, the two listed in 1.3.1 as known and not fixed. PyTorch 2.13.0 has no known vulnerabilities.
+- torchaudio is no longer released together with PyTorch: 2.11.1, which works with PyTorch 2.11 and later, now comes
+  from PyPI with the rest of the requirements. torchcodec goes from 0.10.0 to 0.16.0.
+- CUDA 13.0 needs an NVIDIA driver 580 or later. Without an NVIDIA GPU, change `cu130` to `cpu`, as before.
+- To get this on an existing installation, run the XTTS or F5 commands of the README again.
+
 ### Changed
 - New colours: night blue and cyan instead of brown and amber. The screenshots in the README show them.
 
@@ -12,6 +20,8 @@
 - When the transcription service checking each sentence (QC) answered that it was out of memory (503) or could
   not be reached, the sentence was kept unchecked. It now waits, honouring Retry-After up to 60 s, and asks again
   up to 3 times.
+- XTTS loads without first filling its weights at random, since the checkpoint replaces all of them. With PyTorch
+  2.13 on Linux that step took more than 4 minutes on a mid-range GPU; loading now takes seconds.
 
 ## 1.3.1 (2026-11-07)
 

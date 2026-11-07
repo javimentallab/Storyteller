@@ -41,6 +41,23 @@ def load_voice(audiopath, sampling_rate):
         audio = torchaudio.functional.resample(audio, lsr, sampling_rate)
     return audio.clip_(-1, 1)
 
+XTTS_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
+
+def new_xtts(TTS, name=XTTS_NAME):
+    """Crea XTTS sin rellenar antes sus pesos al azar, porque el checkpoint los pone todos después (la carga es
+    estricta). Con PyTorch 2.13 en Linux, ese relleno (normal_) es unas 5 veces más lento que con 2.10: la carga
+    pasaba de ~50 s a más de 4 min en el servidor (7-nov). En Windows no se nota, pero sobra igual."""
+    try:
+        from transformers.initialization import no_init_weights        # transformers 5
+    except ImportError:
+        try:
+            from transformers.modeling_utils import no_init_weights    # transformers 4
+        except ImportError:
+            import contextlib
+            no_init_weights = contextlib.nullcontext
+    with no_init_weights():
+        return TTS(name)
+
 def use_soundfile():
     """XTTS solo lee audio para la voz de referencia. Antes de cargar el modelo; st_server también lo llama."""
     import TTS.tts.models.xtts as xtts
@@ -91,11 +108,11 @@ def cmd_generate(a):
         dev = "cuda" if torch.cuda.is_available() else "cpu"
     os.environ.setdefault("COQUI_TOS_AGREED", "1")
     try:
-        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(dev)
+        tts = new_xtts(TTS).to(dev)
     except Exception as e:
         if dev == "cuda":
             print(f"aviso: la GPU falló ({type(e).__name__}); reintento en CPU", flush=True)
-            dev = "cpu"; tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
+            dev = "cpu"; tts = new_xtts(TTS).to("cpu")
         else:
             raise
     print(f"modelo cargado ({dev})", flush=True)

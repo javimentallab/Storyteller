@@ -342,8 +342,8 @@
 340|For another language, inside "langs": {"en": {"pron": {"nginx": "engine x"}}}
 341|A book is already in progress. Stop it and switch to “{0}”? What’s done stays saved and can be resumed.
 342|QC is on, but Whisper isn't in this engine's environment: this narration won't be checked. To install it there, run this in a terminal:\n\n{0}
-343|XTTS is not installed. To install it, run this in a terminal (it takes a while and several GB; without an NVIDIA GPU, change cu128 to cpu):\n\n{0}\n\nYou can also generate on your own server or with a service by URL.
-344|F5 is optional and not installed, so you can't narrate with this model. To install it, run this in a terminal (it takes a while and several GB; without an NVIDIA GPU, change cu128 to cpu):\n\n{0}\n\nYou can also choose another model in “Models” or a service by URL.
+343|XTTS is not installed. To install it, run this in a terminal (it takes a while and several GB; without an NVIDIA GPU, change cu130 to cpu):\n\n{0}\n\nYou can also generate on your own server or with a service by URL.
+344|F5 is optional and not installed, so you can't narrate with this model. To install it, run this in a terminal (it takes a while and several GB; without an NVIDIA GPU, change cu130 to cpu):\n\n{0}\n\nYou can also choose another model in “Models” or a service by URL.
 345|Whisper is optional and not installed. It is needed to transcribe audiobooks and to check sentences (QC). To install it, run this in a terminal:\n\n{0}
 346|How to install it
 347|Whisper is optional and not installed. It is needed to transcribe audiobooks and to check sentences (QC).

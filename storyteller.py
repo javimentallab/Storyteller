@@ -248,10 +248,10 @@ def engine_how_text(model):
     """Cómo instalar el motor que le falta a ese modelo."""
     if model.get("backend") == "xtts":
         return _("XTTS no está instalado. Para instalarlo, ejecuta esto en una terminal (tarda y ocupa varios GB; "
-                 "sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\n"
+                 "sin GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\n"
                  "También puedes generar en un servidor propio o con un servicio por URL.").format(install_text("xtts"))
     return _("F5 es opcional y no está instalado, así que no se puede narrar con este modelo. Para instalarlo, ejecuta "
-             "esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu128 por cpu):\n\n{0}\n\n"
+             "esto en una terminal (tarda y ocupa varios GB; sin GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\n"
              "También puedes elegir otro modelo en «Modelos» o un servicio por URL.").format(install_text("f5"))
 def whisper_install_text(backend=None):
     return install_text(whisper_target(ENGINE_DIR, backend))

@@ -202,7 +202,9 @@ class Coherencia(unittest.TestCase):
         for name in ("xtts", "f5"):
             with self.subTest(motor=name):
                 self.assertEqual(full(name)["torch"], version)
-                self.assertEqual(full(name)["torchaudio"], version)
+                # torchaudio ya no sale a la par: la 2.11.1 vale para torch 2.11 en adelante y viene de PyPI.
+                self.assertEqual(full(name)["torchaudio"], "2.11.1")
+                self.assertNotIn("torchaudio", C.TORCH_INSTALL)
 
     def test_el_ci_instala_la_base_y_ffmpeg(self):
         flow = (ROOT / ".github/workflows/tests.yml").read_text("utf-8")
