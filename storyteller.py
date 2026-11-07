@@ -22,7 +22,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
-                     live_manifest, merge_stream_manifests, read_gen_state, recover_interrupted, slug,
+                     live_manifest, merge_stream_manifests, prepare_resume, read_gen_state, recover_interrupted, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
@@ -600,6 +600,9 @@ class GenWorker(QThread):
         if not self.resume:                        # desde cero: que no quede nada de otra tirada
             self._run(SSH + [self.host, f"rm -rf '{rdir}' && mkdir -p '{rdir}'"])
             return
+        # Todo lo de aquí en manifest.json y sin manifest.pN.json: allí los tramos mandan sobre el
+        # índice, y unos pN viejos de otra tirada borrarían lo narrado después.
+        prepare_resume(dest, 1, 0)
         try:
             here = self._narrated((dest / "manifest.json").read_text("utf-8"))
         except OSError:
@@ -870,6 +873,8 @@ class LocalGenWorker(QThread):
                 streams = 1
             self.progress.emit(_("Contando las frases del libro…"), -1)
             n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
+            if self.resume:                               # cada proceso, con todo lo narrado de su rango
+                prepare_resume(dest, streams, n)
             if streams > 1 and n > 1:
                 self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
             else:
@@ -2531,7 +2536,7 @@ class PlayerPage(QWidget):
         super().__init__()
         self.manifest = []; self.cues = []; self.cap = 0
         self.book_dir = None; self._autoscroll = False; self._pause_until = 0.0
-        self._restore_pos = None; self._pb_last_save = 0.0; self._last_pos = 0
+        self._restore_pos = None; self._pb_last_save = 0.0; self._last_pos = 0; self._pb_orphan = False
         self._manual_scroll = False   # si el usuario paginó a mano, no recolocar solo
         # Escuchar mientras se narra (ver LISTEN_DIR):
         self._live = False            # el libro abierto se está narrando ahora
@@ -2840,6 +2845,7 @@ class PlayerPage(QWidget):
                              else self.book_dir.name.replace("-", " ").capitalize())
         self._fill_chapters()
         self._update_head()
+        self._pb_orphan = False
         pb = self._read_playback()                          # retomar por donde se escuchaba
         start_cap = pb["cap"] if pb else 0
         self._restore_pos = pb["pos"] if pb else None
@@ -2893,6 +2899,7 @@ class PlayerPage(QWidget):
                 for i, m in enumerate(self.manifest):
                     if m.get("base") == pb["base"]:
                         return {"cap": i, "pos": pos}
+                self._pb_orphan = True                       # su capítulo no está ahora en el índice
                 return None
             cap = int(pb.get("cap", 0))
             if 0 <= cap < len(self.manifest):
@@ -2909,9 +2916,14 @@ class PlayerPage(QWidget):
             return
         try:
             p = self._last_pos if pos is None else pos
+            # El marcador apunta a un capítulo que falta en el índice (se volverá a ver al reparar o
+            # traer el libro): no pisarlo con el principio solo por abrir y cerrar sin escuchar.
+            if self._pb_orphan and not p:
+                return
             m = self.manifest[self.cap] if 0 <= self.cap < len(self.manifest) else {}
-            (self.book_dir / "playback.json").write_text(
-                json.dumps({"cap": self.cap, "base": m.get("base"), "pos": int(max(0, p))}), "utf-8")
+            _atomic_write(self.book_dir / "playback.json",
+                          json.dumps({"cap": self.cap, "base": m.get("base"), "pos": int(max(0, p))}))
+            self._pb_orphan = False
         except Exception:
             pass
 

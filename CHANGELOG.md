@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Resuming no longer throws away chapters that were already narrated.** When a book had finished chapters further
+  on (narrated in parallel streams, or on your own server) and you stopped before the narration reached them, they
+  dropped out of the book's index; the next time you resumed, their audio was deleted and narrated again.
+- **Changing the number of parallel streams before resuming keeps what is narrated.** Going from one stream to
+  several treated the whole book as new, and index files left over from an earlier run could overwrite newer
+  progress, also when the book went on on your own server.
+- Your place in a book is no longer reset to the start just by opening and closing it while its chapter is missing
+  from the index, and it is saved in one piece.
+
 ## 1.2.1 (2026-11-03)
 
 ### Fixed

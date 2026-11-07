@@ -199,6 +199,56 @@ def live_manifest(d):
     return [best[k] for k in sorted(best)]
 
 
+def _entries(path):
+    try:
+        data = json.loads(Path(path).read_text("utf-8"))
+    except Exception:
+        return []
+    return [e for e in data if isinstance(e, dict) and "id" in e] if isinstance(data, list) else []
+
+
+def resume_index(d):
+    """Lo narrado del libro, por capítulo, para seguir con otra tirada. Los manifest.pN.json solo
+    valen si la última tirada fue en tramos (gen_state con streams > 1): un tramo, un servicio o el
+    servidor reescriben gen_state sin ellos y dejan los pN de antes, ya viejos. Si valen, mandan
+    sobre manifest.json: un capítulo rehecho empieza con menos frases que en la fusión anterior."""
+    d = Path(d)
+    best = {e["id"]: e for e in _entries(d / "manifest.json")}
+    parts = _stream_parts(d)
+    if parts and int((read_gen_state(d) or {}).get("streams") or 0) > 1:
+        newer = {}
+        for _k, p in sorted(parts.items()):
+            for e in _entries(p):
+                old = newer.get(e["id"])
+                if old is None or _progress_key(e) > _progress_key(old):
+                    newer[e["id"]] = e
+        best.update(newer)
+    return [best[k] for k in sorted(best)]
+
+
+def prepare_resume(d, streams, n):
+    """Antes de reanudar: todo lo narrado en manifest.json y, si se va a narrar en tramos, cada
+    manifest.pN.json con lo de su rango, que es lo único que lee cada tramo. Sin esto, pasar de un
+    tramo a varios daba el libro por nuevo (se borraba y se volvía a narrar), y unos pN viejos de
+    otra tirada pisaban lo narrado después. Devuelve el índice."""
+    d = Path(d)
+    entries = resume_index(d)
+    if not entries:
+        return entries
+    _atomic_write(d / "manifest.json", json.dumps(entries, ensure_ascii=False, indent=2))
+    for p in _stream_parts(d).values():
+        try:
+            p.unlink()
+        except OSError:
+            pass
+    if streams > 1 and n > 1:
+        for idx, (cs, ce) in enumerate(split_ranges(n, min(streams, n)), 1):
+            part = [e for e in entries if cs <= e["id"] <= ce]
+            if part:
+                _atomic_write(d / f"manifest.p{idx}.json", json.dumps(part, ensure_ascii=False, indent=2))
+    return entries
+
+
 def chapter_is_partial(d, e):
     """Capítulo narrado a medias: su audio aún crece (o se reescribirá al reanudar).
     Las transcripciones de audiolibros traen el audio entero desde el principio."""

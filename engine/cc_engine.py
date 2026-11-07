@@ -775,6 +775,16 @@ def load_prev_manifest(outdir, name="manifest.json"):
         pass
     return prev
 
+def with_unvisited(manifest, prev, chap_start=0, chap_end=0):
+    """El índice que se escribe al reanudar: lo recorrido en esta tirada más lo de la anterior a lo
+    que aún no se ha llegado (solo de este tramo). Sin esto, un capítulo terminado más adelante
+    (de una tirada en tramos, o narrado en el servidor) salía del índice al parar antes de
+    alcanzarlo, y al reanudar se borraba su audio y se volvía a narrar."""
+    seen = {e["id"] for e in manifest}
+    rest = [e for i, e in prev.items() if i not in seen
+            and (not chap_start or i >= chap_start) and (not chap_end or i <= chap_end)]
+    return sorted(manifest + rest, key=lambda e: e["id"])
+
 def write_state(outdir, total, complete):
     """Marca si la generacion del libro esta terminada. complete=False => reanudable."""
     write_atomic(os.path.join(outdir, "gen_state.json"),
@@ -830,7 +840,7 @@ def cmd_generate(a):
     manifest = []
     def save_manifest():
         write_atomic(os.path.join(a.out, mani_name),
-                     json.dumps(manifest, ensure_ascii=False, indent=2))
+                     json.dumps(with_unvisited(manifest, prev, cs, ce or len(chaps)), ensure_ascii=False, indent=2))
     import gc, soundfile as sf
     for ci, ch in enumerate(chaps, 1):
         if (cs and ci < cs) or (ce and ci > ce):          # fuera de mi tramo
