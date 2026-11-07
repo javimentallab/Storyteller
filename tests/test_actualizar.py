@@ -234,6 +234,15 @@ class Instalar(unittest.TestCase):
         self.assertIn('__version__ = "1.2.1"', (bak / "storyteller.py").read_text("utf-8"))
         self.assertFalse((self.app / ".update" / "staging").exists())
 
+    def test_cambiar_solo_los_finales_de_linea_no_es_cambiar_requisitos(self):
+        # Visto en la prueba real: una copia con CRLF frente al zip de GitHub, con LF, avisaba de los 7.
+        req = self.app / "engine/deps/xtts/requirements.txt"
+        req.write_bytes(b"coqui-tts==0.27.2\r\n")
+        changed, reqs = U.install(self.zip(program("1.3.0")), "1.3.0", self.app, "1.2.1")
+        self.assertIn("engine/deps/xtts/requirements.txt", changed)      # se cambia el archivo, sin avisar
+        self.assertEqual(reqs, [])
+        self.assertEqual(req.read_bytes(), b"coqui-tts==0.27.2\n")
+
     def test_zip_sin_carpeta_de_arriba(self):
         U.install(self.zip(program("1.3.0"), top=""), "1.3.0", self.app, "1.2.1")
         self.assertIn('"1.3.0"', (self.app / "storyteller.py").read_text("utf-8"))

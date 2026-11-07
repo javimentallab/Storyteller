@@ -329,6 +329,14 @@ def is_requirements(rel):
     return s == "requirements.txt" or bool(re.fullmatch(r"engine/deps/[^/]+/requirements\.txt", s))
 
 
+def _requirements_text(path):
+    """Lo que pide un requirements.txt, sin finales de línea ni espacios al final de cada línea."""
+    try:
+        return [l.rstrip() for l in path.read_text("utf-8", "replace").splitlines() if l.strip()]
+    except OSError:
+        return None
+
+
 def _same(a, b):
     try:
         return a.stat().st_size == b.stat().st_size and a.read_bytes() == b.read_bytes()
@@ -344,8 +352,10 @@ def apply(staging, files, app_dir, backup):
         shutil.rmtree(backup)
     todo = [r for r in files if not is_user_data(r)
             and not _same(staging / r, app_dir / r)]
-    # Solo los que ya había: uno nuevo es un motor opcional nuevo, no algo que reinstalar.
-    reqs = [r for r in todo if is_requirements(r) and (app_dir / r).exists()]
+    # Solo los que ya había (uno nuevo es un motor opcional nuevo, no algo que reinstalar) y si cambia lo que
+    # dicen: una copia con CRLF frente al LF del archivo de GitHub no es un cambio de requisitos.
+    reqs = [r for r in todo if is_requirements(r) and (app_dir / r).exists()
+            and _requirements_text(app_dir / r) != _requirements_text(staging / r)]
     done = []
     try:
         for rel in todo:
