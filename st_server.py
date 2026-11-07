@@ -100,7 +100,7 @@ class XttsEngine:
                 E.load_pron(str(self.pron))
             self._load()
         E.NUM_LANG = lang
-        t = E.with_stop(E.normalize_text(text))  # sin el «stop» XTTS desbarra al final
+        t = E.with_stop(E.normalize_text(text))
         if not t:
             return b"", RATE
         try:
@@ -110,7 +110,7 @@ class XttsEngine:
             if "out of memory" in str(e).lower():
                 raise EngineBusy(str(e)) from e
             raise
-        w = trim(X._clean_clip(np.asarray(w, dtype="float32"), RATE), RATE, text=t)
+        w = trim(X.finish_voice(w), RATE, text=t)
         if cap:
             w = cap(w, RATE)
         return (np.clip(w, -1, 1) * 32767).astype("<i2").tobytes(), RATE

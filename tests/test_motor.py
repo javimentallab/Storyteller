@@ -219,6 +219,73 @@ class WhisperSinTorch(unittest.TestCase):
         self.assertEqual(self.transcribe(torch)[0], {"device": "cpu", "compute": "int8"})
 
 
+class CorteDeCola(unittest.TestCase):
+    SR = 24000
+
+    def setUp(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest("sin numpy")
+        # 1,2 s de voz, 0,4 s de silencio y 1,4 s de cola inventada
+        self.wav = numpy.full(self.SR * 3, 0.3, dtype="float32")
+        self.wav[int(1.2 * self.SR):int(1.6 * self.SR)] = 0.0
+        self.seguida = numpy.full(self.SR * 3, 0.3, dtype="float32")   # voz de corrido hasta el final
+        self.addCleanup(E._QC_RATES.clear)
+        E._QC_RATES.clear()
+
+    def test_corta_la_cola_en_el_silencio_tras_la_ultima_palabra(self):
+        # Whisper marca el fin a 1,0 s, antes de tiempo: se corta en el silencio real (1,2 s)
+        out = E.qc_cut_tail("hola amigo", "hola amigo", self.wav, self.SR, 1.0)
+        self.assertEqual(len(out), int((1.2 + E.QC_CUT_PAD) * self.SR))
+        self.assertEqual(float(out[-1]), 0.0)
+        self.assertAlmostEqual(float(out[int(1.15 * self.SR)]), 0.3, places=5)   # la palabra entera
+
+    def test_voz_de_corrido_no_se_corta_aunque_whisper_acabe_antes(self):
+        # 7-nov: Whisper acababa la última palabra 0,2-0,5 s antes y se cortaba media palabra
+        self.assertIsNone(E.qc_cut_tail("hola amigo", "hola amigo", self.seguida, self.SR, 1.0))
+        self.assertIsNone(E.qc_cut_tail("hola amigo", "hola amigo", self.seguida, self.SR, 2.5))
+
+    def test_no_toca_el_original(self):
+        E.qc_cut_tail("hola amigo", "hola amigo", self.wav, self.SR, 1.0)
+        self.assertEqual(len(self.wav), self.SR * 3)
+        self.assertAlmostEqual(float(self.wav[int(1.7 * self.SR)]), 0.3, places=5)
+
+    def test_si_faltan_palabras_decide_el_reintento(self):
+        self.assertIsNone(E.qc_cut_tail("hola amigo mio querido", "hola", self.wav, self.SR, 1.0))
+
+    def test_una_cola_corta_se_queda(self):
+        self.assertIsNone(E.qc_cut_tail("hola amigo", "hola amigo", self.wav, self.SR, 2.8))
+
+    def test_sin_tiempo_de_whisper_no_corta(self):
+        self.assertIsNone(E.qc_cut_tail("hola amigo", "hola amigo", self.wav, self.SR, None))
+
+    def test_un_tiempo_de_whisper_increible_no_corta(self):
+        E._QC_RATES.extend([10.0] * 8)            # 15 letras a 10 por segundo: 1,5 s
+        self.assertIsNone(E.qc_cut_tail("quince letras justas", "quince letras justas",
+                                        self.wav, self.SR, 0.2))
+
+
+class VozFinal(unittest.TestCase):
+    def setUp(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest("sin numpy")
+        self.np = numpy
+        import cc_xtts
+        self.X = cc_xtts
+
+    def test_deshace_el_tanh_del_generador(self):
+        x = self.np.array([0.0, 0.2, -0.5, 1.2, -1.8], dtype="float32")
+        out = self.X.finish_voice(self.np.tanh(x))
+        self.assertTrue(self.np.allclose(out, x * self.X.OUTPUT_GAIN, atol=1e-3))
+
+    def test_nunca_se_pasa_del_tope(self):
+        out = self.X.finish_voice(self.np.array([1.0, -1.0, 0.9999], dtype="float32"))
+        self.assertLess(float(self.np.abs(out).max()), 1.0)
+
+
 class Textos(unittest.TestCase):
     def test_nadie_dice_que_se_esta_instalando(self):
         for text in L.SOURCE:

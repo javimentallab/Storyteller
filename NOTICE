@@ -29,7 +29,6 @@ Audio and numbers
 - SciPy: BSD 3-Clause License, https://scipy.org/
 - soundfile: BSD 3-Clause License, https://github.com/bastibe/python-soundfile
   Its wheels include libsndfile: GNU LGPL 2.1, https://libsndfile.github.io/libsndfile/
-- noisereduce (XTTS engine): MIT License, https://github.com/timsainb/noisereduce
 - librosa: ISC License, https://librosa.org/
 - soxr (librosa requires it): GNU LGPL 2.1 or later, with libsoxr (GNU LGPL 2.1 or later)
   and PFFFT (BSD style) inside, https://github.com/dofuuz/python-soxr

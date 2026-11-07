@@ -85,11 +85,22 @@ class Idioma(unittest.TestCase):
         self.assertEqual(E.normalize_text("Fui a New York ayer."), "fui a niu york ayer.")
 
     def test_el_signo_de_fin(self):
+        E.NUM_LANG = "en"
         self.assertEqual(E.with_stop("hola,"), "hola.")
         self.assertEqual(E.with_stop("hola?"), "hola?")
         self.assertEqual(E.with_stop("你好，"), "你好.")
         self.assertEqual(E.with_stop("你好。"), "你好。")
         self.assertEqual(E.with_stop("आप कैसे हैं।"), "आप कैसे हैं।")
+        self.assertEqual(E.with_stop("  "), "")
+
+    def test_en_espanol_sin_punto_final(self):
+        E.NUM_LANG = "es"
+        self.assertEqual(E.with_stop("hola."), "hola")
+        self.assertEqual(E.with_stop("hola,"), "hola")
+        self.assertEqual(E.with_stop("hola:"), "hola")
+        self.assertEqual(E.with_stop("sí. y no."), "sí. y no")
+        self.assertEqual(E.with_stop("¿hola?"), "¿hola?")
+        self.assertEqual(E.with_stop("¡hola!"), "¡hola!")
         self.assertEqual(E.with_stop("  "), "")
 
 

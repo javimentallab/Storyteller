@@ -22,23 +22,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # -I no añade e
 import cc_engine as E   # mismas utilidades que el motor F5 (sin importar f5_tts)
 
 FLUSH_EVERY = 6
+OUTPUT_GAIN = 10 ** (-9.0 / 20)   # con el tope de abajo, atanh(0,99) × esto no pasa de 0,94
 
-def _clean_clip(w, sr=24000, prop=0.75):
-    """Quita el ruido de fondo que XTTS copia de la grabación de referencia.
-    Se limpia la SALIDA y no la referencia: limpiar la referencia se come la z/c
-    (fricativa débil) y XTTS cae en acento latino. Pasa-altos 70 Hz + reducción
-    de ruido estacionario. Sin noisereduce instalado, devuelve el clip tal cual."""
+def finish_voice(w):
+    """El generador de XTTS acaba en tanh, que aplasta los picos y satura la voz en el énfasis
+    (de hasta 1,8 a 0,95, medido). Se deshace con atanh y se baja para que quepa."""
     import numpy as np
-    if w is None or w.size < sr // 10:
-        return w
-    try:
-        import noisereduce as nr
-        from scipy.signal import butter, sosfiltfilt
-    except Exception:
-        return w
-    w = sosfiltfilt(butter(4, 70, "highpass", fs=sr, output="sos"), w).astype("float32")
-    return np.asarray(nr.reduce_noise(y=w, sr=sr, stationary=True, prop_decrease=prop),
-                      dtype="float32")
+    return (np.arctanh(np.clip(np.asarray(w, dtype="float32"), -0.99, 0.99)) * OUTPUT_GAIN).astype("float32")
 
 # Lo que XTTS necesita para estos idiomas y no instala por defecto: (módulo, paquete).
 NEEDS = {"ja": (("cutlet", "cutlet"), ("fugashi", "fugashi"), ("unidic_lite", "unidic-lite")),
@@ -99,13 +89,11 @@ def cmd_generate(a):
                        json.dumps(E.with_unvisited(manifest, prev, cs, ce or len(chaps)), ensure_ascii=False, indent=2))
 
     def infer(gen_text):
-        # cerrar con punto si no acaba en signo de fin: XTTS necesita el "stop" para
-        # no desbarrar al final (principal causa de la alucinación final).
         # split_sentences=False: el trozo ya es una frase; coqui la volvería a partir (pysbd)
         # y metería 0,42 s de silencio digital en cada parte.
         w = tts.tts(text=E.with_stop(gen_text), speaker_wav=a.voice, language=a.lang or "es",
                     split_sentences=False)
-        w = E.trim_clip(_clean_clip(np.asarray(w, dtype="float32"), 24000), 24000, text=gen_text)
+        w = E.trim_clip(finish_voice(w), 24000, text=gen_text)
         return E.cap_silences(w, 24000), 24000
 
     for ci, ch in enumerate(chaps, 1):
@@ -193,6 +181,10 @@ def cmd_generate(a):
                     if best_wav is None: best_wav = wav
                     print(f"  QC frase {si+1}: sin respuesta del Whisper, me quedo con lo generado", flush=True)
                     break
+                cut = E.qc_cut_tail(gen_text, hyp, wav, sr, last_end, a.qc_threshold)
+                if cut is not None:
+                    print(f"  QC frase {si+1}: cola cortada, de {len(wav) / sr:.1f} s a {len(cut) / sr:.1f} s", flush=True)
+                    wav = cut
                 rec, ok, score, motivo = E._qc_eval(gen_text, hyp, a.qc_threshold,
                                                     E.qc_audio_fault(gen_text, wav, sr, last_end))
                 if score > best_score: best_score, best_wav = score, wav

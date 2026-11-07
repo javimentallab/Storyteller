@@ -23,6 +23,16 @@
   a comma («…, dijo él») is no longer taken for a made-up ending and cut.
 - **Books started before**: finished chapters stay as they are. A chapter left halfway is narrated again from its
   start with the new pieces, so that no chapter changes its way of reading in the middle.
+- **XTTS voice without the noise filter and without squashed peaks.** The output is no longer run through
+  noise reduction: it lowered the voice by about 8 dB, unevenly from one piece to the next, and dulled the high
+  notes. XTTS ends in a `tanh` that flattens the loudest moments; it is undone and the level lowered so that
+  emphasis doesn't sound saturated. Narration, `st_server` and the server engine sound the same. `noisereduce` is
+  no longer installed.
+- In Spanish, a piece no longer goes to XTTS with a final full stop: with it, more endings came with a made-up tail
+  (6 in 80 pieces against 1 without it). Other languages keep it.
+- With quality control on, **a made-up tail after the last word is cut** at the silence before it. Only at a real
+  silence: where Whisper says the last word ends is up to half a second early, and cutting there would take half
+  of the word. If the voice runs on to the end, nothing is cut and quality control decides as before.
 
 ### Fixed
 - **Resuming no longer throws away chapters that were already narrated.** When a book had finished chapters further

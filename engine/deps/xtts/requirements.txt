@@ -54,7 +54,6 @@ msgpack==1.2.3
 multidict==6.9.1
 narwhals==2.26.0
 networkx==3.6.1
-noisereduce==3.0.3
 numba==0.68.0
 numpy==2.4.6
 packaging==26.3

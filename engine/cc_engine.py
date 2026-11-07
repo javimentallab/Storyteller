@@ -324,6 +324,54 @@ def qc_audio_fault(text, wav, sr, last_end=None):
             return f"dura {dur:.1f} s y deberían ser {esperado:.1f} s"
     return ""
 
+QC_CUT_OVER = 0.25            # lo que tiene que sobrar tras la última palabra para cortar, en s
+QC_CUT_GAP = 0.15             # silencio que tiene que haber tras ella para cortar ahí, en s
+QC_CUT_PAD = 0.04             # lo que se deja de ese silencio antes del fundido, en s
+QC_CUT_DB = -35.0             # por debajo de esto (frente al cuerpo de la voz) es silencio
+
+def _tail_gap(wav, sr, since):
+    """Dónde empieza el primer silencio de QC_CUT_GAP o más a partir de `since` (en s), o None.
+    Whisper marca el fin de la última palabra hasta medio segundo antes de tiempo (medido el
+    7-nov en el Mint: 0,05-0,51 s), así que no se corta en su marca: se busca el silencio que
+    hay de verdad detrás de la palabra."""
+    import numpy as np
+    fr = max(1, int(0.01 * sr)); nf = len(wav) // fr
+    if nf < 3:
+        return None
+    env = np.sqrt(np.mean(np.asarray(wav[:nf * fr], dtype="float32").reshape(nf, fr) ** 2, axis=1) + 1e-12)
+    quiet = env < np.percentile(env, 90) * 10 ** (QC_CUT_DB / 20)
+    need = max(1, int(round(QC_CUT_GAP / 0.01)))
+    run = 0
+    for k in range(max(0, int(since / 0.01)), nf):
+        run = run + 1 if quiet[k] else 0
+        if run >= need:
+            return (k - need + 1) * 0.01
+    return None
+
+def qc_cut_tail(text, hyp, wav, sr, last_end, threshold=0.85):
+    """Si Whisper oye todas las palabras y tras la última, pasado un silencio, sigue sonando
+    algo, eso es la cola que añade XTTS: se corta al principio de ese silencio, con un fundido.
+    Sin silencio de por medio no se corta nunca: la voz sigue de corrido y lo que sobra según
+    Whisper es la propia palabra (cortar en su marca se comía media palabra, 7-nov). Si aun
+    cortada el clip no pasa (faltan palabras, dura demasiado) o el tiempo de Whisper no es
+    creíble, no se toca y decide el reintento. Devuelve el clip cortado o None."""
+    import numpy as np, statistics
+    if wav is None or last_end is None or len(wav) / sr - last_end <= QC_CUT_OVER:
+        return None
+    gap = _tail_gap(wav, sr, last_end)
+    if gap is None or len(wav) / sr - gap <= QC_CUT_OVER:   # sin silencio, o solo el del final
+        return None
+    out = np.array(wav[:int((gap + QC_CUT_PAD) * sr)], dtype="float32")
+    if out.size == 0:
+        return None
+    if len(_QC_RATES) >= 8 and len(out) / sr < _letters(text) / statistics.median(_QC_RATES) * 0.6:
+        return None
+    fade = min(int(0.03 * sr), out.size)
+    out[-fade:] *= np.linspace(1, 0, fade, dtype="float32")
+    if not _qc_eval(text, hyp, threshold, qc_audio_fault(text, out, sr, last_end))[1]:
+        return None
+    return out
+
 def _qc_eval(ref_text, hyp_text, threshold=0.85, fault=""):
     """Evalúa una frase contra su transcripción Whisper. Además del recall (palabras
     del texto presentes), detecta las ALUCINACIONES típicas de XTTS/F5, que el recall
@@ -607,8 +655,12 @@ HARD_DEFAULT = 230
 STOPS = ".?!…。！？।؟"
 
 def with_stop(text):
-    """Lo que se le da a XTTS: sin coma colgando (se comía la cola) y con su signo de fin."""
+    """Lo que se le da a XTTS: sin coma colgando (se comía la cola) y con su signo de fin. En
+    español, sin punto final: en 80 trozos reales salían 6 colas alucinadas con él y 1 sin él,
+    y ninguno se quedaba corto. Los demás idiomas siguen con el punto: no se han medido."""
     t = (text or "").strip().rstrip(",;: ，、；：،؛")
+    if NUM_LANG == "es":
+        return t.rstrip(" .")
     if t and t[-1] not in STOPS:
         t += "."
     return t
