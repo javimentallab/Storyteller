@@ -388,7 +388,7 @@
 386|You already have the latest version, {0}.
 387|A new version is available: {0}. You have {1}.
 388|A narration, transcription, translation or download is in progress. Finish or stop it, then check for updates again: the app does not update halfway through a task.
-389|This copy is a git clone: to avoid overwriting anything in it, update it with ‘git pull’.
+389|This copy is a git clone with uncommitted changes: it is left untouched so that they are not overwritten. You can update it yourself with git.
 390|The program is not in its data folder ({0}): it is not changed from here, so that two installations are not mixed.
 391|The program folder cannot be written to ({0}).
 392|The file will be saved in {0} and the release page will open so that you can install it yourself. Continue?
@@ -401,3 +401,7 @@
 399|Saved in {0}. Opening the release page.
 400|Storyteller {0} is installed. The app will now restart to use it.
 401|This version changes the requirements ({0}). What you already have installed is kept; if an engine no longer starts, repeat its installation step from the README.
+402|This copy is a git clone with commits of its own that are not in the published release: it is left untouched, because it could not move forward without merging. You can update it yourself with git.
+403|This copy is a git clone, but git cannot be found on this computer: it cannot be updated from here.
+404|Open the release page?
+405|This copy is a git clone: the {0} tag is downloaded from the official Storyteller repository and the copy moves forward to it without merging anything. Your settings, books, progress in each narration, voices, models and installed engines stay as they are and are not downloaded again.

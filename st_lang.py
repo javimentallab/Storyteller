@@ -405,7 +405,7 @@ SOURCE = [
     'Ya tienes la última versión, la {0}.',  # 386
     'Hay una versión nueva: la {0}. Tienes la {1}.',  # 387
     'Hay una narración, una transcripción, una traducción o una descarga en marcha. Termínala o detenla y vuelve a buscar actualizaciones: no se actualiza a medias.',  # 388
-    'Esta copia es un clon de git: para no pisar lo que tengas en ella, actualízala con «git pull».',  # 389
+    'Esta copia es un clon de git con cambios sin confirmar: no la toco para no pisarlos. Puedes actualizarla tú con git.',  # 389
     'El programa no está en la carpeta de sus datos ({0}): no lo cambio desde aquí para no mezclar dos instalaciones.',  # 390
     'No puedo escribir en la carpeta del programa ({0}).',  # 391
     'Guardaré el archivo en {0} y abriré la página de la versión para que la instales tú. ¿Sigo?',  # 392
@@ -418,6 +418,10 @@ SOURCE = [
     'Bajado en {0}. Abro la página de la versión.',  # 399
     'Storyteller {0} ya está instalado. La aplicación se reinicia ahora para usarlo.',  # 400
     'Esta versión cambia los requisitos ({0}). Lo que ya tienes instalado se conserva; si un motor deja de arrancar, repite su paso de instalación del README.',  # 401
+    'Esta copia es un clon de git con commits propios que no están en la versión publicada: no la toco, porque no podría avanzar sin mezclar. Puedes actualizarla tú con git.',  # 402
+    'Esta copia es un clon de git, pero no encuentro git en este equipo: no puedo actualizarla desde aquí.',  # 403
+    '¿Abro la página de la versión?',  # 404
+    'Esta copia es un clon de git: se baja la etiqueta {0} del repositorio oficial de Storyteller y la copia avanza hasta ella sin mezclar nada. La configuración, los libros, lo que llevas de cada narración, las voces, los modelos y los motores instalados se quedan como están y no se vuelven a bajar.',  # 405
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

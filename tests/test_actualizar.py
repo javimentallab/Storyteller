@@ -276,10 +276,11 @@ class Instalar(unittest.TestCase):
         self.assert_user_data_intact()
 
     def test_cuando_no_es_seguro_cambiarse_sola(self):
-        self.assertIsNone(U.install_problem(self.app, self.app))
-        self.assertEqual(U.install_problem(self.app, self.tmp / "otra")[0], "elsewhere")
-        (self.app / ".git").write_text("gitdir: ../x", "utf-8")             # también un worktree
-        self.assertEqual(U.install_problem(self.app, self.app)[0], "git")
+        self.assertEqual(U.update_mode(self.app, self.app), ("zip", None, None))
+        self.assertEqual(U.update_mode(self.app, self.tmp / "otra")[:2], ("download", "elsewhere"))
+        (self.app / ".git").write_text("gitdir: ../no-existe", "utf-8")   # un .git roto no se toca
+        self.assertEqual(U.update_mode(self.app, self.app)[:2], ("page", "no_git"))
+        self.assertEqual(U.update_mode(self.app, self.tmp / "otra")[:2], ("page", "elsewhere"))
 
     def test_que_es_del_usuario(self):
         for rel in ("config.json", "books/x/manifest.json", "models/a.pth", "engine/voices/n.wav",
@@ -288,6 +289,123 @@ class Instalar(unittest.TestCase):
         for rel in ("storyteller.py", "engine/cc_xtts.py", "engine/deps/xtts/requirements.txt", "i18n/en.txt",
                     "docs/player.png", "README.md"):
             self.assertFalse(U.is_user_data(rel), rel)
+
+
+GIT = shutil.which("git")
+GIT_TEST = ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false",
+            "-c", "tag.gpgsign=false", "-c", "init.defaultBranch=main", "-c", "core.autocrlf=false"]
+
+
+def git(cwd, *args):
+    r = subprocess.run(["git", *GIT_TEST, *args], cwd=cwd, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    return r.stdout.strip()
+
+
+@unittest.skipUnless(GIT, "hace falta git")
+class ClonDeGit(unittest.TestCase):
+    """official hace de javimentallab/Storyteller (v1.2.1 y luego v1.3.0); app es un clon que se quedó en la
+    1.2.1, con su origin apuntando a otro sitio y los datos del usuario fuera de git."""
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="st-update-git-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.official, self.app = self.tmp / "official", self.tmp / "app"
+        self.official.mkdir()
+        git(self.official, "init", "-q")
+        self.put(self.official, {**program("1.2.1"), ".gitignore": "config.json\nbooks/\nmodels/\n",
+                                 "requirements.txt": "PySide6-Essentials==6.12.0\n"})
+        git(self.official, "add", ".")
+        git(self.official, "commit", "-q", "-m", "Versión 1.2.1")
+        git(self.official, "tag", "v1.2.1")
+        git(self.tmp, "clone", "-q", "-c", "core.autocrlf=false", str(self.official), str(self.app))
+        git(self.app, "remote", "set-url", "origin", str(self.tmp / "un-fork-que-no-existe"))
+        self.put(self.official, {"storyteller.py": '"""app"""\n__version__ = "1.3.0"\n',
+                                 "engine/deps/xtts/requirements.txt": "coqui-tts==0.27.3\n",
+                                 "engine/deps/nuevo/requirements.txt": "algo==1.0\n"})
+        git(self.official, "add", ".")
+        git(self.official, "commit", "-q", "-m", "Versión 1.3.0")
+        git(self.official, "tag", "-a", "v1.3.0", "-m", "Storyteller 1.3.0")
+        self.put(self.app, {"config.json": '{"model": "xtts-v2"}', "books/mi-libro/gen_state.json": '{"done": 3}',
+                            "models/xtts-v2/model.pth": "pesos"})
+        self.old = self.head(self.app)
+
+    @staticmethod
+    def put(root, files):
+        for rel, text in files.items():
+            p = Path(root) / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(text.encode())
+
+    @staticmethod
+    def head(root):
+        return git(root, "rev-parse", "HEAD")
+
+    def install(self, tag="v1.3.0"):
+        return U.git_install(tag, self.app, repo_url=str(self.official))
+
+    def assert_user_data_intact(self):
+        self.assertEqual((self.app / "config.json").read_text("utf-8"), '{"model": "xtts-v2"}')
+        self.assertEqual((self.app / "books/mi-libro/gen_state.json").read_text("utf-8"), '{"done": 3}')
+        self.assertEqual((self.app / "models/xtts-v2/model.pth").read_text("utf-8"), "pesos")
+
+    def test_un_clon_limpio_avanza_hasta_la_etiqueta_del_repo_oficial(self):
+        self.assertEqual(U.update_mode(self.app, self.app), ("git", None, None))   # los datos no cuentan
+        new, reqs = self.install()
+        self.assertEqual(new, git(self.official, "rev-parse", "v1.3.0^{commit}"))
+        self.assertEqual(self.head(self.app), new)                          # del oficial, aunque el origin falle
+        self.assertIn('"1.3.0"', (self.app / "storyteller.py").read_text("utf-8"))
+        self.assertEqual(reqs, ["engine/deps/xtts/requirements.txt"])        # el nuevo no se avisa
+        self.assertEqual(git(self.app, "status", "--porcelain", "--untracked-files=no"), "")
+        self.assertEqual(git(self.app, "rev-parse", "--abbrev-ref", "HEAD"), "main")   # la rama avanza
+        self.assert_user_data_intact()
+
+    def test_con_cambios_sin_confirmar_no_toca_nada(self):
+        (self.app / "st_core.py").write_bytes(b"# mi cambio\n")
+        self.assertEqual(U.update_mode(self.app, self.app)[:2], ("page", "local_changes"))
+        with self.assertRaises(U.UpdateError) as cm:
+            self.install()
+        self.assertEqual(cm.exception.kind, "local_changes")
+        self.assertEqual(self.head(self.app), self.old)
+        self.assertEqual((self.app / "st_core.py").read_bytes(), b"# mi cambio\n")
+        self.assert_user_data_intact()
+
+    def test_con_commits_propios_no_toca_nada(self):
+        self.put(self.app, {"st_core.py": "# mío\n"})
+        git(self.app, "commit", "-q", "-am", "Lo mío")
+        mine = self.head(self.app)
+        self.assertEqual(U.update_mode(self.app, self.app)[0], "git")      # solo se sabe tras bajar la etiqueta
+        with self.assertRaises(U.UpdateError) as cm:
+            self.install()
+        self.assertEqual(cm.exception.kind, "diverged")
+        self.assertEqual(self.head(self.app), mine)
+        self.assertEqual((self.app / "st_core.py").read_text("utf-8"), "# mío\n")
+        self.assertIn('"1.2.1"', (self.app / "storyteller.py").read_text("utf-8"))
+
+    def test_sin_git_no_toca_nada(self):
+        real = U._git_exe
+        U._git_exe = lambda: None
+        try:
+            self.assertEqual(U.update_mode(self.app, self.app)[:2], ("page", "no_git"))
+            with self.assertRaises(U.UpdateError) as cm:
+                self.install()
+        finally:
+            U._git_exe = real
+        self.assertEqual(cm.exception.kind, "no_git")
+        self.assertEqual(self.head(self.app), self.old)
+
+    def test_una_etiqueta_que_no_existe_falla_sin_cambiar_nada(self):
+        with self.assertRaises(U.UpdateError) as cm:
+            self.install("v9.9.9")
+        self.assertEqual(cm.exception.kind, "network")
+        self.assertEqual(self.head(self.app), self.old)
+
+    def test_lo_que_no_es_una_version_ni_se_pide(self):
+        for bad in ("main", "v1.3.0;rm -rf", "--upload-pack=x", "v1.3.0 HEAD"):
+            with self.subTest(bad=bad), self.assertRaises(U.UpdateError) as cm:
+                self.install(bad)
+            self.assertEqual(cm.exception.kind, "bad")
+        self.assertEqual(self.head(self.app), self.old)
+
+    def test_un_clon_fuera_de_la_carpeta_de_datos_no_se_toca(self):
+        self.assertEqual(U.update_mode(self.app, self.tmp / "cuentacuentos")[:2], ("page", "elsewhere"))
 
 
 PROBE = r"""
@@ -306,7 +424,9 @@ QMessageBox.information = staticmethod(lambda parent, title, text, *a: said.appe
 QMessageBox.question = staticmethod(lambda parent, title, text, *a: (said.append(("ask", text)),
                                     QMessageBox.StandardButton.No)[1])
 S.warn = lambda parent, text, title="": said.append(("warn", text))
-win._run_update = lambda rel, dest, install: runs.append((str(dest), install))
+win._run_update = lambda rel, dest, mode: runs.append((str(dest), mode))
+opened = []
+S.QDesktopServices.openUrl = lambda url: opened.append(url.toString())
 rel = U.Release("9.0.0", "v9.0.0", "https://github.com/javimentallab/Storyteller/releases/tag/v9.0.0",
                 U.Download("https://api.github.com/repos/javimentallab/Storyteller/zipball/v9.0.0", "Storyteller-9.0.0.zip"))
 if case == "same":
@@ -314,11 +434,14 @@ if case == "same":
 elif case == "busy":
     win._gen_busy = True
     win._update_found(rel)
-elif case == "git":
-    U.install_problem = lambda app_dir, home: ("git", str(app_dir))
+elif case in ("dirty", "dirty-yes"):
+    U.update_mode = lambda app_dir, home: ("page", "local_changes", str(app_dir))
+    if case == "dirty-yes":
+        QMessageBox.question = staticmethod(lambda parent, title, text, *a: (said.append(("ask", text)),
+                                            QMessageBox.StandardButton.Yes)[1])
     win._update_found(rel)
-elif case == "ok":
-    U.install_problem = lambda app_dir, home: None
+elif case in ("ok", "git"):
+    U.update_mode = lambda app_dir, home: ("zip" if case == "ok" else "git", None, None)
     QMessageBox.question = staticmethod(lambda parent, title, text, *a: (said.append(("ask", text)),
                                         QMessageBox.StandardButton.Yes)[1])
     win._update_found(rel)
@@ -332,11 +455,27 @@ elif case == "install":
     U.download, U.install = fake_download, fake_install
     S.APP_DIR = S.Path(appdir)
     win._restart = lambda: runs.append(("restart", True))
-    win._run_update(rel, S.APP_DIR / ".update" / rel.download.name, True)
+    win._run_update(rel, S.APP_DIR / ".update" / rel.download.name, "zip")
     win._updDl.wait(5000)
     for _i in range(20): app.processEvents()
     said.append(("got", json.dumps(got)))
     said.append(("zip left", str((S.APP_DIR / ".update" / rel.download.name).exists())))
+elif case in ("git-install", "git-diverged"):
+    del win._run_update
+    got = {}
+    def fake_git(tag, root, repo_url=U.REPO_GIT):
+        got.update(tag=tag, root=str(root), repo=repo_url)
+        if case == "git-diverged":
+            raise U.UpdateError("diverged")
+        return "a" * 40, ["engine/deps/xtts/requirements.txt"]
+    U.git_install = fake_git
+    U.download = lambda *a, **k: (_ for _ in ()).throw(AssertionError("en git no se baja el zip"))
+    S.APP_DIR = S.Path(appdir)
+    win._restart = lambda: runs.append(("restart", True))
+    win._run_update(rel, S.APP_DIR / ".update" / rel.download.name, "git")
+    win._updDl.wait(5000)
+    for _i in range(20): app.processEvents()
+    said.append(("got", json.dumps(got)))
 elif case == "offline":
     def boom(current, opener=None, timeout=None):
         raise U.UpdateError("network", "sin red")
@@ -344,7 +483,7 @@ elif case == "offline":
     win.check_updates()
     win._updCheck.wait(5000)
     app.processEvents()
-print(json.dumps({"said": said, "runs": runs, "button": win.library.updateBtn.text(),
+print(json.dumps({"said": said, "runs": runs, "opened": opened, "button": win.library.updateBtn.text(),
                   "enabled": win.library.updateBtn.isEnabled()}, ensure_ascii=False))
 """
 
@@ -384,11 +523,41 @@ class Ventana(unittest.TestCase):
         self.assertIn("no se actualiza a medias", s["said"][0][1])
         self.assertEqual(s["runs"], [])
 
-    def test_un_clon_de_git_no_se_pisa(self):
-        s = self.see("git")
+    def test_un_clon_con_cambios_no_se_pisa(self):
+        s = self.see("dirty")
         self.assertEqual(s["said"][0][0], "ask")
-        self.assertIn("git pull", s["said"][0][1])
-        self.assertEqual(s["runs"], [])                                     # dijo que no: nada
+        self.assertIn("cambios sin confirmar", s["said"][0][1])
+        self.assertIn("¿Abro la página de la versión?", s["said"][0][1])
+        self.assertEqual((s["runs"], s["opened"]), ([], []))               # dijo que no: nada
+        s = self.see("dirty-yes")
+        self.assertEqual(s["runs"], [])                                     # ni baja ni instala nada
+        self.assertEqual(s["opened"], ["https://github.com/javimentallab/Storyteller/releases/tag/v9.0.0"])
+
+    def test_un_clon_limpio_se_actualiza_con_git(self):
+        s = self.see("git")
+        kind, text = s["said"][0]
+        self.assertEqual(kind, "ask")
+        for word in ("clon de git", "v9.0.0", "repositorio oficial", "configuración", "modelos"):
+            self.assertIn(word, text)
+        self.assertNotIn("SHA-256", text)
+        self.assertEqual(s["runs"][0][1], "git")
+
+    def test_git_avanza_avisa_de_requisitos_y_reinicia(self):
+        s = self.see("git-install")
+        said = dict(s["said"])
+        got = json.loads(said["got"])
+        self.assertEqual((got["tag"], got["repo"]), ("v9.0.0", "https://github.com/javimentallab/Storyteller.git"))
+        self.assertEqual(Path(got["root"]), self.home / "app")
+        self.assertIn("engine/deps/xtts/requirements.txt", said["info"])
+        self.assertEqual(s["runs"], [["restart", True]])
+
+    def test_git_con_commits_propios_ofrece_la_pagina(self):
+        s = self.see("git-diverged")
+        asks = [t for k, t in s["said"] if k == "ask"]
+        self.assertEqual(len(asks), 1)
+        self.assertIn("commits propios", asks[0])
+        self.assertNotIn("warn", [k for k, _t in s["said"]])
+        self.assertEqual(s["runs"], [])                                     # ni reinicia
 
     def test_pide_permiso_y_explica_que_se_conserva(self):
         s = self.see("ok")
@@ -397,8 +566,8 @@ class Ventana(unittest.TestCase):
         for word in ("configuración", "libros", "modelos", "motores", "SHA-256"):
             self.assertIn(word, text)
         self.assertEqual(len(s["runs"]), 1)
-        dest, install = s["runs"][0]
-        self.assertTrue(install)
+        dest, mode = s["runs"][0]
+        self.assertEqual(mode, "zip")
         self.assertTrue(dest.endswith(os.path.join(".update", "Storyteller-9.0.0.zip")))
 
     def test_baja_instala_y_reinicia(self):

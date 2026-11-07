@@ -265,13 +265,17 @@ you press it: the app never checks in the background. It sends no personal data,
 `Storyteller-updater/<version>` User-Agent. If there is a newer version, it says which one and asks before it
 changes anything:
 
+- In a git clone, like the one in [Installation](#installation), it updates with git: it fetches the release tag
+  from the official repository (`https://github.com/javimentallab/Storyteller`, whatever your `origin` is) and
+  moves the clone forward to it with a fast-forward only, then restarts. If the clone has uncommitted changes or
+  commits of its own, or git cannot be found, it changes nothing, says why and offers the release page.
 - In a folder installed from a release's archive, it downloads that release's archive from this repository,
   verifies its SHA-256 checksum when the release publishes one and replaces only the program files. Your settings,
   books and the progress of each narration, voices, models and engine environments are not in the archive and are
   never written, so nothing is downloaded again. The previous files are kept in `.update/backup-<version>`. The app
   then restarts.
-- In a git clone, like the one in [Installation](#installation), it does not overwrite anything: it saves the
-  archive in your Downloads folder and opens the release page. Update the clone with `git pull`.
+- If the program is not in `~/cuentacuentos`, or that folder cannot be written to, it changes nothing: a copy that
+  is not a git clone gets the archive saved in your Downloads folder, and the release page opens.
 - If a narration, transcription, translation or model download is in progress, it only tells you that there is a
   new version: finish or stop that first.
 

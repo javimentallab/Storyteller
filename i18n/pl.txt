@@ -388,7 +388,7 @@
 386|Masz już najnowszą wersję, {0}.
 387|Jest nowa wersja: {0}. Masz {1}.
 388|Trwa czytanie, transkrypcja, tłumaczenie albo pobieranie. Dokończ je lub zatrzymaj i znów sprawdź aktualizacje: aktualizacja nie odbywa się w połowie pracy.
-389|Ta kopia to klon git: żeby niczego w niej nie nadpisać, zaktualizuj ją poleceniem „git pull”.
+389|Ta kopia to klon git z niezatwierdzonymi zmianami: nie ruszam jej, żeby ich nie nadpisać. Możesz ją zaktualizować samodzielnie przez git.
 390|Program nie jest w folderze swoich danych ({0}): nie zmieniam go stąd, żeby nie pomieszać dwóch instalacji.
 391|Nie można zapisywać w folderze programu ({0}).
 392|Plik zostanie zapisany w {0} i otworzy się strona wersji, aby można ją było zainstalować samodzielnie. Kontynuować?
@@ -401,3 +401,7 @@
 399|Zapisano w {0}. Otwieram stronę wersji.
 400|Storyteller {0} jest zainstalowany. Aplikacja uruchomi się teraz ponownie, aby go użyć.
 401|Ta wersja zmienia wymagania ({0}). To, co już masz zainstalowane, zostaje; jeśli jakiś silnik przestanie się uruchamiać, powtórz jego krok instalacji z pliku README.
+402|Ta kopia to klon git z własnymi commitami, których nie ma w opublikowanej wersji: nie ruszam jej, bo nie da się jej przesunąć bez scalania. Możesz ją zaktualizować samodzielnie przez git.
+403|Ta kopia to klon git, ale na tym komputerze nie ma git: nie można jej stąd zaktualizować.
+404|Otworzyć stronę wersji?
+405|Ta kopia to klon git: tag {0} jest pobierany z oficjalnego repozytorium Storytellera, a kopia przesuwa się do niego bez scalania czegokolwiek. Ustawienia, książki, postęp każdego czytania, głosy, modele i zainstalowane silniki zostają bez zmian i nie są pobierane ponownie.

@@ -264,13 +264,17 @@ versión solo cuando lo pulsas: la aplicación nunca lo comprueba en segundo pla
 el agente `Storyteller-updater/<versión>`. Si hay una versión más nueva, dice cuál y pregunta antes de cambiar
 nada:
 
+- En un clon de git, como el de [Instalación](#instalación), se actualiza con git: baja la etiqueta de la versión
+  del repositorio oficial (`https://github.com/javimentallab/Storyteller`, sea cual sea tu `origin`) y el clon
+  avanza hasta ella solo con fast-forward; después, la aplicación se reinicia. Si el clon tiene cambios sin
+  confirmar o commits propios, o no encuentra git, no cambia nada, explica por qué y ofrece la página de la versión.
 - En una carpeta instalada desde el archivo de una versión, baja el archivo de esa versión de este repositorio,
   comprueba su huella SHA-256 cuando la versión la publica y cambia solo los archivos del programa. La
   configuración, los libros con lo que lleva cada narración, las voces, los modelos y los entornos de los motores
   no vienen en el archivo y nunca se escriben, así que no se vuelve a bajar nada. Los archivos anteriores quedan
   en `.update/backup-<versión>`. Después, la aplicación se reinicia.
-- En un clon de git, como el de [Instalación](#instalación), no pisa nada: guarda el archivo en la carpeta de
-  descargas y abre la página de la versión. El clon se actualiza con `git pull`.
+- Si el programa no está en `~/cuentacuentos`, o no se puede escribir en esa carpeta, no cambia nada: a una copia
+  que no es de git le guarda el archivo en la carpeta de descargas, y abre la página de la versión.
 - Si hay una narración, una transcripción, una traducción o una descarga de modelos en marcha, solo avisa de que
   hay una versión nueva: hay que terminarla o detenerla antes.
 

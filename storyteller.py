@@ -1087,14 +1087,17 @@ class UpdateCheck(QThread):
 
 
 class UpdateDownload(QThread):
-    """Baja la versión (y, si es seguro, la instala). progress: 0-100, o -1 mientras instala."""
+    """Lleva a la versión nueva según el modo de st_update.update_mode: git (clon limpio: etiqueta del repositorio
+    oficial y fast-forward), zip (baja el archivo y lo instala) o download (solo lo baja).
+    progress: 0-100, o -1 mientras instala."""
     progress = Signal(int)
     done = Signal(object)                     # instalada: requisitos que cambian; si no, ruta del archivo
     failed = Signal(str, str)
 
-    def __init__(self, release, dest, install):
+    def __init__(self, release, dest, mode):
         super().__init__()
-        self.release, self.dest, self.install, self._stop = release, Path(dest), install, False
+        self.release, self.dest, self.mode, self._stop = release, Path(dest), mode, False
+        self.install = mode != "download"
 
     def stop(self):
         self._stop = True
@@ -1103,6 +1106,10 @@ class UpdateDownload(QThread):
         def prog(got, total):
             if total: self.progress.emit(min(99, got * 100 // total))
         try:
+            if self.mode == "git":
+                self.progress.emit(-1)
+                _new, reqs = st_update.git_install(self.release.tag, APP_DIR)
+                self.done.emit(reqs); return
             st_update.download(self.release.download, self.dest, __version__, progress=prog,
                                stopped=lambda: self._stop)
             if not self.install:
@@ -3705,39 +3712,60 @@ class Cuentacuentos(QMainWindow):
                 "detenla y vuelve a buscar actualizaciones: no se actualiza a medias."))
             return
         Yes = QMessageBox.StandardButton.Yes
-        problem = st_update.install_problem(APP_DIR, HOME_CC)
-        if problem:
-            kind, path = problem
-            why = {"git": _("Esta copia es un clon de git: para no pisar lo que tengas en ella, "
-                            "actualízala con «git pull»."),
-                   "elsewhere": _("El programa no está en la carpeta de sus datos ({0}): no lo cambio desde "
+        mode, reason, path = st_update.update_mode(APP_DIR, HOME_CC)
+        if mode == "page":                               # un clon de git que no se toca
+            return self._update_page_only(rel, head, reason, path)
+        if mode == "download":
+            why = {"elsewhere": _("El programa no está en la carpeta de sus datos ({0}): no lo cambio desde "
                                   "aquí para no mezclar dos instalaciones."),
-                   "readonly": _("No puedo escribir en la carpeta del programa ({0}).")}[kind].format(path)
+                   "readonly": _("No puedo escribir en la carpeta del programa ({0}).")}[reason].format(path)
             folder = (QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
                       or str(Path.home()))
             if QMessageBox.question(self, title, f"{head}\n\n{why}\n\n" + _(
                     "Guardaré el archivo en {0} y abriré la página de la versión para que la instales tú. "
                     "¿Sigo?").format(folder)) == Yes:
-                self._run_update(rel, Path(folder) / rel.download.name, install=False)
+                self._run_update(rel, Path(folder) / rel.download.name, "download")
             return
-        check = (_("Antes de instalarla se comprueba su huella SHA-256.") if rel.download.verifiable else
-                 _("Esta versión no publica su huella SHA-256: se comprueba que llega cifrada desde GitHub y "
-                   "que es la versión anunciada."))
-        keep = _("Se baja de la página de versiones de Storyteller en GitHub y solo se cambian los archivos del "
-                 "programa. La configuración, los libros, lo que llevas de cada narración, las voces, los "
-                 "modelos y los motores instalados se quedan como están y no se vuelven a bajar.")
-        if QMessageBox.question(self, title, f"{head}\n\n{keep}\n\n{check}\n\n"
-                                + _("¿Actualizar ahora?")) == Yes:
-            self._run_update(rel, APP_DIR / ".update" / rel.download.name, install=True)
+        if mode == "git":
+            how = _("Esta copia es un clon de git: se baja la etiqueta {0} del repositorio oficial de Storyteller y "
+                    "la copia avanza hasta ella sin mezclar nada. La configuración, los libros, lo que llevas de "
+                    "cada narración, las voces, los modelos y los motores instalados se quedan como están y no se "
+                    "vuelven a bajar.").format(rel.tag)
+        else:
+            check = (_("Antes de instalarla se comprueba su huella SHA-256.") if rel.download.verifiable else
+                     _("Esta versión no publica su huella SHA-256: se comprueba que llega cifrada desde GitHub y "
+                       "que es la versión anunciada."))
+            how = _("Se baja de la página de versiones de Storyteller en GitHub y solo se cambian los archivos del "
+                    "programa. La configuración, los libros, lo que llevas de cada narración, las voces, los "
+                    "modelos y los motores instalados se quedan como están y no se vuelven a bajar.") + "\n\n" + check
+        if QMessageBox.question(self, title, f"{head}\n\n{how}\n\n" + _("¿Actualizar ahora?")) == Yes:
+            self._run_update(rel, APP_DIR / ".update" / rel.download.name, mode)
 
-    def _run_update(self, rel, dest, install):
+    def _update_page_only(self, rel, head, reason, path=""):
+        """Un clon de git con cambios sin confirmar, commits propios, sin git o fuera de su carpeta: no se toca
+        nada; se explica por qué y se ofrece la página de la versión."""
+        why = {"local_changes": _("Esta copia es un clon de git con cambios sin confirmar: no la toco para no "
+                                  "pisarlos. Puedes actualizarla tú con git."),
+               "diverged": _("Esta copia es un clon de git con commits propios que no están en la versión "
+                             "publicada: no la toco, porque no podría avanzar sin mezclar. Puedes actualizarla tú "
+                             "con git."),
+               "no_git": _("Esta copia es un clon de git, pero no encuentro git en este equipo: no puedo "
+                           "actualizarla desde aquí."),
+               "elsewhere": _("El programa no está en la carpeta de sus datos ({0}): no lo cambio desde "
+                              "aquí para no mezclar dos instalaciones.").format(path)}[reason]
+        if QMessageBox.question(self, _("Actualizar Storyteller"), f"{head}\n\n{why}\n\n"
+                                + _("¿Abro la página de la versión?")) == QMessageBox.StandardButton.Yes:
+            QDesktopServices.openUrl(QUrl(rel.page))
+
+    def _run_update(self, rel, dest, mode):
+        install = mode != "download"
         if install and self._update_busy():              # por si empezó algo mientras decidía
             return self._update_found(rel)
         title = _("Actualizar Storyteller")
         dlg = QProgressDialog(_("Bajando la versión {0}…").format(rel.version), _("Cancelar"), 0, 100, self)
         dlg.setWindowTitle(title); dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(0); dlg.setAutoClose(False); dlg.setAutoReset(False); dlg.setValue(0)
-        self._updDl = w = UpdateDownload(rel, dest, install)
+        self._updDl = w = UpdateDownload(rel, dest, mode)
 
         def progress(p):
             if p >= 0:
@@ -3761,6 +3789,9 @@ class Cuentacuentos(QMainWindow):
 
         def failed(kind, detail):
             dlg.close()
+            if kind in ("local_changes", "diverged", "no_git"):   # git no ha tocado nada
+                return self._update_page_only(rel, _("Hay una versión nueva: la {0}. Tienes la {1}.").format(
+                    rel.version, __version__), kind)
             warn(self, update_error_text(kind, detail), title)
 
         w.progress.connect(progress); w.done.connect(finished_ok); w.failed.connect(failed)

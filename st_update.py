@@ -1,6 +1,10 @@
 """
 Actualizar Storyteller desde sus versiones de GitHub, solo cuando se pulsa «Buscar actualizaciones».
 
+Un clon de git (lo que dice el README) se actualiza con git: baja la etiqueta de la versión del repositorio
+oficial, no del origin, y avanza solo con fast-forward; con cambios sin confirmar, commits propios o sin git no
+toca nada. Una copia que no es de git se actualiza con el archivo de la versión, como sigue.
+
 Sin Qt, para poder probarlo con la red simulada. Pide la última versión publicada a la API de GitHub
 (HTTPS, User-Agent genérico, sin datos del usuario), la compara con la instalada y, si hay una nueva,
 baja su archivo, comprueba su SHA-256 cuando la versión lo publica y cambia SOLO los archivos del
@@ -12,6 +16,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,6 +27,8 @@ from pathlib import Path, PurePosixPath
 REPO = "javimentallab/Storyteller"
 API_LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
 RELEASES_PAGE = f"https://github.com/{REPO}/releases/"
+REPO_GIT = f"https://github.com/{REPO}.git"   # de aquí sale la etiqueta, aunque el origin sea otro
+GIT_TIMEOUT = 120
 ASSET_PREFIX = f"https://github.com/{REPO}/releases/download/"
 ZIPBALL_PREFIX = f"https://api.github.com/repos/{REPO}/zipball/"
 # Adonde puede llevar GitHub una descarga (las redirecciones de los archivos y del código fuente).
@@ -44,7 +52,8 @@ USER_SUFFIXES = {".wav", ".mp3", ".epub", ".log"}
 
 class UpdateError(Exception):
     """kind: network (sin conexión o GitHub no responde), http (GitHub responde con un error),
-    bad (lo que llega no es una versión válida), checksum, install o canceled."""
+    bad (lo que llega no es una versión válida), checksum, install o canceled; y en un clon de git,
+    local_changes, diverged (commits propios) o no_git, en los que no se ha tocado nada."""
     def __init__(self, kind, detail=""):
         super().__init__(f"{kind}: {detail}" if detail else kind)
         self.kind, self.detail = kind, str(detail)
@@ -361,22 +370,89 @@ def apply(staging, files, app_dir, backup):
     return todo, reqs
 
 
-def install_problem(app_dir, home_dir):
-    """Por qué no es seguro que el programa se cambie solo: None si lo es; si no, (motivo, ruta).
-    git: es un clon y se pisaría lo que haya en él; elsewhere: el programa no está en la carpeta de sus
-    datos, que es de donde tira de los motores; readonly: no se puede escribir."""
-    app_dir, home_dir = Path(app_dir), Path(home_dir)
-    if (app_dir / ".git").exists():
-        return "git", str(app_dir)
+def _same_dir(a, b):
     try:
-        same = os.path.samefile(app_dir, home_dir)
+        return os.path.samefile(a, b)
     except OSError:
-        same = False
-    if not same:
-        return "elsewhere", str(home_dir)
+        return False
+
+
+def update_mode(app_dir, home_dir):
+    """Cómo se puede actualizar esta copia: (modo, motivo, ruta).
+    git: clon limpio en la carpeta de sus datos, se actualiza con git_install. zip: copia que no es de git, con
+    install. page: clon de git que no se toca (motivo local_changes, no_git o elsewhere), solo la página de la
+    versión. download: copia que no es de git y no se puede cambiar sola (elsewhere o readonly): se baja el
+    archivo y se abre la página. elsewhere = el programa no está en la carpeta de sus datos, que es de donde
+    tira de los motores."""
+    app_dir, home_dir = Path(app_dir), Path(home_dir)
+    git = (app_dir / ".git").exists()
+    if not _same_dir(app_dir, home_dir):
+        return ("page" if git else "download"), "elsewhere", str(home_dir)
+    if git:
+        why = git_blocker(app_dir)
+        return ("git", None, None) if why is None else ("page", why, str(app_dir))
     if not os.access(app_dir, os.W_OK) or not os.access(app_dir / "storyteller.py", os.W_OK):
-        return "readonly", str(app_dir)
+        return "download", "readonly", str(app_dir)
+    return "zip", None, None
+
+
+# ---------------------------------------------------------------- clon de git
+def _git_exe():
+    return shutil.which("git")
+
+
+def _git(root, *args, timeout=30, check=True, kind="install"):
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never", LC_ALL="C")
+    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    try:
+        r = subprocess.run([_git_exe() or "git", "-C", str(root), *args], env=env, stdin=subprocess.DEVNULL,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+                           creationflags=flags)
+    except subprocess.TimeoutExpired:
+        raise UpdateError("network" if kind == "network" else "install", f"git {args[0]}: {timeout} s") from None
+    except OSError as e:
+        raise UpdateError("no_git", e) from None
+    if check and r.returncode != 0:
+        lines = (r.stderr or r.stdout).strip().splitlines()
+        raise UpdateError(kind, f"git {args[0]}: {lines[-1] if lines else r.returncode}")
+    return r
+
+
+def git_blocker(root):
+    """None si este clon se puede llevar a otra versión sin pisar nada; si no, local_changes o no_git.
+    Los archivos sin seguimiento no cuentan: lo del usuario está en .gitignore y git no lo toca."""
+    if not _git_exe():
+        return "no_git"
+    try:
+        top = _git(root, "rev-parse", "--show-toplevel").stdout.strip()
+        if not top or not _same_dir(top, root):
+            return "no_git"
+        if _git(root, "status", "--porcelain", "--untracked-files=no").stdout.strip():
+            return "local_changes"
+    except UpdateError:
+        return "no_git"
     return None
+
+
+def git_install(tag, root, repo_url=REPO_GIT):
+    """Lleva el clon a la etiqueta tag del repositorio oficial, solo con fast-forward. No cambia nada en la
+    carpeta salvo que pase todas las comprobaciones. Devuelve (commit nuevo, requisitos que cambian)."""
+    if parse_version(tag) is None or not re.fullmatch(r"[vV]?[0-9A-Za-z.+-]+", tag):   # y un refspec seguro
+        raise UpdateError("bad", tag)
+    why = git_blocker(root)
+    if why:
+        raise UpdateError(why)
+    _git(root, "fetch", "--no-tags", "--quiet", repo_url, f"refs/tags/{tag}", timeout=GIT_TIMEOUT, kind="network")
+    new = _git(root, "rev-parse", "--verify", "--quiet", "FETCH_HEAD^{commit}").stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40,64}", new):
+        raise UpdateError("bad", "FETCH_HEAD")
+    if _git(root, "merge-base", "--is-ancestor", "HEAD", new, check=False).returncode != 0:
+        raise UpdateError("diverged")                     # commits propios: no hay fast-forward posible
+    changed = _git(root, "diff", "--name-only", "HEAD", new, "--", "requirements.txt", "engine/deps").stdout
+    reqs = [f for f in changed.split() if is_requirements(f)
+            and _git(root, "cat-file", "-e", f"HEAD:{f}", check=False).returncode == 0]
+    _git(root, "merge", "--ff-only", "--quiet", new, timeout=GIT_TIMEOUT)
+    return new, reqs
 
 
 def install(zip_path, version, app_dir, current):

@@ -388,7 +388,7 @@
 386|Du hast bereits die neueste Version, {0}.
 387|Es gibt eine neue Version: {0}. Du hast {1}.
 388|Gerade läuft eine Erzählung, eine Transkription, eine Übersetzung oder ein Download. Beende oder stoppe sie und suche dann erneut nach Updates: Mittendrin wird nicht aktualisiert.
-389|Diese Kopie ist ein Git-Klon: Damit nichts darin überschrieben wird, aktualisiere sie mit „git pull“.
+389|Diese Kopie ist ein Git-Klon mit nicht committeten Änderungen: Sie bleibt unberührt, damit nichts überschrieben wird. Du kannst sie selbst mit Git aktualisieren.
 390|Das Programm liegt nicht in seinem Datenordner ({0}): Es wird von hier aus nicht geändert, damit sich nicht zwei Installationen vermischen.
 391|In den Programmordner kann nicht geschrieben werden ({0}).
 392|Die Datei wird in {0} gespeichert, und die Seite der Version wird geöffnet, damit du sie selbst installierst. Fortfahren?
@@ -401,3 +401,7 @@
 399|Gespeichert in {0}. Die Seite der Version wird geöffnet.
 400|Storyteller {0} ist installiert. Die App startet jetzt neu, um sie zu verwenden.
 401|Diese Version ändert die Anforderungen ({0}). Was du schon installiert hast, bleibt erhalten; startet eine Engine nicht mehr, wiederhole ihren Installationsschritt aus der README.
+402|Diese Kopie ist ein Git-Klon mit eigenen Commits, die nicht in der veröffentlichten Version sind: Sie bleibt unberührt, weil sie nicht ohne Zusammenführen vorrücken kann. Du kannst sie selbst mit Git aktualisieren.
+403|Diese Kopie ist ein Git-Klon, aber Git ist auf diesem Computer nicht zu finden: Von hier aus kann sie nicht aktualisiert werden.
+404|Die Seite der Version öffnen?
+405|Diese Kopie ist ein Git-Klon: Das Tag {0} wird aus dem offiziellen Storyteller-Repository geladen, und die Kopie rückt ohne Zusammenführen bis dorthin vor. Einstellungen, Bücher, der Fortschritt jeder Erzählung, Stimmen, Modelle und installierte Engines bleiben, wie sie sind, und werden nicht erneut heruntergeladen.

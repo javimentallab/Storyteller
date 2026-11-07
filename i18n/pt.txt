@@ -388,7 +388,7 @@
 386|Você já tem a versão mais recente, a {0}.
 387|Há uma versão nova: a {0}. Você tem a {1}.
 388|Há uma narração, uma transcrição, uma tradução ou um download em andamento. Termine ou pare e procure atualizações de novo: a atualização não é feita no meio de um trabalho.
-389|Esta cópia é um clone do git: para não sobrescrever nada nela, atualize-a com “git pull”.
+389|Esta cópia é um clone do git com alterações não confirmadas: não mexo nela para não sobrescrevê-las. Você pode atualizá-la com o git.
 390|O programa não está na pasta dos seus dados ({0}): não o altero daqui para não misturar duas instalações.
 391|Não consigo gravar na pasta do programa ({0}).
 392|Vou salvar o arquivo em {0} e abrir a página da versão para que você a instale. Continuo?
@@ -401,3 +401,7 @@
 399|Salvo em {0}. Abrindo a página da versão.
 400|O Storyteller {0} está instalado. O aplicativo vai reiniciar agora para usá-lo.
 401|Esta versão muda os requisitos ({0}). O que você já instalou é mantido; se um motor deixar de iniciar, repita a etapa de instalação dele no README.
+402|Esta cópia é um clone do git com commits próprios que não estão na versão publicada: não mexo nela, porque não poderia avançar sem mesclar. Você pode atualizá-la com o git.
+403|Esta cópia é um clone do git, mas não encontro o git neste computador: não consigo atualizá-la daqui.
+404|Abro a página da versão?
+405|Esta cópia é um clone do git: a tag {0} é baixada do repositório oficial do Storyteller e a cópia avança até ela sem mesclar nada. As configurações, os livros, o progresso de cada narração, as vozes, os modelos e os motores instalados ficam como estão e não são baixados de novo.

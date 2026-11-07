@@ -388,7 +388,7 @@
 386|Je hebt al de nieuwste versie, {0}.
 387|Er is een nieuwe versie: {0}. Jij hebt {1}.
 388|Er loopt een vertelling, transcriptie, vertaling of download. Maak die af of stop hem en zoek daarna opnieuw naar updates: er wordt niet halverwege bijgewerkt.
-389|Deze kopie is een git-kloon: werk hem bij met ‘git pull’, zodat er niets in wordt overschreven.
+389|Deze kopie is een git-kloon met niet-gecommitte wijzigingen: hij blijft onaangeroerd, zodat ze niet worden overschreven. Je kunt hem zelf bijwerken met git.
 390|Het programma staat niet in zijn gegevensmap ({0}): het wordt hiervandaan niet gewijzigd, zodat er geen twee installaties door elkaar raken.
 391|Er kan niet worden geschreven in de programmamap ({0}).
 392|Het bestand wordt opgeslagen in {0} en de pagina van de versie wordt geopend, zodat je het zelf kunt installeren. Doorgaan?
@@ -401,3 +401,7 @@
 399|Opgeslagen in {0}. De pagina van de versie wordt geopend.
 400|Storyteller {0} is geïnstalleerd. De app start nu opnieuw op om die te gebruiken.
 401|Deze versie wijzigt de vereisten ({0}). Wat je al hebt geïnstalleerd, blijft behouden; als een engine niet meer start, herhaal dan de installatiestap ervan uit de README.
+402|Deze kopie is een git-kloon met eigen commits die niet in de gepubliceerde versie staan: hij blijft onaangeroerd, omdat hij niet vooruit kan zonder samen te voegen. Je kunt hem zelf bijwerken met git.
+403|Deze kopie is een git-kloon, maar git is niet te vinden op deze computer: hij kan hiervandaan niet worden bijgewerkt.
+404|De pagina van de versie openen?
+405|Deze kopie is een git-kloon: de tag {0} wordt gedownload uit de officiële repository van Storyteller en de kopie gaat ernaartoe vooruit zonder iets samen te voegen. Instellingen, boeken, de voortgang van elke vertelling, stemmen, modellen en geïnstalleerde engines blijven zoals ze zijn en worden niet opnieuw gedownload.
