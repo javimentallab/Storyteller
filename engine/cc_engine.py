@@ -593,12 +593,15 @@ _SENT_SPLIT = re.compile(r"(?:(?<=[.!?…।؟])|(?<=[.!?…।؟][»”\"’)\]
                          r"|(?:(?<=[。！？])(?![」』”）])|(?<=[。！？][」』”）]))\s*")
 _SENT_END = re.compile(r"[.!?…。！？।؟][»”\"’)\]」』）]*$")
 _CLAUSE_SPLIT = re.compile(r"(?<=[,;:،؛])\s+|(?<=[，、；：])\s*")
-_CLAUSE_END_TIGHT = "，、；："                     # tras estos no se escribe espacio
 
-# Tope de caracteres por trozo: XTTS corta el audio si se pasa (char_limits en coqui; aquí algo
-# menos, porque los números se escriben luego en letra). El resto de idiomas admite 240 o más.
+# Tope de caracteres por trozo: XTTS corta el audio si se pasa (char_limits en coqui; aquí ~92 %
+# de ese límite, porque los números se escriben luego en letra). Con un trozo por frase sí se
+# llega al tope: en «Gracias por discutir», con 220 en es queda 1 trozo de 12.000 que pasa de los
+# 239 de coqui al escribir los números, y con 240 eran 11.
 _HARD = {"zh-cn": 75, "ja": 65, "ko": 85, "hi": 140, "ar": 155, "ru": 170, "cs": 175, "pt": 190,
-         "it": 200, "pl": 210, "hu": 210, "tr": 210}
+         "it": 200, "pl": 210, "hu": 210, "tr": 210, "es": 220, "en": 230, "de": 230, "nl": 230,
+         "fr": 250}
+HARD_DEFAULT = 230
 
 # Signos con los que un trozo ya acaba: sin uno, XTTS desbarra al final.
 STOPS = ".?!…。！？।؟"
@@ -614,10 +617,37 @@ def with_stop(text):
 # libro, no el modelo. trim_clip deja además 40 ms por lado: se oyen 0,30 / 0,63 / 0,98 s.
 PAUSES = {"coma": 0.22, "frase": 0.55, "parrafo": 0.90}
 
-def _split_paragraph(text, hard=240, short=20):
-    """Un trozo por cláusula: se corta en cada fin de frase y en cada coma/;/:, para
-    que la pausa la ponga PAUSES y no el modelo (XTTS deja en una coma entre 0 y 0,8 s).
-    Una cláusula de menos de `short` caracteres va con la siguiente («Además, vivimos…»)."""
+def _split_long(s, hard, short=20):
+    """Parte una frase de más de `hard` caracteres. Se corta en la coma (o ; :) más cercana al
+    tope, para que el trozo sea lo más largo posible; si con eso el resto o el trozo quedan por
+    debajo de `short`, en la anterior. Sin ninguna coma que valga, en un espacio."""
+    out = []
+    while len(s) > hard:
+        ok, fallback = -1, -1
+        for m in _CLAUSE_SPLIT.finditer(s):
+            end = m.start()                         # justo tras el signo
+            if end > hard:
+                break
+            if end < short:
+                continue
+            fallback = m
+            if len(s) - m.end() >= short:
+                ok = m
+        m = ok if ok != -1 else fallback
+        if m != -1:
+            out.append(s[:m.start()].strip()); s = s[m.end():].strip()
+            continue
+        cut = s.rfind(" ", min(60, hard // 2), hard)
+        if cut < 0: cut = hard
+        out.append(s[:cut].strip()); s = s[cut:].strip()
+    out.append(s)
+    return out
+
+def _split_paragraph(text, hard=HARD_DEFAULT, short=20):
+    """Un trozo por frase completa: dentro de ella las comas las hace XTTS, que lee la frase
+    de seguido, y entre frases y párrafos la pausa la pone PAUSES según el libro. Solo una
+    frase de más de `hard` caracteres se parte, en la coma más cercana al tope (_split_long).
+    Hasta el 7-nov se cortaba en cada coma: sonaba a lectura por líneas."""
     raw = []
     for s in _SENT_SPLIT.split(text):
         # no cortar tras abreviatura o inicial ("el Sr. Smith", "EE. UU.", "John F. Kennedy"):
@@ -629,26 +659,15 @@ def _split_paragraph(text, hard=240, short=20):
     out = []
     for s in raw:
         s = s.strip()
-        if not s: continue
-        clauses = []
-        for p in _CLAUSE_SPLIT.split(s):
-            if clauses and len(clauses[-1]) < short:
-                clauses[-1] += ("" if clauses[-1][-1] in _CLAUSE_END_TIGHT else " ") + p
-            else:
-                clauses.append(p)
-        for p in clauses:
-            while len(p) > hard:                      # cláusula monstruosa: corte en un espacio
-                cut = p.rfind(" ", min(60, hard // 2), hard)
-                if cut < 0: cut = hard
-                out.append(p[:cut].strip()); p = p[cut:].strip()
-            out.append(p)
+        if s:
+            out.extend(_split_long(s, hard, short))
     return [c for c in out if _HAS_TEXT.search(c)]
 
 def split_chunks(text):
     """[(trozo, clave de PAUSES)]. Cada línea del texto es un párrafo (_blocks_text)."""
     out = []
     for para in text.split("\n"):
-        parts = _split_paragraph(para, hard=_HARD.get(NUM_LANG, 240))
+        parts = _split_paragraph(para, hard=_HARD.get(NUM_LANG, HARD_DEFAULT))
         for i, c in enumerate(parts):
             kind = "parrafo" if i == len(parts) - 1 else ("frase" if _SENT_END.search(c) else "coma")
             out.append((c, kind))
@@ -662,10 +681,33 @@ def same_cues(cues, sents):
     versión), reanudar por posición saltaría o repetiría frases: se rehace el capítulo."""
     return [c.get("text") for c in cues] == sents[:len(cues)]
 
-def trim_clip(w, sr=24000, drop_island=True):
-    """Recorta el silencio de los dos extremos del clip (deja 40 ms de margen). Con
+# Lo que se considera palabra corta al final del texto («…, dijo él», «—Sí —dijo»): con un trozo
+# por frase, XTTS hace la pausa de esa coma y lo que queda detrás parece una isla suelta.
+_SHORT_TAIL = re.compile(r"[,;:—–(«“\"]\s*[^,;:—–(«“\"]{1,14}$")
+FADE_IN, FADE_OUT = 0.010, 0.030                    # s, dentro del margen que deja trim_clip
+
+def ends_short(text):
+    """¿Acaba el texto en una palabra o dos tras una coma o una raya? Solo si antes hay
+    cuerpo: en un texto corto entero («—Sí.»), la isla tras un silencio sí suele ser inventada."""
+    t = (text or "").strip().rstrip(".?!…»”\"’)")
+    m = _SHORT_TAIL.search(t)
+    return bool(m) and m.start() >= 20
+
+def soften(w, sr=24000, fade_in=FADE_IN, fade_out=FADE_OUT):
+    """Fundido corto en los dos extremos: el clip va seguido de silencio digital, y sin él el
+    paso del suelo de ruido de la voz a cero se oye como un corte seco."""
+    import numpy as np
+    w = np.array(w, dtype="float32")
+    a, b = min(int(fade_in * sr), w.size), min(int(fade_out * sr), w.size)
+    if a: w[:a] *= np.linspace(0, 1, a, dtype="float32")
+    if b: w[w.size - b:] *= np.linspace(1, 0, b, dtype="float32")
+    return w
+
+def trim_clip(w, sr=24000, drop_island=True, text=None):
+    """Recorta el silencio de los dos extremos del clip (deja 40 ms de margen, con fundido). Con
     drop_island, si el último tramo de voz es corto y está separado del cuerpo por un
-    silencio largo, lo descarta: es la alucinación final de XTTS, no voz."""
+    silencio largo, lo descarta: es la alucinación final de XTTS, no voz. Salvo si el texto
+    acaba justo así (ends_short): entonces esa isla es la última palabra."""
     import numpy as np
     if w is None or w.size == 0:
         return w
@@ -692,14 +734,14 @@ def trim_clip(w, sr=24000, drop_island=True):
     segs.append(tuple(run))
     SIL = int(0.22 / 0.02)                           # hueco "largo" >= 220 ms
     SHORT = int(0.35 / 0.02)                          # isla "corta" <= 350 ms
-    if drop_island and len(segs) >= 2:
+    if drop_island and len(segs) >= 2 and not ends_short(text):
         (_s0, e0), (s1, e1) = segs[-2], segs[-1]
         if (s1 - e0) >= SIL and (e1 - s1) <= SHORT:   # isla final separada = alucinación
             last = e0
     pad = int(0.04 * sr)
     a0 = max(0, first * fr - pad)
     b0 = min(w.size, (last + 1) * fr + pad)
-    return w[a0:b0]
+    return soften(w[a0:b0], sr)
 
 def cap_silences(w, sr=24000, over=0.40, keep=0.32, db=-40.0):
     """Acorta a `keep` segundos los silencios internos de más de `over`. XTTS deja en

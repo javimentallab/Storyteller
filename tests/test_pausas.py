@@ -16,8 +16,35 @@ class Troceo(unittest.TestCase):
     def test_cada_signo_marca_su_pausa(self):
         self.assertEqual(
             E.split_chunks("La política es una buena prueba, en parte por esto. Otra frase.\nOtro párrafo."),
-            [("La política es una buena prueba,", "coma"), ("en parte por esto.", "frase"),
+            [("La política es una buena prueba, en parte por esto.", "frase"),
              ("Otra frase.", "parrafo"), ("Otro párrafo.", "parrafo")])
+
+    def test_la_frase_entera_va_de_una_vez(self):
+        frase = ("Cuando llegó a la plaza, ya de noche, se sentó en el banco de siempre, "
+                 "sacó el libro y, sin pensarlo mucho, empezó a leer en voz alta.")
+        self.assertEqual(E.split_chunks(frase), [(frase, "parrafo")])
+
+    def test_frase_larga_se_parte_en_la_coma_mas_cercana_al_tope(self):
+        a = ("uno dos tres cuatro cinco seis siete " * 2).strip()
+        b = ("ocho nueve diez once doce " * 3).strip()
+        c = "y al final trece catorce quince dieciséis diecisiete dieciocho diecinueve veinte"
+        frase = f"{a}, {b}, {c}."
+        self.assertGreater(len(frase), E._HARD["es"])
+        self.assertEqual(E.split_chunks(frase), [(f"{a}, {b},", "coma"), (f"{c}.", "parrafo")])
+
+    def test_frase_larga_no_deja_un_resto_minimo(self):
+        cuerpo = ("palabra " * 26).strip()
+        frase = f"{cuerpo}, otra cosa más, fin."          # la última coma dejaría «fin.» solo
+        self.assertGreater(len(frase), E._HARD["es"])
+        trozos = E.split_sentences(frase)
+        self.assertEqual(trozos[-1], "otra cosa más, fin.")
+        self.assertTrue(all(len(t) <= E._HARD["es"] for t in trozos))
+
+    def test_frase_larga_parte_en_punto_y_coma(self):
+        frase = ("x" * 10 + " ") * 18 + "; y luego sigue un poco más hasta acabar."
+        trozos = E.split_sentences(frase)
+        self.assertEqual(len(trozos), 2)
+        self.assertTrue(trozos[0].endswith(";"))
 
     def test_clausula_corta_va_con_la_siguiente(self):
         self.assertEqual(E.split_sentences("Además, vivimos en Florida."), ["Además, vivimos en Florida."])
@@ -34,11 +61,11 @@ class Troceo(unittest.TestCase):
 
     def test_otros_alfabetos_no_se_quedan_sin_texto(self):
         self.assertEqual(E.split_chunks("Привет, это длинная фраза на русском языке, и она продолжается. Хорошо."),
-                         [("Привет, это длинная фраза на русском языке,", "coma"),
-                          ("и она продолжается.", "frase"), ("Хорошо.", "parrafo")])
+                         [("Привет, это длинная фраза на русском языке, и она продолжается.", "frase"),
+                          ("Хорошо.", "parrafo")])
         self.assertEqual(E.split_sentences("नमस्ते दुनिया। आप कैसे हैं؟ ठीक."), ["नमस्ते दुनिया।", "आप कैसे हैं؟", "ठीक."])
         self.assertEqual(E.split_sentences("مرحبا بالعالم الجميل في هذا اليوم، كيف حالك اليوم؟ بخير."),
-                         ["مرحبا بالعالم الجميل في هذا اليوم،", "كيف حالك اليوم؟", "بخير."])
+                         ["مرحبا بالعالم الجميل في هذا اليوم، كيف حالك اليوم؟", "بخير."])
 
     def test_chino_y_japones_cortan_sin_espacio(self):
         self.assertEqual(E.split_chunks("你好，世界。今天天气很好！我们走吧。"),
@@ -48,7 +75,13 @@ class Troceo(unittest.TestCase):
 
     def test_clausulas_largas_en_chino(self):
         largo = "这是一个相当长的句子部分用来测试切分功能是否正常工作"
-        self.assertEqual(E.split_sentences(f"{largo}，{largo}。"), [f"{largo}，", f"{largo}。"])
+        try:
+            E.NUM_LANG = "zh-cn"
+            self.assertEqual(E.split_sentences(f"{largo}，{largo}。"), [f"{largo}，{largo}。"])
+            self.assertEqual(E.split_sentences(f"{largo}，{largo}，{largo}。"),
+                             [f"{largo}，{largo}，", f"{largo}。"])
+        finally:
+            E.NUM_LANG = "es"
 
     def test_sin_letras_no_es_un_trozo(self):
         self.assertEqual(E.split_chunks("* * *\n---\n。"), [])
@@ -112,6 +145,18 @@ class Silencios(unittest.TestCase):
         w = self.clip((1, 1), (0, 0.3), (1, 0.2), (0, 0.5))
         self.assertGreater(E.trim_clip(w, self.SR, drop_island=False).size / self.SR, 1.5)
         self.assertLess(E.trim_clip(w, self.SR).size / self.SR, 1.1)
+
+    def test_la_isla_es_la_ultima_palabra_si_el_texto_acaba_asi(self):
+        w = self.clip((1, 1), (0, 0.3), (1, 0.2), (0, 0.5))
+        self.assertGreater(E.trim_clip(w, self.SR, text="No sé si llegaremos a tiempo, dijo él.").size / self.SR, 1.5)
+        self.assertLess(E.trim_clip(w, self.SR, text="Sin palabra corta detrás de una coma.").size / self.SR, 1.1)
+        self.assertLess(E.trim_clip(w, self.SR, text="—Sí.").size / self.SR, 1.1)
+
+    def test_fundido_en_los_extremos(self):
+        w = E.trim_clip(self.clip((0, 0.2), (1, 1), (0, 0.2)), self.SR)
+        self.assertEqual(float(w[0]), 0.0)
+        self.assertLess(abs(float(w[-1])), 0.05)
+        self.assertAlmostEqual(float(w[w.size // 2]), 0.5, places=3)
 
 
 @unittest.skipIf(np is None, "sin numpy")

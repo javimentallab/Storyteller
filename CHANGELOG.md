@@ -1,6 +1,18 @@
 # Changelog
 
-## 1.2.1 (2026-11-03)
+## Unreleased
+
+### Changed
+- **Narration reads on instead of line by line.** Each sentence now goes to the voice whole, and XTTS makes
+  the pauses at its commas; before, every comma was a separate piece with its own closing tone and a fixed
+  silence. The pauses after a full stop (about 0.63 s) and a paragraph (about 0.98 s) still come from the book.
+  A sentence longer than the model's limit (220 characters in Spanish, about 92 % of what XTTS takes in each
+  language) is split at the comma nearest that limit. The subtitles show a sentence a line.
+- XTTS no longer splits a piece again on its own, which added 0.42 s of silence inside it, and each piece now
+  fades in and out over a few milliseconds instead of stopping dead against the silence. A short last word after
+  a comma («…, dijo él») is no longer taken for a made-up ending and cut.
+- **Books started before**: finished chapters stay as they are. A chapter left halfway is narrated again from its
+  start with the new pieces, so that no chapter changes its way of reading in the middle.
 
 ### Fixed
 - **A book no longer disappears from the library when it comes back from your own server.** With a chapter

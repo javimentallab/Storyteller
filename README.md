@@ -30,8 +30,9 @@ XTTS or a voice service; **F5 and Whisper are optional** and are installed apart
   - **A voice service by URL**: your own XTTS with `st_server.py` ([API](docs/server-api.md))
     or a public service with its key, with several **requests at a time**. There your own
     server can also receive new voices and hand finished books to other apps.
-- **Pauses that follow the book**: it cuts at every comma, so the pauses after a comma, a
-  full stop and a paragraph are set by the punctuation and not left to the model.
+- **Reads on, with the book's pauses**: each sentence goes to the voice whole, so it flows
+  through its commas, and the pauses after a full stop and a paragraph are set by the book's
+  punctuation. Only a very long sentence is split, at the comma nearest the model's limit.
 - **Parallel chunks** (1, 2 or 3): splits the chapters between several processes on the
   same GPU; with XTTS, 3 chunks narrate about 2.5 times faster.
 - **Time left** in the progress bar ("~1 h 10 min left, done around 14:35"), worked out
