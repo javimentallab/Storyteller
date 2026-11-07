@@ -101,8 +101,11 @@ def cmd_generate(a):
     def infer(gen_text):
         # cerrar con punto si no acaba en signo de fin: XTTS necesita el "stop" para
         # no desbarrar al final (principal causa de la alucinación final).
-        w = tts.tts(text=E.with_stop(gen_text), speaker_wav=a.voice, language=a.lang or "es")
-        w = E.trim_clip(_clean_clip(np.asarray(w, dtype="float32"), 24000), 24000)
+        # split_sentences=False: el trozo ya es una frase; coqui la volvería a partir (pysbd)
+        # y metería 0,42 s de silencio digital en cada parte.
+        w = tts.tts(text=E.with_stop(gen_text), speaker_wav=a.voice, language=a.lang or "es",
+                    split_sentences=False)
+        w = E.trim_clip(_clean_clip(np.asarray(w, dtype="float32"), 24000), 24000, text=gen_text)
         return E.cap_silences(w, 24000), 24000
 
     for ci, ch in enumerate(chaps, 1):

@@ -93,7 +93,7 @@ class XttsEngine:
         sys.path.insert(0, str(HERE / "engine"))
         import cc_engine as E
         import cc_xtts as X
-        trim = getattr(E, "trim_clip", None) or getattr(X, "_trim_clip", None) or (lambda w, sr=RATE: w)
+        trim = getattr(E, "trim_clip", None) or getattr(X, "_trim_clip", None) or (lambda w, sr=RATE, text=None: w)
         cap = getattr(E, "cap_silences", None)
         if self.tts is None:
             if self.pron and Path(self.pron).exists():
@@ -104,12 +104,13 @@ class XttsEngine:
         if not t:
             return b"", RATE
         try:
-            w = self.tts.tts(text=t, speaker_wav=str(voice_wav), language=lang)
+            # el trozo ya es una frase: sin split_sentences=False coqui la parte y mete silencios
+            w = self.tts.tts(text=t, speaker_wav=str(voice_wav), language=lang, split_sentences=False)
         except RuntimeError as e:
             if "out of memory" in str(e).lower():
                 raise EngineBusy(str(e)) from e
             raise
-        w = trim(X._clean_clip(np.asarray(w, dtype="float32"), RATE), RATE)
+        w = trim(X._clean_clip(np.asarray(w, dtype="float32"), RATE), RATE, text=t)
         if cap:
             w = cap(w, RATE)
         return (np.clip(w, -1, 1) * 32767).astype("<i2").tobytes(), RATE

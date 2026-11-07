@@ -30,8 +30,9 @@ o un servicio de voz; **F5 y Whisper son opcionales** y se instalan aparte, solo
   - **Un servicio de voz por URL**: tu propio XTTS con `st_server.py` ([API](docs/server-api.md))
     o un servicio público con su clave, con varias **peticiones a la vez**. Ahí tu servidor
     también puede recibir voces nuevas y dar libros terminados a otras apps.
-- **Pausas que sigue el libro**: corta en cada coma, así que las pausas tras una coma, un
-  punto y un párrafo las marca la puntuación y no se dejan al modelo.
+- **Lee de seguido, con las pausas del libro**: cada frase va entera a la voz, así que fluye
+  en sus comas, y las pausas tras un punto y un párrafo las marca la puntuación del libro.
+  Solo se parte una frase muy larga, en la coma más cercana al tope del modelo.
 - **Tramos en paralelo** (1, 2 o 3): reparte los capítulos entre varios procesos en la
   misma GPU; con XTTS, 3 tramos narran unas 2,5 veces más rápido.
 - **Tiempo restante** en la barra de progreso («quedan ~1 h 10 min, hacia las 14:35»),
