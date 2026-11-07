@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.3.2 (2026-11-07)
+
+### Changed
+- New colours: night blue and cyan instead of brown and amber. The screenshots in the README show them.
 
 ### Fixed
 - Narrating on your own server, the progress bar was almost full all the time: it only counted the sentences of

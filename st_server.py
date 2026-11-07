@@ -20,7 +20,7 @@ from pathlib import Path
 import array, tempfile
 from urllib.parse import unquote, urlsplit
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 DEFAULT_PORT = 8765
 MAX_INPUT = 4096                     # como la API de OpenAI; una frase son unos 200 caracteres
 MAX_BODY = 1024 * 1024

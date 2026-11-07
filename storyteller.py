@@ -29,7 +29,7 @@ from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chap
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "epub-tts"                # relativa al home del usuario del servidor
@@ -3868,48 +3868,48 @@ class Cuentacuentos(QMainWindow):
 
 
 STYLE = """
-* { font-family: "Segoe UI", sans-serif; color: #ece2d0; }
-QStackedWidget, QWidget { background: #16120d; }
-#head { background: #211b13; border-bottom: 1px solid #352d22; }
+* { font-family: "Segoe UI", sans-serif; color: #e6ecf5; }
+QStackedWidget, QWidget { background: #0f1420; }
+#head { background: #18202e; border-bottom: 1px solid #263246; }
 #word { font-family: "Georgia", serif; font-style: italic; font-size: 21px; font-weight: 600; }
 #word2 { font-family: "Georgia", serif; font-style: italic; font-size: 16px; font-weight: 600; }
-#tag { font-size: 10px; color: #e3a94f; letter-spacing: 1px; }
-QPushButton#ver { background: transparent; border: none; padding: 0; font-size: 11px; color: #a2957f; text-align: left; }
-QPushButton#ver:hover { color: #e3a94f; text-decoration: underline; }
-QPushButton#ver:disabled { color: #6f6553; }
-#open { background: #e3a94f; color: #1a140c; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; }
-#open:disabled { background: #4a3f2c; color: #8a7d64; }
-QComboBox { background: #16120d; border: 1px solid #352d22; border-radius: 8px; padding: 6px 10px; }
-QComboBox QAbstractItemView { background: #211b13; selection-background-color: #e3a94f; selection-color: #1a140c; }
-#reader { background: #16120d; border: none; }
-#bookcard { background: #211b13; border: 1px solid #352d22; border-radius: 12px; }
-#bookcard:hover { border-color: #e3a94f; }
+#tag { font-size: 10px; color: #5cc8e0; letter-spacing: 1px; }
+QPushButton#ver { background: transparent; border: none; padding: 0; font-size: 11px; color: #8c9ab0; text-align: left; }
+QPushButton#ver:hover { color: #5cc8e0; text-decoration: underline; }
+QPushButton#ver:disabled { color: #56647a; }
+#open { background: #5cc8e0; color: #08171c; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; }
+#open:disabled { background: #2c3a50; color: #6f7f97; }
+QComboBox { background: #0f1420; border: 1px solid #263246; border-radius: 8px; padding: 6px 10px; }
+QComboBox QAbstractItemView { background: #18202e; selection-background-color: #5cc8e0; selection-color: #08171c; }
+#reader { background: #0f1420; border: none; }
+#bookcard { background: #18202e; border: 1px solid #263246; border-radius: 12px; }
+#bookcard:hover { border-color: #5cc8e0; }
 #booktitle { font-family: "Georgia", serif; font-size: 19px; font-weight: 600; }
-#booksub { color: #a2957f; font-size: 13px; }
-#chip { background: #e3a94f; color: #1a140c; border-radius: 8px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
-#sec { font-family: "Georgia", serif; font-size: 16px; font-weight: 600; color: #ece2d0; margin-top: 6px; }
+#booksub { color: #8c9ab0; font-size: 13px; }
+#chip { background: #5cc8e0; color: #08171c; border-radius: 8px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
+#sec { font-family: "Georgia", serif; font-size: 16px; font-weight: 600; color: #e6ecf5; margin-top: 6px; }
 #trash { background: transparent; border: none; font-size: 15px; padding: 2px 6px; }
 #trash:hover { color: #ff8a80; }
 #chtitle { font-family: "Georgia", serif; font-size: 30px; font-weight: 600; margin-bottom: 18px; }
-#hint { color: #a2957f; font-size: 15px; }
-QLabel#cue { font-family: "Georgia", serif; font-size: 21px; color: rgba(236,226,208,0.40);
+#hint { color: #8c9ab0; font-size: 15px; }
+QLabel#cue { font-family: "Georgia", serif; font-size: 21px; color: rgba(230,236,245,0.40);
     padding: 4px 6px; border-radius: 6px; }
-QLabel#cue[active="true"] { color: #ece2d0; background: rgba(227,169,79,0.17); }
-#bar { background: #211b13; border-top: 1px solid #352d22; }
-#progwrap { background: #211b13; border-top: 1px solid #352d22; }
-#proglabel { color: #a2957f; font-size: 12px; }
-QProgressBar { background: #16120d; border: none; border-radius: 3px; }
-QProgressBar::chunk { background: #e3a94f; border-radius: 3px; }
-#time { color: #a2957f; font-size: 12px; }
-#live { color: #e3a94f; font-size: 12px; }
-QPushButton#tb { background: #16120d; border: 1px solid #352d22; border-radius: 8px; padding: 7px 11px; }
-QPushButton#tb:hover { border-color: #e3a94f; color: #e3a94f; }
-#play { background: #e3a94f; color: #1a140c; border: none; border-radius: 8px; font-size: 16px; min-width: 46px; padding: 7px 11px; }
-QSlider::groove:horizontal { height: 4px; background: #352d22; border-radius: 2px; }
-QSlider::handle:horizontal { background: #e3a94f; width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; }
-QSlider::sub-page:horizontal { background: #e3a94f; border-radius: 2px; }
-QScrollBar:vertical { background: #16120d; width: 10px; }
-QScrollBar::handle:vertical { background: #352d22; border-radius: 5px; min-height: 30px; }
+QLabel#cue[active="true"] { color: #e6ecf5; background: rgba(92,200,224,0.17); }
+#bar { background: #18202e; border-top: 1px solid #263246; }
+#progwrap { background: #18202e; border-top: 1px solid #263246; }
+#proglabel { color: #8c9ab0; font-size: 12px; }
+QProgressBar { background: #0f1420; border: none; border-radius: 3px; }
+QProgressBar::chunk { background: #5cc8e0; border-radius: 3px; }
+#time { color: #8c9ab0; font-size: 12px; }
+#live { color: #5cc8e0; font-size: 12px; }
+QPushButton#tb { background: #0f1420; border: 1px solid #263246; border-radius: 8px; padding: 7px 11px; }
+QPushButton#tb:hover { border-color: #5cc8e0; color: #5cc8e0; }
+#play { background: #5cc8e0; color: #08171c; border: none; border-radius: 8px; font-size: 16px; min-width: 46px; padding: 7px 11px; }
+QSlider::groove:horizontal { height: 4px; background: #263246; border-radius: 2px; }
+QSlider::handle:horizontal { background: #5cc8e0; width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; }
+QSlider::sub-page:horizontal { background: #5cc8e0; border-radius: 2px; }
+QScrollBar:vertical { background: #0f1420; width: 10px; }
+QScrollBar::handle:vertical { background: #263246; border-radius: 5px; min-height: 30px; }
 QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
 """
 
