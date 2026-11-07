@@ -96,7 +96,7 @@ def cmd_generate(a):
     manifest = []
     def save_manifest():
         E.write_atomic(os.path.join(a.out, mani_name),
-                       json.dumps(manifest, ensure_ascii=False, indent=2))
+                       json.dumps(E.with_unvisited(manifest, prev, cs, ce or len(chaps)), ensure_ascii=False, indent=2))
 
     def infer(gen_text):
         # cerrar con punto si no acaba en signo de fin: XTTS necesita el "stop" para
