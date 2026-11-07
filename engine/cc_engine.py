@@ -497,6 +497,30 @@ def qc_hyp(wav, sr, a):
         return qc_transcribe(wav, sr, a.qc_url, lang=getattr(a, "lang", "es"))
     return None, None
 
+# Desde PyTorch 2.9, torchaudio.load lee el audio con torchcodec, que en Windows necesita las DLL de FFmpeg
+# (no basta con ffmpeg.exe). Los motores solo leen así la voz de referencia: se lee con soundfile.
+def read_audio(path):
+    """Como torchaudio.load: (tensor float32 de forma (canales, muestras), entre -1 y 1; frecuencia)."""
+    import soundfile as sf, torch
+    data, sr = sf.read(str(path), dtype="float32", always_2d=True)
+    return torch.from_numpy(data.T.copy()), sr
+
+class _TorchaudioSinCodec:
+    """torchaudio tal cual, salvo load, que es read_audio."""
+    def __init__(self, ta):
+        self._ta = ta
+    def __getattr__(self, name):
+        return getattr(self._ta, name)
+    @staticmethod
+    def load(path, *args, **kwargs):
+        return read_audio(path)
+
+def f5_reads_with_soundfile():
+    """F5 lee la voz con torchaudio.load en infer_process (f5_tts/infer/utils_infer.py)."""
+    import f5_tts.infer.utils_infer as U
+    if not isinstance(U.torchaudio, _TorchaudioSinCodec):
+        U.torchaudio = _TorchaudioSinCodec(U.torchaudio)
+
 def cmd_download(a):
     from huggingface_hub import hf_hub_download
     os.makedirs(a.dest, exist_ok=True)
@@ -894,6 +918,7 @@ def cmd_count(a):
 def cmd_generate(a):
     import numpy as np
     from f5_tts.api import F5TTS
+    f5_reads_with_soundfile()
     global NUM_LANG
     NUM_LANG = getattr(a, "lang", None) or "es"      # idioma para leer los números
     if getattr(a, "pron", ""):

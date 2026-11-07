@@ -30,6 +30,22 @@ def finish_voice(w):
     import numpy as np
     return (np.arctanh(np.clip(np.asarray(w, dtype="float32"), -0.99, 0.99)) * OUTPUT_GAIN).astype("float32")
 
+def load_voice(audiopath, sampling_rate):
+    """load_audio de coqui (TTS/tts/models/xtts.py) con soundfile en vez de torchaudio.load (ver
+    cc_engine.read_audio): (1, muestras) en float32, en mono, a sampling_rate y entre -1 y 1."""
+    import torch, torchaudio
+    audio, lsr = E.read_audio(audiopath)
+    if audio.size(0) != 1:
+        audio = torch.mean(audio, dim=0, keepdim=True)
+    if lsr != sampling_rate:
+        audio = torchaudio.functional.resample(audio, lsr, sampling_rate)
+    return audio.clip_(-1, 1)
+
+def use_soundfile():
+    """XTTS solo lee audio para la voz de referencia. Antes de cargar el modelo; st_server también lo llama."""
+    import TTS.tts.models.xtts as xtts
+    xtts.load_audio = load_voice
+
 # Lo que XTTS necesita para estos idiomas y no instala por defecto: (módulo, paquete).
 NEEDS = {"ja": (("cutlet", "cutlet"), ("fugashi", "fugashi"), ("unidic_lite", "unidic-lite")),
          "zh-cn": (("pypinyin", "pypinyin"),)}
@@ -46,6 +62,7 @@ def cmd_generate(a):
         sys.exit(4)
     import numpy as np, soundfile as sf, torch
     from TTS.api import TTS
+    use_soundfile()
     E.NUM_LANG = a.lang or "es"
     if a.pron:
         E.load_pron(a.pron)

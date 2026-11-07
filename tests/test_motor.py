@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Cuándo cuenta cada motor como instalado, qué dice la app si falta y si el README da los comandos.
-Sin PySide6, sin GPU y sin importar torch.
+Sin PySide6 ni GPU. Solo VozDeReferencia importa torch, y sin él se salta.
 
     python -m unittest tests.test_motor -v
 """
@@ -16,7 +16,7 @@ import st_core as C
 import st_lang as L
 
 # Como los nombra pip de verdad: con guion bajo y con la versión local de PyTorch.
-DIST_INFO = {"torch": "torch-2.8.0+cu128", "torchaudio": "torchaudio-2.8.0+cu128", "f5-tts": "f5_tts-1.1.22",
+DIST_INFO = {"torch": "torch-2.10.0+cu128", "torchaudio": "torchaudio-2.10.0+cu128", "f5-tts": "f5_tts-1.1.22",
              "coqui-tts": "coqui_tts-0.28.0", "faster-whisper": "faster_whisper-1.2.1", "av": "av-18.1.0",
              "num2words": "num2words-0.5.14", "beautifulsoup4": "beautifulsoup4-4.15.0", "lxml": "lxml-6.1.3"}
 # Los textos que mandan a instalar algo, y la ruta que tienen que nombrar.
@@ -284,6 +284,66 @@ class VozFinal(unittest.TestCase):
     def test_nunca_se_pasa_del_tope(self):
         out = self.X.finish_voice(self.np.array([1.0, -1.0, 0.9999], dtype="float32"))
         self.assertLess(float(self.np.abs(out).max()), 1.0)
+
+
+class VozDeReferencia(unittest.TestCase):
+    """La voz se lee con soundfile, porque desde PyTorch 2.9 torchaudio.load pide torchcodec y FFmpeg."""
+    def setUp(self):
+        try:
+            import numpy, soundfile, torch, torchaudio
+        except ImportError:
+            self.skipTest("sin torch, torchaudio o soundfile")
+        self.np, self.sf, self.torch = numpy, soundfile, torch
+        import cc_xtts
+        self.X = cc_xtts
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def wav(self, data, sr, subtype="PCM_16"):
+        path = self.tmp / "voz.wav"
+        self.sf.write(str(path), data, sr, subtype=subtype)
+        return path
+
+    def test_como_torchaudio_load(self):
+        stereo = self.np.stack([self.np.linspace(-0.5, 0.5, 100), self.np.zeros(100)], axis=1)
+        audio, sr = E.read_audio(self.wav(stereo, 22050))
+        self.assertEqual((tuple(audio.shape), sr, audio.dtype), ((2, 100), 22050, self.torch.float32))
+        self.assertAlmostEqual(float(audio[0, 0]), -0.5, places=3)
+
+    def test_xtts_la_recibe_en_mono_y_a_su_frecuencia(self):
+        t = self.np.arange(22050) / 22050
+        tone = 0.5 * self.np.sin(2 * self.np.pi * 220 * t)
+        audio = self.X.load_voice(self.wav(self.np.stack([tone, tone], axis=1), 22050), 24000)
+        self.assertEqual(tuple(audio.shape), (1, 24000))
+        self.assertAlmostEqual(float(audio.abs().max()), 0.5, places=2)
+
+    def test_recorta_lo_que_se_sale(self):
+        audio = self.X.load_voice(self.wav(self.np.array([1.5, -2.0, 0.25], dtype="float32"), 24000, "FLOAT"), 24000)
+        self.assertEqual([round(float(v), 3) for v in audio[0]], [1.0, -1.0, 0.25])
+
+    def test_xtts_usa_la_de_aqui(self):
+        xtts = types.ModuleType("TTS.tts.models.xtts")
+        xtts.load_audio = None
+        names = ("TTS", "TTS.tts", "TTS.tts.models")
+        mods = {n: types.ModuleType(n) for n in names}
+        mods["TTS"].tts, mods["TTS.tts"].models, mods["TTS.tts.models"].xtts = mods["TTS.tts"], mods["TTS.tts.models"], xtts
+        with mock.patch.dict(sys.modules, {**mods, "TTS.tts.models.xtts": xtts}):
+            self.X.use_soundfile()
+        self.assertIs(xtts.load_audio, self.X.load_voice)
+
+    def test_f5_lee_con_soundfile_y_lo_demas_sigue_igual(self):
+        ta = types.SimpleNamespace(load=lambda *a, **k: self.fail("torchaudio.load"), transforms="transforms")
+        utils = types.ModuleType("f5_tts.infer.utils_infer")
+        utils.torchaudio = ta
+        mods = {n: types.ModuleType(n) for n in ("f5_tts", "f5_tts.infer")}
+        mods["f5_tts"].infer, mods["f5_tts.infer"].utils_infer = mods["f5_tts.infer"], utils
+        with mock.patch.dict(sys.modules, {**mods, "f5_tts.infer.utils_infer": utils}):
+            E.f5_reads_with_soundfile()
+            E.f5_reads_with_soundfile()                   # dos veces no lo envuelve dos veces
+        self.assertIs(utils.torchaudio._ta, ta)
+        self.assertEqual(utils.torchaudio.transforms, "transforms")
+        audio, sr = utils.torchaudio.load(self.wav(self.np.zeros(50), 16000))
+        self.assertEqual((tuple(audio.shape), sr), ((1, 50), 16000))
 
 
 class Textos(unittest.TestCase):

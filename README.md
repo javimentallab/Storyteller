@@ -84,7 +84,7 @@ XTTS or a voice service; **F5 and Whisper are optional** and are installed apart
 
 ## Requirements
 
-- **Python 3.11, 3.12 or 3.13**. The PyTorch version below has no packages for 3.14.
+- **Python 3.11, 3.12 or 3.13**. Storyteller has not been tested on 3.14.
 - **ffmpeg**, **ffprobe** and **curl** on the `PATH`.
 - `PySide6` and `PySide6-Addons` (QtMultimedia, ffmpeg backend), from `requirements.txt`.
 - The engines you want, each in its step under [Installation](#installation). Only XTTS, or a voice service, is
@@ -136,7 +136,7 @@ The multilingual voice, in its own environment. Windows:
 
 ```powershell
 python -m venv engine\.venv-xtts
-engine\.venv-xtts\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv-xtts\Scripts\python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
 engine\.venv-xtts\Scripts\python -m pip install -r engine\deps\xtts\requirements.txt
 ```
 
@@ -144,7 +144,7 @@ Linux/macOS:
 
 ```sh
 python3 -m venv engine/.venv-xtts
-engine/.venv-xtts/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv-xtts/bin/python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
 engine/.venv-xtts/bin/python -m pip install -r engine/deps/xtts/requirements.txt
 ```
 
@@ -230,7 +230,7 @@ Only to narrate with an F5 model. It brings packages under other licences, such 
 
 ```powershell
 python -m venv engine\.venv
-engine\.venv\Scripts\python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine\.venv\Scripts\python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
 engine\.venv\Scripts\python -m pip install --no-deps -r engine\deps\f5\requirements.txt
 ```
 
@@ -238,7 +238,7 @@ Linux/macOS:
 
 ```sh
 python3 -m venv engine/.venv
-engine/.venv/bin/python -m pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+engine/.venv/bin/python -m pip install torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128
 engine/.venv/bin/python -m pip install --no-deps -r engine/deps/f5/requirements.txt
 ```
 

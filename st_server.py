@@ -20,7 +20,7 @@ from pathlib import Path
 import array, tempfile
 from urllib.parse import unquote, urlsplit
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 DEFAULT_PORT = 8765
 MAX_INPUT = 4096                     # como la API de OpenAI; una frase son unos 200 caracteres
 MAX_BODY = 1024 * 1024
@@ -72,6 +72,8 @@ class XttsEngine:
     def _load(self):
         import torch
         from TTS.api import TTS
+        import cc_xtts as X
+        X.use_soundfile()                 # la voz, con soundfile: torchaudio.load necesita torchcodec
         os.environ.setdefault("COQUI_TOS_AGREED", "1")
         name = "tts_models/multilingual/multi-dataset/xtts_v2"
         device = "cuda" if torch.cuda.is_available() else "cpu"

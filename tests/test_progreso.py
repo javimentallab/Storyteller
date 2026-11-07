@@ -47,9 +47,13 @@ def fake_modules(calls, stop_after=None):
 
     tts_pkg = types.ModuleType("TTS"); tts_api = types.ModuleType("TTS.api")
     tts_api.TTS = FakeTTS; tts_pkg.api = tts_api
+    # El motor cambia la lectura de la voz en TTS.tts.models.xtts antes de cargar el modelo.
+    tts_tts, tts_models, tts_xtts = (types.ModuleType(n) for n in ("TTS.tts", "TTS.tts.models", "TTS.tts.models.xtts"))
+    tts_pkg.tts, tts_tts.models, tts_models.xtts = tts_tts, tts_models, tts_xtts
     torch = types.ModuleType("torch")
     torch.cuda = types.SimpleNamespace(is_available=lambda: False, empty_cache=lambda: None)
-    return {"TTS": tts_pkg, "TTS.api": tts_api, "torch": torch}
+    return {"TTS": tts_pkg, "TTS.api": tts_api, "TTS.tts": tts_tts, "TTS.tts.models": tts_models,
+            "TTS.tts.models.xtts": tts_xtts, "torch": torch}
 
 
 def fake_mp3(src_wav, dst_mp3, append=False):
@@ -156,7 +160,10 @@ class MotorF5(unittest.TestCase):
                 t = np.arange(int(0.3 * 24000)) / 24000
                 return (0.3 * np.sin(2 * np.pi * 220 * t)).astype("float32"), 24000, None
         f5 = types.ModuleType("f5_tts"); api = types.ModuleType("f5_tts.api"); api.F5TTS = FakeF5; f5.api = api
-        mods = fake_modules([]); mods.update({"f5_tts": f5, "f5_tts.api": api})
+        infer, utils = types.ModuleType("f5_tts.infer"), types.ModuleType("f5_tts.infer.utils_infer")
+        f5.infer, infer.utils_infer, utils.torchaudio = infer, utils, types.ModuleType("torchaudio")
+        mods = fake_modules([]); mods.update({"f5_tts": f5, "f5_tts.api": api, "f5_tts.infer": infer,
+                                              "f5_tts.infer.utils_infer": utils})
         a = args(out, voice_text=str(out / "voz.txt"), arch="F5TTS_v1_Base", ckpt="x", vocab="x",
                  nfe=32, seed=-1, speed=1.0)
         with mock.patch.dict(sys.modules, mods), \

@@ -128,9 +128,9 @@ termcolor==3.3.0
 threadpoolctl==3.7.0
 tokenizers==0.23.2
 tomli==2.4.1
-torch==2.8.0
-torchaudio==2.8.0
-torchcodec==0.17.0
+torch==2.10.0
+torchaudio==2.10.0
+torchcodec==0.10.0
 torchdiffeq==0.2.5
 tqdm==4.70.1
 transformers==5.18.0

@@ -422,7 +422,7 @@ F5_PACKAGES = BASE_PACKAGES + ("torch", "torchaudio", "f5-tts", "accelerate", "c
 # Opcional, para transcribir audiolibros y para el QC. El QC corre dentro del proceso del motor que narra, así que
 # tiene que estar en SU venv; desde ahí sirve también para transcribir.
 WHISPER_PACKAGES = ("faster-whisper", "av")
-TORCH_INSTALL = "torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128"
+TORCH_INSTALL = "torch==2.10.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu128"
 
 
 def install_commands(what, windows=os.name == "nt"):
