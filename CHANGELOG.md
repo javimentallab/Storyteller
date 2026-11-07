@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Narrating on your own server, the progress bar was almost full all the time: it only counted the sentences of
+  the chapters already started. It now counts the whole book on the server before starting, and also shows the
+  time left. With F5 on the server, which cannot count, the bar moves without a percentage.
+- When the transcription service checking each sentence (QC) answered that it was out of memory (503) or could
+  not be reached, the sentence was kept unchecked. It now waits, honouring Retry-After up to 60 s, and asks again
+  up to 3 times.
+
 ## 1.3.1 (2026-11-07)
 
 ### Security

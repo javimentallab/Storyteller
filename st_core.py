@@ -394,6 +394,64 @@ class EtaTracker:
         return max(0.0, worst)
 
 
+class RemoteProgress:
+    """Avance de una narración en el servidor, sobre el libro ENTERO (frases por capítulo de
+    `count`). Allí las líneas de los tramos llegan mezcladas y sin decir de cuál son, así que no
+    se sigue el capítulo de cada uno: cada cabecera fija lo que le queda a su capítulo y cada
+    «frase N/M» descuenta una. Restante = lo que dicen las cabeceras − frases desde entonces."""
+    WIN = 40
+
+    def __init__(self, sents):
+        self.sents = list(sents)
+        self.total = sum(self.sents)
+        self.left = {i: n for i, n in enumerate(self.sents, 1)}
+        self.done = 0                                     # frases narradas desde las cabeceras
+        self.ts = []
+
+    def line(self, line):
+        """Actualiza con una línea del servidor. True si es una frase narrada."""
+        m = re.search(r"\[cap (\d+)\]", line)
+        if m and int(m.group(1)) in self.left:
+            cap = int(m.group(1))
+            if "ya hecho" in line:
+                self.left[cap] = 0
+            elif (q := re.search(r"quedan (\d+)", line)):
+                self.left[cap] = int(q.group(1))
+            elif (q := re.search(r"->\s*(\d+) frases", line)):
+                self.left[cap] = int(q.group(1))
+        # search y no match: la barra a medias de un tramo puede ir pegada delante.
+        if re.search(r"(?<!\S)frase \d+/\d+\s+[\d.]+s", line):
+            self.done += 1
+            self.ts.append(time.monotonic())
+            if len(self.ts) > self.WIN:
+                del self.ts[0]
+            return True
+        return False
+
+    def remaining(self):
+        return max(0, sum(self.left.values()) - self.done)
+
+    def pct(self):
+        return min(99, int((self.total - self.remaining()) / self.total * 100)) if self.total else -1
+
+    def seconds(self):
+        """Segundos que faltan (None = aún sin ritmo medido)."""
+        ts = self.ts
+        if len(ts) < 4 or ts[-1] <= ts[0]:
+            return None
+        per = (ts[-1] - ts[0]) / (len(ts) - 1)            # s por frase, todos los tramos juntos
+        return max(0.0, self.remaining() * per - min(time.monotonic() - ts[-1], per))
+
+
+def parse_count(text):
+    """(nº de capítulos, frases por capítulo) de la salida de `count`; frases [] si no cuadran."""
+    m = re.search(r"CHAPTERS\s+(\d+)", text or "")
+    ms = re.search(r"^SENTS((?: \d+)*)\s*$", text or "", re.M)
+    sents = [int(x) for x in ms.group(1).split()] if ms else []
+    n = int(m.group(1)) if m else 1
+    return n, (sents if len(sents) == n and sum(sents) else [])
+
+
 def split_ranges(n, streams):
     """Reparte 1..n en `streams` tramos contiguos lo más equilibrados posible."""
     base, extra = divmod(n, streams)

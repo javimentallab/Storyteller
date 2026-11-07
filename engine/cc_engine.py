@@ -428,22 +428,58 @@ def _whisper_lang(lang):
     """El código que entiende Whisper: «zh», no «zh-cn»."""
     return (lang or "").split("-")[0] or None
 
+# Espera antes de cada reintento si el Whisper está sin memoria (503) o arrancando (no conecta).
+# Con XTTS y Whisper en la misma GPU de 6 GB, un 503 suele pasar en segundos; sin esperar, la
+# frase se quedaba sin revisar (253 en un libro, 7-nov). Si el servidor dice Retry-After, manda
+# él, con tope de 60 s. Lo peor por frase: ~1,5 min más y sigue sin revisar, como antes.
+QC_BUSY_WAITS = (30, 30, 30)
+_CURL_NO_CONNECT = (7, 52, 56)                       # sin conexión, respuesta vacía, conexión cortada
+
+def _qc_post(tmp, url, timeout, lang, prompt):
+    """Una petición al Whisper. Devuelve (respuesta o None, segundos que pide esperar o None
+    si no vale la pena reintentar; 0 = reintentar con la espera por defecto)."""
+    fd, hdr = tempfile.mkstemp(suffix=".hdr"); os.close(fd)
+    try:
+        p = subprocess.run(["curl", "-s", "-m", str(timeout), "-D", hdr, "-w", "\n%{http_code}",
+                            "-F", f"file=@{tmp}", "-F", "response_format=verbose_json",
+                            "-F", f"language={_whisper_lang(lang) or 'es'}", "-F", f"prompt={prompt}", url],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if p.returncode in _CURL_NO_CONNECT:
+            return None, 0                           # el servidor se está reiniciando
+        if p.returncode != 0:
+            return None, None
+        body, _sep, code = p.stdout.decode("utf-8", "replace").rpartition("\n")
+        if code.strip() == "503":                    # sin memoria: no es que suene mal
+            try:
+                with open(hdr, encoding="latin-1") as f:
+                    m = re.search(r"^retry-after:\s*(\d+)", f.read(), re.I | re.M)
+                return None, (min(60, max(1, int(m.group(1)))) if m else 0)
+            except OSError:
+                return None, 0
+        d = json.loads(body) or {}
+        return (d if "text" in d else None), None
+    finally:
+        try: os.remove(hdr)
+        except OSError: pass
+
 def qc_transcribe(wav, sr, url, timeout=60, lang="es"):
     """Sube un fragmento WAV a un Whisper por HTTP (voz-server). Devuelve (texto, instante en
-    que acaba la última palabra, si el servidor lo da); (None, None) si no hay respuesta."""
+    que acaba la última palabra, si el servidor lo da); (None, None) si no hay respuesta.
+    Si el Whisper está sin memoria o arrancando, espera y lo reintenta (QC_BUSY_WAITS)."""
     import numpy as np, soundfile as sf
     fd, tmp = tempfile.mkstemp(suffix=".wav"); os.close(fd)
     try:
         sf.write(tmp, np.asarray(wav, dtype="float32"), sr, format="WAV", subtype="PCM_16")
         # El prompt evita el del servidor, que es vocabulario de su dictado, no de un libro.
         prompt = "Lectura de un libro." if (lang or "es") == "es" else "."
-        p = subprocess.run(["curl", "-s", "-m", str(timeout), "-F", f"file=@{tmp}",
-                            "-F", "response_format=verbose_json", "-F", f"language={_whisper_lang(lang) or 'es'}",
-                            "-F", f"prompt={prompt}", url],
-                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        if p.returncode != 0: return None, None
-        d = json.loads(p.stdout.decode("utf-8", "replace")) or {}
-        if "text" not in d: return None, None             # p. ej. 503 sin memoria: no es que suene mal
+        for att in range(len(QC_BUSY_WAITS) + 1):
+            d, wait = _qc_post(tmp, url, timeout, lang, prompt)
+            if d is not None or wait is None or att == len(QC_BUSY_WAITS):
+                break
+            wait = wait or QC_BUSY_WAITS[att]
+            print(f"  QC: el Whisper está ocupado, lo intento otra vez dentro de {wait} s", flush=True)
+            time.sleep(wait)
+        if d is None: return None, None
         words = d.get("words") or []
         return d["text"], (words[-1].get("end") if words else None)
     except Exception:

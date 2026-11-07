@@ -24,7 +24,8 @@ from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
 from st_pages import FOLLOW_PAUSE, PAGE_LETTERS, Follow, book_pages  # página y seguir lo que suena
 import st_update  # «Buscar actualizaciones»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
-                     live_manifest, merge_stream_manifests, prepare_resume, read_gen_state, recover_interrupted, slug,
+                     live_manifest, merge_stream_manifests, parse_count, prepare_resume, read_gen_state,
+                     recover_interrupted, RemoteProgress, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
@@ -587,6 +588,20 @@ class GenWorker(QThread):
         except Exception:
             return -1
 
+    def _count_remote(self):
+        """Frases por capítulo del EPUB, contadas en el servidor con el motor que narra (mismo
+        troceo); [] si no se puede. Solo XTTS: el F5 del servidor no tiene `count`."""
+        if not self.xtts:
+            return []
+        try:
+            r = subprocess.run(SSH + [self.host, f"cd {REMOTE_DIR} && .venv-xtts/bin/python -I engine-xtts/cc_xtts.py "
+                                                 f"count --epub 'inbox/{self.name}.epub'"],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=180, creationflags=NOWIN)
+            return parse_count(r.stdout)[1] if r.returncode == 0 else []
+        except Exception:
+            return []
+
     def _send_xtts(self, dest):
         """Deja en el servidor el motor, la voz y el diccionario de este equipo, para que suene
         igual que aquí; al reanudar, también lo narrado si aquí va más avanzado."""
@@ -660,6 +675,9 @@ class GenWorker(QThread):
                 except RuntimeError as e:
                     self.failed.emit(_("No pude enviar el EPUB al servidor:\n") + str(e)); return
 
+            self.progress.emit(_("Contando las frases del libro…"), -1)
+            sents = self._count_remote()
+            prog = RemoteProgress(sents) if sents else None
             self.progress.emit(_("Reanudando el motor de voz…") if self.resume
                                else _("Arrancando el motor de voz…"), -1)
             rs = "CC_RESUME=1 " if self.resume else ""
@@ -675,7 +693,7 @@ class GenWorker(QThread):
                                  stderr=subprocess.STDOUT, text=True,
                                  encoding="utf-8", errors="replace", creationflags=NOWIN)
             self.proc = p
-            total = done = 0
+            done = 0
             cap_cur = cap_tot = 0
             tramos = 1                 # los que de verdad lanza el servidor (lo dice él)
             caps_seen = set()          # en tramos no hay un único capítulo actual
@@ -696,23 +714,22 @@ class GenWorker(QThread):
                 if "TRAMO-ERROR" in line: tramo_failed = True
                 m = re.search(r"\[cap (\d+)\]", line)
                 if m: caps_seen.add(int(m.group(1)))
-                m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
+                m = re.search(r"\[cap (\d+)\].*(?:->\s*\d+ frases|quedan \d+)", line)
                 if m:
-                    cap_cur = int(m.group(1)); total += int(m.group(2))
-                m = re.search(r"\[cap (\d+)\].*quedan (\d+)", line)
-                if m:
-                    cap_cur = int(m.group(1)); total += int(m.group(2))
+                    cap_cur = int(m.group(1))
                 if QC_MISSED in line:
                     self.qc_missed += 1
-                # search y no match: con varios tramos, la barra de progreso a medias de
-                # uno puede quedar pegada delante de la línea de otro.
-                if re.search(r"(?<!\S)frase \d+/\d+\s+[\d.]+s", line):
+                # La barra va sobre el libro entero, con lo contado en el servidor al empezar.
+                # Sin ese recuento (F5) no hay total fiable: barra sin porcentaje, sin inventarlo.
+                is_frase = prog.line(line) if prog else bool(re.search(r"(?<!\S)frase \d+/\d+\s+[\d.]+s", line))
+                if is_frase:
                     done += 1
-                    pct = min(99, int(done / total * 100)) if total else -1
+                    pct = prog.pct() if prog else -1
                     if tramos > 1:
                         txt = _('Narrando en {0} tramos — capítulo {1}/{2} — frase {3}').format(tramos, len(caps_seen), cap_tot, done)
                     else:
                         txt = _('Narrando capítulo {0}/{1} — frase {2}').format(cap_cur, cap_tot, done)
+                    if prog: txt += " — " + fmt_eta(prog.seconds())
                     self.progress.emit(txt + qc_missed_suffix(self.qc_missed), pct)
                 elif "regenerando" in line:
                     self.progress.emit(_("Revisando calidad (QC) y regenerando una frase…"), -1)
@@ -987,11 +1004,7 @@ class LocalGenWorker(QThread):
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace",
                                creationflags=NOWIN, timeout=180)
-            m = re.search(r"CHAPTERS\s+(\d+)", p.stdout or "")
-            ms = re.search(r"^SENTS((?: \d+)*)\s*$", p.stdout or "", re.M)
-            sents = [int(x) for x in ms.group(1).split()] if ms else []
-            n = int(m.group(1)) if m else 1
-            return n, (sents if len(sents) == n and sum(sents) else [])
+            return parse_count(p.stdout)
         except Exception:
             return 1, []
 
