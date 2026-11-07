@@ -28,7 +28,7 @@ from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chap
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 MINT       = ""                      # servidor propio opcional (user@host); se configura en Modelos
 REMOTE_DIR = "epub-tts"                # relativa al home del usuario del servidor

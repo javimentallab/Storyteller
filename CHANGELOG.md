@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.1 (2026-11-07)
+
+### Security
+- XTTS and F5 move from PyTorch 2.8.0 to 2.10.0, with torchaudio 2.10.0. Of those listed in 1.1 as known and not
+  fixed, this fixes CVE-2026-24747 (8.8), CVE-2025-55551 (7.5), CVE-2025-55552 (7.5), CVE-2025-55554,
+  CVE-2025-2999 and CVE-2025-3001.
+- Still known and not fixed in PyTorch 2.10.0:
+  - CVE-2026-4538 (7.8), when loading a pt2 archive, which neither Storyteller nor its engines do. OSV gives 2.10.0
+    as the last version affected, but PyTorch 2.11 requires setuptools older than 82, and going back would reopen
+    CVE-2026-59890 and GHSA-xmj3-9gf7-h52w, fixed in 1.1.
+  - CVE-2025-3000, rated low, fixed in PyTorch 2.13. Builds of PyTorch 2.12 and later are not published for CUDA
+    12.8, the one in the README.
+- To get this on an existing installation, run the XTTS or F5 commands of the README again.
+
+### Changed
+- From PyTorch 2.9, torchaudio reads audio with torchcodec, which on Windows needs the shared libraries of FFmpeg.
+  XTTS and F5 now read the reference voice with soundfile instead. torchcodec is still installed, because coqui-tts
+  does not start without it, but nothing in Storyteller uses it.
+
 ## 1.3.0 (2026-11-07)
 
 ### Added
