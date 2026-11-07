@@ -21,6 +21,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaDevices
 
 from st_lang import _, LANG  # interface texts in the user's language
 from st_translate import TranslatePage, _sz  # pantalla «Traducir documentos»
+from st_pages import FOLLOW_PAUSE, PAGE_LETTERS, Follow, book_pages  # página y seguir lo que suena
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
                      live_manifest, merge_stream_manifests, prepare_resume, read_gen_state, recover_interrupted, slug,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
@@ -2527,6 +2528,22 @@ class ModelsScreen(QWidget):
 
 
 # ------------------------------------------------------------------- reproductor
+class _PagesWorker(QThread):
+    """Páginas del libro (st_pages.book_pages) sin parar la ventana."""
+    done = Signal(object, object, object)               # carpeta, clave de caché, BookPages o None
+
+    def __init__(self, book_dir, manifest, key):
+        super().__init__()
+        self.book_dir, self.manifest, self.key = book_dir, manifest, key
+
+    def run(self):
+        try:
+            pages = book_pages(self.book_dir, self.manifest)
+        except Exception:
+            pages = None
+        self.done.emit(str(self.book_dir), self.key, pages)
+
+
 class PlayerPage(QWidget):
     back = Signal()
     regen = Signal(str)
@@ -2535,9 +2552,16 @@ class PlayerPage(QWidget):
     def __init__(self):
         super().__init__()
         self.manifest = []; self.cues = []; self.cap = 0
-        self.book_dir = None; self._autoscroll = False; self._pause_until = 0.0
+        self.book_dir = None; self._autoscroll = False
         self._restore_pos = None; self._pb_last_save = 0.0; self._last_pos = 0; self._pb_orphan = False
-        self._manual_scroll = False   # si el usuario paginó a mano, no recolocar solo
+        # Seguir la línea que suena: desplazar a mano lo para y a los FOLLOW_PAUSE s sin tocar vuelve solo.
+        self._follow = Follow(); self._active_w = None
+        self._followTimer = QTimer(self); self._followTimer.setSingleShot(True)
+        self._followTimer.setInterval(int(FOLLOW_PAUSE * 1000))
+        self._followTimer.timeout.connect(self._follow_back)
+        # Página por la que va (st_pages): se calcula en otro hilo al abrir el libro.
+        self._pages = None; self._pages_workers = set(); self._pages_cache = {}
+        self._chap_offs = None; self._page_cue = -2
         # Escuchar mientras se narra (ver LISTEN_DIR):
         self._live = False            # el libro abierto se está narrando ahora
         self._partial = False         # el capítulo cargado está a medias (suena una copia)
@@ -2651,8 +2675,11 @@ class PlayerPage(QWidget):
         self.pageDnBtn.clicked.connect(lambda: self._page(1))
         self.gotoPosBtn.clicked.connect(self._goto_position)
         self.gotoChapBtn.clicked.connect(self._goto_chapter)
+        # «Página 23 de 310 · 7 % del libro»: la del libro impreso si el EPUB la trae, si no aproximada.
+        self.pageLbl = ElidedLabel(""); self.pageLbl.setObjectName("time"); self.pageLbl.hide()
+        self.pageLbl.setAlignment(Qt.AlignCenter)
         nav.addWidget(self.pageUpBtn); nav.addWidget(self.pageDnBtn)
-        nav.addStretch(1)
+        nav.addStretch(1); nav.addWidget(self.pageLbl, 4); nav.addStretch(1)
         nav.addWidget(self.gotoPosBtn); nav.addWidget(self.gotoChapBtn)
         bv.addLayout(nav)
 
@@ -2713,7 +2740,7 @@ class PlayerPage(QWidget):
         pos = max(0, int(secs * 1000))
         if dur > 0:
             pos = min(pos, dur)
-        self._manual_scroll = False      # ir a posición: vuelve a seguir la narración
+        self._follow_now()               # ir a posición: vuelve a seguir la narración
         self.player.setPosition(pos); self.player.play()
 
     def _goto_chapter(self):
@@ -2846,6 +2873,7 @@ class PlayerPage(QWidget):
         self._fill_chapters()
         self._update_head()
         self._pb_orphan = False
+        self._load_pages()
         pb = self._read_playback()                          # retomar por donde se escuchaba
         start_cap = pb["cap"] if pb else 0
         self._restore_pos = pb["pos"] if pb else None
@@ -2974,7 +3002,9 @@ class PlayerPage(QWidget):
                 self.player.play()
         if not same:
             self.scroll.verticalScrollBar().setValue(0)
-            self._manual_scroll = False  # capítulo nuevo: vuelve a seguir la narración
+            self._follow_now()           # capítulo nuevo: vuelve a seguir la narración
+            self._active_w = None
+        self._place_cues()
         self._sync_play_btn(); self._update_live_label()
 
     def _chapter_source(self, m):
@@ -3000,6 +3030,67 @@ class PlayerPage(QWidget):
             cue = Cue(c["text"], float(c["start"])); cue.clicked.connect(self.seek_to)
             self.flow.addWidget(cue); self.cue_widgets.append((c, cue))
         self.cues = cues
+        self._place_cues()
+
+    # ---- página por la que va
+    def _load_pages(self):
+        """Calcula en otro hilo las páginas del libro abierto (con un EPUB grande tarda ~0,2 s)."""
+        self._pages = None; self._chap_offs = None; self._page_cue = -2
+        self.pageLbl.hide()
+        epub = self.book_dir / "source.epub"
+        try:
+            st = epub.stat(); key = (str(epub), st.st_mtime_ns, st.st_size)
+        except OSError:
+            key = None                                      # sin EPUB: con los subtítulos, que crecen
+        if key and key in self._pages_cache:
+            self._pages = self._pages_cache[key]; return     # load_chap sitúa las frases enseguida
+        w = _PagesWorker(self.book_dir, list(self.manifest), key)
+        w.done.connect(self._pages_ready)
+        # Se guarda hasta que acabe: un QThread recogido en marcha (otro libro abierto enseguida) tumba la app.
+        self._pages_workers.add(w); w.finished.connect(lambda w=w: self._pages_workers.discard(w))
+        w.start()
+
+    def _pages_ready(self, book_dir, key, pages):
+        if key and pages is not None:
+            self._pages_cache[key] = pages
+        if self.book_dir is None or Path(book_dir) != self.book_dir:
+            return                                          # ya se abrió otro libro
+        self._pages = pages
+        self._place_cues()
+
+    def _place_cues(self):
+        """Dónde cae en el libro cada frase del capítulo cargado."""
+        self._chap_offs = None; self._page_cue = -2
+        m = self.manifest[self.cap] if 0 <= self.cap < len(self.manifest) else None
+        if self._pages is not None and m is not None and self.cues:
+            self._chap_offs = self._pages.chapter_offsets(m.get("id"), [c.get("text", "") for c in self.cues])
+        self._show_page(self._cue_at(self._last_pos / 1000.0))
+
+    def _cue_at(self, t):
+        """La última frase que ha empezado en t (la primera si aún no ha empezado ninguna)."""
+        idx = 0
+        for i, c in enumerate(self.cues):
+            if float(c.get("start", 0)) <= t: idx = i
+            else: break
+        return idx
+
+    def _show_page(self, idx):
+        if idx == self._page_cue:
+            return
+        self._page_cue = idx
+        offs, bp = self._chap_offs, self._pages
+        if not offs or bp is None:
+            self.pageLbl.hide(); return
+        off = offs[min(max(idx, 0), len(offs) - 1)]
+        if bp.real:
+            self.pageLbl.setText(_("Página {0} de {1} · {2} % del libro").format(bp.page(off), bp.total, bp.percent(off)))
+            self.pageLbl.setToolTip(_("Numeración de páginas del libro impreso, tal como la trae el EPUB."))
+        else:
+            self.pageLbl.setText(_("Página {0} de {1} (aproximada) · {2} % del libro").format(
+                bp.page(off), bp.total, bp.percent(off)))
+            self.pageLbl.setToolTip(_("Página aproximada: este libro no trae la numeración de la edición impresa, "
+                                      "así que se cuenta una página cada {0} letras.").format(PAGE_LETTERS))
+        self.pageLbl.show()
 
     def _next_index(self):
         """Capítulo siguiente: el de la sección siguiente. Mientras se narra no se salta
@@ -3081,7 +3172,7 @@ class PlayerPage(QWidget):
                 self._waiting = None
 
     def seek_to(self, sec):
-        self._manual_scroll = False      # saltar a una frase: vuelve a seguir la narración
+        self._follow_now()               # saltar a una frase: vuelve a seguir la narración
         ms = int(sec * 1000) + 10
         dur = self.player.duration()
         if self._partial and self._live and (dur <= 0 or ms > dur - 200):
@@ -3168,21 +3259,40 @@ class PlayerPage(QWidget):
                 self._pb_last_save = time.monotonic(); self._save_playback()
 
     def highlight(self, t):
-        active = None
-        for c, w in getattr(self, "cue_widgets", []):
+        active = None; started = 0
+        for i, (c, w) in enumerate(getattr(self, "cue_widgets", [])):
             on = c["start"] <= t < c["end"]
+            if c["start"] <= t: started = i
             if w.property("active") != on:
                 w.setProperty("active", on); w.style().unpolish(w); w.style().polish(w)
             if on: active = w
-        if active and not self._manual_scroll and time.monotonic() > self._pause_until:
-            self._autoscroll = True
-            self.scroll.ensureWidgetVisible(active, 0, 140)
-            QTimer.singleShot(0, lambda: setattr(self, "_autoscroll", False))
+        if active is not None:
+            self._active_w = active
+        self._show_page(started)
+        if active and self._follow.following(time.monotonic()):
+            self._scroll_to(active)
+
+    def _scroll_to(self, w):
+        self._autoscroll = True
+        self.scroll.ensureWidgetVisible(w, 0, 140)
+        QTimer.singleShot(0, lambda: setattr(self, "_autoscroll", False))
 
     def on_user_scroll(self, _arg):
         if not self._autoscroll:
-            self._manual_scroll = True            # desplazó a mano: no volver solo
-            self._pause_until = time.monotonic() + 4.5
+            # Desplazó a mano (rueda, barra o ▲/▼ Página): deja de seguir y, si no vuelve a
+            # tocar en FOLLOW_PAUSE s, vuelve solo a la línea que suena.
+            self._follow.touched(time.monotonic())
+            self._followTimer.start()
+
+    def _follow_now(self):
+        self._follow.reset(); self._followTimer.stop()
+
+    def _follow_back(self):
+        """Pasaron los segundos sin tocar: a la línea que suena, aunque esté en pausa."""
+        self._follow.reset()
+        w = self._active_w
+        if w is not None and any(w is x for _c, x in getattr(self, "cue_widgets", [])):
+            self._scroll_to(w)
 
     def on_speed(self, idx):
         if 0 <= idx < len(self._speeds):

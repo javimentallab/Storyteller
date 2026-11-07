@@ -371,3 +371,7 @@
 369|W tym środowisku QC porównuje to, co słyszy Whisper, z tekstem, ale nie mierzy nadmiarowego głosu na końcu zdania, bo brakuje numpy.
 370|QC jest włączone, ale nie ma czym sprawdzać: ani adresu URL Whisper, ani Whisper na tym komputerze. Ta narracja nie zostanie sprawdzona.
 371|Ten adres nie jest szyfrowany: klucz i dźwięk byłyby przesyłane jawnie. Poza siecią domową używaj https.
+372|Strona {0} z {1} · {2}% książki
+373|Numeracja stron wydania drukowanego, tak jak podaje ją EPUB.
+374|Strona {0} z {1} (w przybliżeniu) · {2}% książki
+375|Strona w przybliżeniu: ta książka nie zawiera numeracji stron wydania drukowanego, więc jedna strona liczy się co {0} liter.

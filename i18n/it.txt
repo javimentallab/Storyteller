@@ -371,3 +371,7 @@
 369|In questo ambiente, il QC confronta ciò che sente Whisper con il testo, ma non misura la voce in più alla fine di ogni frase, perché manca numpy.
 370|Il QC è attivo, ma non c’è con cosa controllare: né URL di Whisper né Whisper su questo computer. Questa narrazione non sarà controllata.
 371|Questo indirizzo non è cifrato: la chiave e l’audio viaggerebbero in chiaro. Fuori dalla rete di casa, usa https.
+372|Pagina {0} di {1} · {2}% del libro
+373|Numerazione delle pagine del libro stampato, così come la riporta l'EPUB.
+374|Pagina {0} di {1} (approssimativa) · {2}% del libro
+375|Pagina approssimativa: questo libro non riporta la numerazione dell'edizione stampata, quindi si conta una pagina ogni {0} lettere.
