@@ -371,3 +371,7 @@
 369|In this environment, QC compares what Whisper hears with the text, but doesn't measure extra voice at the end of each sentence, because numpy is missing.
 370|QC is on, but there is nothing to check with: neither a Whisper URL nor Whisper on this computer. This narration won't be checked.
 371|That address isn't encrypted: the key and the audio would travel in the clear. Outside your home network, use https.
+372|Page {0} of {1} · {2}% of the book
+373|Page numbers of the printed book, as the EPUB gives them.
+374|Page {0} of {1} (approximate) · {2}% of the book
+375|Approximate page: this book doesn't carry the page numbers of the printed edition, so a page is counted every {0} letters.

@@ -371,3 +371,7 @@
 369|In deze omgeving vergelijkt de QC wat Whisper hoort met de tekst, maar meet hij geen extra stem aan het eind van elke zin, omdat numpy ontbreekt.
 370|QC staat aan, maar er is niets om mee te controleren: geen Whisper-URL en geen Whisper op deze computer. Deze voorlezing wordt niet gecontroleerd.
 371|Dat adres is niet versleuteld: de sleutel en de audio zouden onbeschermd reizen. Gebruik buiten je thuisnetwerk https.
+372|Pagina {0} van {1} · {2}% van het boek
+373|Paginanummering van het gedrukte boek, zoals de EPUB die meegeeft.
+374|Pagina {0} van {1} (bij benadering) · {2}% van het boek
+375|Pagina bij benadering: dit boek bevat de paginanummering van de gedrukte uitgave niet, dus wordt er elke {0} letters een pagina geteld.

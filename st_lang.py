@@ -388,6 +388,10 @@ SOURCE = [
     'Con este entorno, el QC compara lo que oye Whisper con el texto, pero no mide la voz de más al final de cada frase, porque falta numpy.',  # 369
     'QC activado, pero no hay con qué revisar: ni URL de Whisper ni Whisper en este equipo. Esta narración no se revisará.',  # 370
     'Esa dirección no va cifrada: la clave y el audio viajarían a la vista. Fuera de tu red de casa, usa https.',  # 371
+    'Página {0} de {1} · {2} % del libro',  # 372
+    'Numeración de páginas del libro impreso, tal como la trae el EPUB.',  # 373
+    'Página {0} de {1} (aproximada) · {2} % del libro',  # 374
+    'Página aproximada: este libro no trae la numeración de la edición impresa, así que se cuenta una página cada {0} letras.',  # 375
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"
