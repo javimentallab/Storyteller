@@ -47,8 +47,10 @@ o un servicio de voz; **F5 y Whisper son opcionales** y se instalan aparte, solo
   (`pron.json`, con una parte por idioma) para las palabras que suenen mal.
 - **Importar un audiolibro** (mp3/m4a/…) y transcribirlo con Whisper (opcional, se instala aparte) → subtítulos
   con tiempos. Idioma seleccionable o autodetección.
-- **Reproductor** con subtítulos sincronizados, autoscroll, control de velocidad,
-  saltos, ir a capítulo/posición y **marcador de escucha** (retoma donde lo dejaste).
+- **Reproductor** con subtítulos sincronizados, control de velocidad, saltos, ir a
+  capítulo/posición y **marcador de escucha** (retoma donde lo dejaste). Muestra la **página**
+  por la que va, la del libro impreso cuando el EPUB la trae, y el texto **sigue a la voz**: si
+  lo desplazas a mano, vuelve a la línea que suena a los cinco segundos.
 - **Escuchar mientras narra**: *Escuchar* en la barra de narración abre el libro en curso;
   el reproductor añade solo las frases y capítulos nuevos y, cuando alcanza lo narrado,
   espera y sigue en el punto exacto.
@@ -71,6 +73,8 @@ o un servicio de voz; **F5 y Whisper son opcionales** y se instalan aparte, solo
   **cargar voces** desde archivo
   o por URL (el texto de referencia se **autotranscribe**). Catálogo de voces
   descargables.
+- Botón **Buscar actualizaciones** en la biblioteca: pregunta a GitHub solo cuando lo pulsas e instala la
+  versión nueva sin tocar tus libros, ajustes, voces ni modelos ([Actualizar](#actualizar)).
 
 <p align="center">
   <img src="docs/translate.png" width="49%" alt="Translate documents screen">

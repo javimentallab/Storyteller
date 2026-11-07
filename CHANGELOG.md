@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (2026-11-07)
 
 ### Added
 - **Check for updates**, under the Storyteller name in the library. It asks GitHub for the latest release only
@@ -11,6 +11,11 @@
   with uncommitted changes or commits of its own is left untouched, and the app offers the release page. It does
   not update while a narration, transcription, translation or download is in progress. See
   [Updating](README.md#updating).
+- **The page you are on.** The player shows the page being narrated and how much of the book is behind you, for
+  example 'Page 84 of 453 · 19 % of the book'. When the EPUB carries the page numbers of the printed book, those
+  are used, Roman numerals included; otherwise pages of a fixed length are counted and marked as approximate.
+- **The text follows the voice.** If you scroll away by hand, the player stops following the narration and goes
+  back to the line being read after five seconds without touching it.
 
 ### Changed
 - **Narration reads on instead of line by line.** Each sentence now goes to the voice whole, and XTTS makes
@@ -26,7 +31,7 @@
 - **XTTS voice without the noise filter and without squashed peaks.** The output is no longer run through
   noise reduction: it lowered the voice by about 8 dB, unevenly from one piece to the next, and dulled the high
   notes. XTTS ends in a `tanh` that flattens the loudest moments; it is undone and the level lowered so that
-  emphasis doesn't sound saturated. Narration, `st_server` and the server engine sound the same. `noisereduce` is
+  emphasis does not sound saturated. Narration, `st_server` and the server engine sound the same. `noisereduce` is
   no longer installed.
 - In Spanish, a piece no longer goes to XTTS with a final full stop: with it, more endings came with a made-up tail
   (6 in 80 pieces against 1 without it). Other languages keep it.

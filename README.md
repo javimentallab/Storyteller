@@ -48,8 +48,10 @@ XTTS or a voice service; **F5 and Whisper are optional** and are installed apart
   sound wrong.
 - **Import an audiobook** (mp3/m4a/…) and transcribe it with Whisper (optional, installed apart) → timed subtitles.
   Language can be chosen or detected.
-- **Player** with synced subtitles, autoscroll, speed control, skips, go to
-  chapter/position and a **listening bookmark** (picks up where you left off).
+- **Player** with synced subtitles, speed control, skips, go to chapter/position and a
+  **listening bookmark** (picks up where you left off). It shows the **page** being read, the
+  printed book's own when the EPUB carries it, and the text **follows the voice**: scroll away by
+  hand and it comes back to the line being read after five seconds.
 - **Listen while it narrates**: *Listen* in the narration bar opens the book in progress;
   the player adds new sentences and chapters by itself and, when it catches up, waits
   and carries on from the exact spot.
@@ -72,6 +74,8 @@ XTTS or a voice service; **F5 and Whisper are optional** and are installed apart
   transcription models (faster-whisper), with a progress bar (size, speed, time left) and *Cancel*, choose the narration language, parallel chunks and QC,
   and **load voices** from a file or a URL (the reference text is **transcribed
   automatically**). Catalogue of downloadable voices.
+- **Check for updates** button in the library: asks GitHub only when you press it and installs the new
+  version without touching your books, settings, voices or models ([Updating](#updating)).
 
 <p align="center">
   <img src="docs/translate.png" width="49%" alt="Translate documents screen">
