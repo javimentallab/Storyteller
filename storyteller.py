@@ -2759,7 +2759,7 @@ class PlayerPage(QWidget):
         self.pageLbl = ElidedLabel(""); self.pageLbl.setObjectName("time"); self.pageLbl.hide()
         self.pageLbl.setAlignment(Qt.AlignCenter)
         nav.addWidget(self.pageUpBtn); nav.addWidget(self.pageDnBtn)
-        nav.addStretch(1); nav.addWidget(self.pageLbl, 4); nav.addStretch(1)
+        nav.addWidget(self.pageLbl, 1)          # centrada por su AlignCenter; con estiramientos a los lados se cortaba
         nav.addWidget(self.gotoPosBtn); nav.addWidget(self.gotoChapBtn)
         bv.addLayout(nav)
 

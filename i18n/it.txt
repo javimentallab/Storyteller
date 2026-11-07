@@ -373,7 +373,7 @@
 371|Questo indirizzo non è cifrato: la chiave e l’audio viaggerebbero in chiaro. Fuori dalla rete di casa, usa https.
 372|Pagina {0} di {1} · {2}% del libro
 373|Numerazione delle pagine del libro stampato, così come la riporta l'EPUB.
-374|Pagina {0} di {1} (approssimativa) · {2}% del libro
+374|Pagina {0} di {1} (circa) · {2}% del libro
 375|Pagina approssimativa: questo libro non riporta la numerazione dell'edizione stampata, quindi si conta una pagina ogni {0} lettere.
 376|Impossibile contattare GitHub: nessuna connessione o nessuna risposta. Riprova più tardi; non ho cambiato nulla.
 377|GitHub ha risposto con un errore ({0}). Riprova più tardi; non ho cambiato nulla.

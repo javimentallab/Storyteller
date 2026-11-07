@@ -373,7 +373,7 @@
 371|That address isn't encrypted: the key and the audio would travel in the clear. Outside your home network, use https.
 372|Page {0} of {1} · {2}% of the book
 373|Page numbers of the printed book, as the EPUB gives them.
-374|Page {0} of {1} (approximate) · {2}% of the book
+374|Page {0} of {1} (approx.) · {2}% of the book
 375|Approximate page: this book doesn't carry the page numbers of the printed edition, so a page is counted every {0} letters.
 376|Could not reach GitHub: there is no connection or it is not responding. Try again later; nothing has been changed.
 377|GitHub returned an error ({0}). Try again later; nothing has been changed.
