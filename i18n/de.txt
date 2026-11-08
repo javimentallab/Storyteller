@@ -405,3 +405,7 @@
 403|Diese Kopie ist ein Git-Klon, aber Git ist auf diesem Computer nicht zu finden: Von hier aus kann sie nicht aktualisiert werden.
 404|Die Seite der Version öffnen?
 405|Diese Kopie ist ein Git-Klon: Das Tag {0} wird aus dem offiziellen Storyteller-Repository geladen, und die Kopie rückt ohne Zusammenführen bis dorthin vor. Einstellungen, Bücher, der Fortschritt jeder Erzählung, Stimmen, Modelle und installierte Engines bleiben, wie sie sind, und werden nicht erneut heruntergeladen.
+406|Storyteller ist schon in einem anderen Fenster geöffnet. Nutze dieses: Mit zwei gleichzeitig könnte eines das Buch beschädigen, das das andere erzählt.
+407|Die Einstellungen konnten nicht gelesen werden: Die Datei war beschädigt. Sie wurde separat als {0} gespeichert, und es geht mit den Standardeinstellungen weiter; du musst Engine, Stimme und Server neu wählen.
+408|Es gibt schon eine Stimme „{0}“. Durch diese ersetzen? Die bisherige geht verloren.
+409|Whisper brach mitten im Audio ab (zu wenig Speicher?). Das Transkribierte ist gespeichert; du kannst Fortsetzen.

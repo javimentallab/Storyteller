@@ -422,6 +422,10 @@ SOURCE = [
     'Esta copia es un clon de git, pero no encuentro git en este equipo: no puedo actualizarla desde aquí.',  # 403
     '¿Abro la página de la versión?',  # 404
     'Esta copia es un clon de git: se baja la etiqueta {0} del repositorio oficial de Storyteller y la copia avanza hasta ella sin mezclar nada. La configuración, los libros, lo que llevas de cada narración, las voces, los modelos y los motores instalados se quedan como están y no se vuelven a bajar.',  # 405
+    'Storyteller ya está abierto en otra ventana. Usa esa: con dos a la vez, una podría estropear el libro que narra la otra.',  # 406
+    'No pude leer la configuración: estaba dañada. La he guardado aparte en {0} y sigo con la de fábrica; tendrás que volver a elegir el motor, la voz y el servidor.',  # 407
+    'Ya hay una voz «{0}». ¿La sustituyo por esta? La de ahora se pierde.',  # 408
+    'Whisper se cortó a mitad del audio (¿falta memoria?). Lo transcrito se ha guardado; puedes Reanudar.',  # 409
 ]
 
 HERE = Path(__file__).resolve().parent / "i18n"

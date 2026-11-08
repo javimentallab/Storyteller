@@ -405,3 +405,7 @@
 403|Deze kopie is een git-kloon, maar git is niet te vinden op deze computer: hij kan hiervandaan niet worden bijgewerkt.
 404|De pagina van de versie openen?
 405|Deze kopie is een git-kloon: de tag {0} wordt gedownload uit de officiële repository van Storyteller en de kopie gaat ernaartoe vooruit zonder iets samen te voegen. Instellingen, boeken, de voortgang van elke vertelling, stemmen, modellen en geïnstalleerde engines blijven zoals ze zijn en worden niet opnieuw gedownload.
+406|Storyteller is al geopend in een ander venster. Gebruik dat: met twee tegelijk kan het ene het boek beschadigen dat het andere vertelt.
+407|De instellingen konden niet worden gelezen: het bestand was beschadigd. Het is apart opgeslagen als {0} en de standaardinstellingen worden gebruikt; je moet engine, stem en server opnieuw kiezen.
+408|Er is al een stem ‘{0}’. Vervangen door deze? De huidige gaat verloren.
+409|Whisper stopte halverwege de audio (te weinig geheugen?). Wat getranscribeerd is, is opgeslagen; je kunt Hervatten.

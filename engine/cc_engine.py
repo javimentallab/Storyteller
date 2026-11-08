@@ -70,6 +70,36 @@ def _n2w(mobj):
     try: return _to_words(int(s), lang)
     except Exception: return s
 
+# Códigos que se leen cifra a cifra (ISBN, teléfonos, números de serie): como cantidad, un ISBN de 13
+# cifras eran ~140 caracteres («nueve billones setecientos…») y la frase pasaba del tope de XTTS
+# (239 en español) después de trocearla, que se corta y se come el final.
+#  - grupos con guiones, 3 o más y 7 cifras o más: 978-84-376-0494-7, 91-234-56-78 (no 2026-11-08);
+#  - 8 cifras o más seguidas, salvo una cantidad redonda (25000000 se sigue diciendo como cantidad).
+_CODE_GROUPS = re.compile(r"(?<![\w.,-])\d{1,7}(?:-\d{1,7}){2,}(?:-[Xx])?(?![\w-])")
+_CODE_LONG = re.compile(r"(?<![\w.,-])\d{8,}(?![\w-]|[.,]\d)")
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+def _say_digits(groups, lang):
+    """Cifra a cifra; entre grupos, una coma (la pausa de quien lee un código)."""
+    return ", ".join(" ".join(_to_words(int(c), lang) if c.isdigit() else c for c in g) for g in groups)
+
+def _read_codes(text, lang):
+    def groups(m):
+        s = m.group(0)
+        if _ISO_DATE.fullmatch(s) or sum(c.isdigit() for c in s) < 7:
+            return s
+        try: return _say_digits(s.split("-"), lang)
+        except Exception: return s                        # idioma sin num2words: se quedan las cifras
+
+    def long_run(m):
+        s = m.group(0)
+        if len(s.rstrip("0")) <= 3:                       # cantidad redonda: 10000000, 25000000
+            return s
+        try: return _say_digits([s], lang)
+        except Exception: return s
+    text = _CODE_GROUPS.sub(groups, text)
+    return _CODE_LONG.sub(long_run, text)
+
 def normalize_numbers(text):
     """Pasa los dígitos a palabras (en el idioma NUM_LANG) para que F5 no alucine.
     El subtítulo conserva el texto original; esto solo se usa para generar el audio."""
@@ -77,6 +107,7 @@ def normalize_numbers(text):
         import num2words  # noqa: F401
     except Exception:
         return text
+    text = _read_codes(text, NUM_LANG)
     es, point = NUM_LANG == "es", NUM_LANG in _DECIMAL_POINT
     # precios: "$74.99" -> "74 dólares con 99"; "$140" -> "140 dólares" (XTTS decía "dólar ciento…")
     if es:
@@ -729,7 +760,33 @@ def with_stop(text):
 # libro, no el modelo. trim_clip deja además 40 ms por lado: se oyen 0,30 / 0,63 / 0,98 s.
 PAUSES = {"coma": 0.22, "frase": 0.55, "parrafo": 0.90}
 
-def _split_long(s, hard, short=20):
+def _spoken_len(s):
+    """Lo que mide el trozo cuando le llega a XTTS, con los números ya escritos en letra."""
+    try:
+        return len(normalize_numbers(s))
+    except Exception:
+        return len(s)
+
+def _split_long(s, hard, short=20, limit=None):
+    """Como _split_long_raw, pero midiendo el trozo con los números escritos en letra: una frase
+    corta con un ISBN o un teléfono pasaba del tope de XTTS después de trocearla, y XTTS se comía
+    el final. Si un trozo se pasa de `limit` (el tope de verdad), se vuelve a partir con un tope de
+    corte proporcional, más bajo, pero se sigue midiendo contra `limit`."""
+    limit = limit or hard
+    out = []
+    for piece in _split_long_raw(s, hard, short):
+        spoken = _spoken_len(piece)
+        if spoken <= limit or len(piece) <= 2 * short:
+            out.append(piece)
+            continue
+        h = max(2 * short, int(len(piece) * limit / spoken))
+        if h >= len(piece):                                  # no se puede partir más
+            out.append(piece)
+            continue
+        out.extend(_split_long(piece, h, short, limit))
+    return out
+
+def _split_long_raw(s, hard, short=20):
     """Parte una frase de más de `hard` caracteres. Se corta en la coma (o ; :) más cercana al
     tope, para que el trozo sea lo más largo posible; si con eso el resto o el trozo quedan por
     debajo de `short`, en la anterior. Sin ninguna coma que valga, en un espacio."""
@@ -898,20 +955,33 @@ def write_atomic(path, text):
     with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(text)
     replace_retry(tmp, path)
 
+def _ffmpeg_failed(src_wav, p):
+    err = (p.stderr or b"").decode("utf-8", "replace").strip().splitlines()
+    return RuntimeError(f"ffmpeg no pudo pasar {os.path.basename(src_wav)} a mp3 "
+                        f"(código {p.returncode}): {err[-1] if err else 'sin salida'}")
+
 def _encode_mp3(src_wav, dst_mp3, append=False):
     """WAV->MP3 con libmp3lame CBR 128k. append=True escribe a stdout y añade
-    los bytes al mp3 existente (CBR concatenable); si no, reemplazo atómico."""
+    los bytes al mp3 existente (CBR concatenable); si no, reemplazo atómico.
+    Si ffmpeg falla salta RuntimeError y no se toca el mp3: quien llama no debe
+    borrar el WAV ni dar el capítulo por hecho."""
     if append:
-        p = subprocess.run(["ffmpeg", "-y", "-i", src_wav, "-codec:a", "libmp3lame",
+        p = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src_wav, "-codec:a", "libmp3lame",
                             "-b:a", "128k", "-f", "mp3", "pipe:1"],
-                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0 or not p.stdout:
+            raise _ffmpeg_failed(src_wav, p)
         with open(dst_mp3, "ab") as o: o.write(p.stdout)
     else:
         tmp = dst_mp3 + ".tmp"
-        subprocess.run(["ffmpeg", "-y", "-i", src_wav, "-codec:a", "libmp3lame",
-                        "-b:a", "128k", "-f", "mp3", tmp],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.exists(tmp): replace_retry(tmp, dst_mp3)
+        p = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src_wav, "-codec:a", "libmp3lame",
+                            "-b:a", "128k", "-f", "mp3", tmp],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        if p.returncode != 0 or not os.path.exists(tmp) or os.path.getsize(tmp) == 0:
+            try: os.remove(tmp)
+            except OSError: pass
+            raise _ffmpeg_failed(src_wav, p)
+        replace_retry(tmp, dst_mp3)
 
 def write_cues(outdir, base, title, cues, dur):
     write_atomic(os.path.join(outdir, base + ".json"),

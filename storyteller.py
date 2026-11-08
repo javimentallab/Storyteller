@@ -9,7 +9,8 @@ resaltada, clic para saltar). La generacion corre en el servidor (GPU) por SSH.
 import sys, os, re, json, shutil, subprocess, time, tempfile, threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal, QUrl, QTimer, QTranslator, QLibraryInfo, QProcess, QStandardPaths
+from PySide6.QtCore import (Qt, QThread, Signal, QUrl, QTimer, QTranslator, QLibraryInfo, QProcess, QStandardPaths,
+                            QLockFile)
 from PySide6.QtGui import QShortcut, QKeySequence, QIcon, QFontDatabase, QFontMetrics, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget, QWidget, QVBoxLayout, QHBoxLayout,
@@ -25,7 +26,7 @@ from st_pages import FOLLOW_PAUSE, PAGE_LETTERS, Follow, book_pages  # página y
 import st_update  # «Buscar actualizaciones»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
                      live_manifest, merge_stream_manifests, parse_count, prepare_resume, read_gen_state,
-                     recover_interrupted, RemoteProgress, slug,
+                     recover_interrupted, RemoteProgress, slug, free_book_name, set_aside_book, restore_book,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
@@ -74,8 +75,11 @@ def ensure_pron():
     except Exception:
         pass
     return PRON_FILE
-SSH = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"]
-SCP = ["scp", "-q", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"]
+# ServerAlive: si la red se corta a mitad (narrando o trayendo el libro), ssh lo nota en ~1 min y sale
+# con 255, en lugar de quedarse esperando para siempre con la app colgada en «Narrando…».
+_ALIVE = ["-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4"]
+SSH = ["ssh", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"] + _ALIVE
+SCP = ["scp", "-q", "-o", "ConnectTimeout=10", "-o", "BatchMode=yes"] + _ALIVE
 NOWIN = 0x08000000 if os.name == "nt" else 0
 
 # Modelos de voz neural que el usuario puede descargar (desde Hugging Face).
@@ -119,16 +123,49 @@ LANGS = [("es", _("Español")), ("auto", _("Detectar automáticamente")), ("en",
          ("fr", _("Francés")), ("de", _("Alemán")), ("it", _("Italiano")), ("pt", _("Portugués")),
          ("ca", _("Catalán")), ("gl", _("Gallego")), ("eu", _("Euskera"))]
 
+CONFIG_UNREADABLE = []                   # dónde se apartó un config.json que no se podía leer (para avisar)
+
 def load_config():
     cfg = {"engine": "local", "model": DEFAULT_MODEL, "voice": "narrator", "server": ""}
-    try: cfg.update(json.loads(CONFIG.read_text("utf-8")))
-    except Exception: pass
+    text = None
+    for i in range(20):                  # Windows: «Acceso denegado» si se está guardando justo ahora
+        try:
+            text = CONFIG.read_text("utf-8-sig"); break
+        except FileNotFoundError:
+            return cfg
+        except PermissionError:
+            time.sleep(0.05)
+        except OSError:
+            break
+    if text is None:
+        return cfg
+    try:
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            raise ValueError("no es un objeto")
+        cfg.update(data)
+    except ValueError:
+        # Roto: se aparta en vez de dejar que el próximo guardado lo pise con lo de fábrica sin avisar.
+        bad = CONFIG.with_name(time.strftime("config.unreadable-%Y%m%d-%H%M%S.json"))
+        try:
+            os.replace(CONFIG, bad); CONFIG_UNREADABLE.append(str(bad))
+        except OSError:
+            pass
     return cfg
 
 def save_config(cfg):
+    """Escritura atómica: se guarda en cada paso del volumen, y un corte a mitad dejaba el fichero roto."""
     try:
         CONFIG.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG.write_text(json.dumps(cfg), encoding="utf-8")
+        fd, tmp = tempfile.mkstemp(dir=str(CONFIG.parent), prefix=".config-", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(cfg))
+        for i in range(60):              # Windows: falla si otro lo está leyendo en ese instante
+            try:
+                os.replace(tmp, CONFIG); return
+            except PermissionError:
+                time.sleep(0.05)
+        os.remove(tmp)
     except Exception: pass
 
 VOICES_DIR = HOME_CC / "engine" / "voices"
@@ -675,31 +712,42 @@ class GenWorker(QThread):
                 except RuntimeError as e:
                     self.failed.emit(_("No pude enviar el EPUB al servidor:\n") + str(e)); return
 
-            self.progress.emit(_("Contando las frases del libro…"), -1)
-            sents = self._count_remote()
+            sents = []
+            if self.mode == "run":
+                self.progress.emit(_("Contando las frases del libro…"), -1)
+                sents = self._count_remote()
+            if self.mode == "cancel":                     # Cancelar antes de arrancar el motor
+                if not self.resume:
+                    self._run(SSH + [self.host, f"rm -rf '{REMOTE_DIR}/out/{self.name}'"])
+                self.canceled.emit(); return
+            # Detener y guardar antes de arrancarlo: no se arranca, pero se trae lo que el servidor
+            # ya tuviera narrado (al reanudar puede ir por delante de lo de aquí).
+            launch = self.mode == "run"
             prog = RemoteProgress(sents) if sents else None
-            self.progress.emit(_("Reanudando el motor de voz…") if self.resume
-                               else _("Arrancando el motor de voz…"), -1)
-            rs = "CC_RESUME=1 " if self.resume else ""
-            st = f"CC_STREAMS={self.streams} " if self.streams > 1 else ""
-            if self.xtts:
-                qc = f"CC_QC_MODEL={self.qc_model} " if self.qc_model else ""
-                cmd = (f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_xtts.sh 'inbox/{self.name}.epub' 'out/{self.name}' "
-                       f"'voices-xtts/{self.voice['id']}.wav' '{model_language(self.model)}'")
-            else:
-                qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
-                cmd = f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
-            p = subprocess.Popen(SSH + [self.host, cmd], stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT, text=True,
-                                 encoding="utf-8", errors="replace", creationflags=NOWIN)
-            self.proc = p
+            p = None
+            if launch:
+                self.progress.emit(_("Reanudando el motor de voz…") if self.resume
+                                   else _("Arrancando el motor de voz…"), -1)
+                rs = "CC_RESUME=1 " if self.resume else ""
+                st = f"CC_STREAMS={self.streams} " if self.streams > 1 else ""
+                if self.xtts:
+                    qc = f"CC_QC_MODEL={self.qc_model} " if self.qc_model else ""
+                    cmd = (f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_xtts.sh 'inbox/{self.name}.epub' 'out/{self.name}' "
+                           f"'voices-xtts/{self.voice['id']}.wav' '{model_language(self.model)}'")
+                else:
+                    qc = "CC_QC=1 " if load_config().get("qc_auto") else ""
+                    cmd = f"cd {REMOTE_DIR} && {qc}{rs}{st}./run_epub.sh 'inbox/{self.name}.epub' 'out/{self.name}'"
+                p = subprocess.Popen(SSH + [self.host, cmd], stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, text=True,
+                                     encoding="utf-8", errors="replace", creationflags=NOWIN)
+                self.proc = p
             done = 0
             cap_cur = cap_tot = 0
             tramos = 1                 # los que de verdad lanza el servidor (lo dice él)
             caps_seen = set()          # en tramos no hay un único capítulo actual
             tramo_failed = False
-            finished = False           # el script del servidor acaba siempre con RUN-RC
-            for line in p.stdout:
+            finished = not launch      # el script del servidor acaba siempre con RUN-RC
+            for line in (p.stdout if p else []):
                 line = line.rstrip()
                 if "RUN-RC=" in line: finished = True
                 m = re.search(r"capitulos:\s*(\d+)", line)
@@ -741,7 +789,8 @@ class GenWorker(QThread):
                     self.progress.emit(_("La GPU estaba ocupada; un tramo va en CPU (más lento)…"), -1)
                 elif "modelo cargado" in line and tramos == 1:
                     self.progress.emit(_("Modelo cargado, narrando…"), -1)
-            p.wait()
+            if p:
+                p.wait()
 
             if self.mode == "cancel":
                 if not self.resume:            # cancelar una reanudación no borra lo ya hecho
@@ -833,6 +882,7 @@ class LocalGenWorker(QThread):
 
     def run(self):
         tmp_epub = None
+        self._backup = None
         try:
             dest = LOCAL_BOOKS / self.name
             ACTIVE_GEN.add(str(dest))                     # la biblioteca no la "repara" mientras narra
@@ -846,6 +896,10 @@ class LocalGenWorker(QThread):
                     shutil.copyfile(epub, tmp_epub); epub = Path(tmp_epub)
             except Exception: pass
             if not self.resume:                               # reanudar = NO borrar lo hecho
+                # Regenerar: el libro de antes se aparta y vuelve si no se llega a narrar nada
+                # (cancelar, fallo al arrancar); antes se borraba al empezar y, si fallaba, no quedaba nada.
+                if (dest / "manifest.json").exists():
+                    self._backup = set_aside_book(dest)
                 if dest.exists(): shutil.rmtree(dest, ignore_errors=True)
                 dest.mkdir(parents=True, exist_ok=True)
                 try: shutil.copyfile(epub, dest / "source.epub")   # para poder regenerar
@@ -891,26 +945,32 @@ class LocalGenWorker(QThread):
                 streams = int(st0["streams"] or 1)
             if self.service:                                  # un solo proceso con varias peticiones (--parallel)
                 streams = 1
-            self.progress.emit(_("Contando las frases del libro…"), -1)
-            n, sents = self._count_chapters(cmd)          # sents = frases por capítulo (estimación)
-            if self.resume:                               # cada proceso, con todo lo narrado de su rango
-                prepare_resume(dest, streams, n)
-            if streams > 1 and n > 1:
-                self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
-            else:
-                self._run_single(cmd, dest, sents)
+            if self.mode == "run":
+                self.progress.emit(_("Contando las frases del libro…"), -1)
+                n, sents = self._count_chapters(cmd)      # sents = frases por capítulo (estimación)
+            # Detener o Cancelar mientras contaba: no se arranca la narración.
+            if self.mode == "run":
+                if self.resume:                           # cada proceso, con todo lo narrado de su rango
+                    prepare_resume(dest, streams, n)
+                if streams > 1 and n > 1:
+                    self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
+                else:
+                    self._run_single(cmd, dest, sents)
             if self.mode == "cancel":
-                # Cancelar una generación DESDE CERO descarta todo; cancelar una
-                # REANUDACIÓN conserva lo que ya había (no borrar el libro entero).
+                # Cancelar una generación DESDE CERO descarta todo (al regenerar, vuelve el libro
+                # de antes); cancelar una REANUDACIÓN conserva lo que ya había.
                 if not self.resume:
                     shutil.rmtree(dest, ignore_errors=True)
+                    self._restore_backup(dest)
                 self.canceled.emit(); return
             if self.error and self.mode == "run":
                 # Lo que llegó queda guardado y el libro, a medias.
                 if (dest / "manifest.json").exists():
+                    self._drop_backup()
                     self.error += "\n\n" + _("Lo ya narrado está guardado; puedes reanudar el libro desde la biblioteca.")
                 elif not self.resume:
                     shutil.rmtree(dest, ignore_errors=True)
+                    self._restore_backup(dest)
                 self.failed.emit(self.error); return
             # Al detener y guardar se conserva el WAV del capítulo en curso para poder
             # reanudar; en una generación completa no queda ninguno.
@@ -921,21 +981,42 @@ class LocalGenWorker(QThread):
                 try: p.unlink()
                 except Exception: pass
             if not (dest / "manifest.json").exists():
+                # Nada narrado: se quita la carpeta (al regenerar, vuelve el libro de antes).
+                if self.mode != "stopsave" or self._backup:
+                    shutil.rmtree(dest, ignore_errors=True)
+                    self._restore_backup(dest)
                 if self.mode == "stopsave":
                     self.failed.emit(_("Lo detuve, pero aún no había ningún capítulo terminado que guardar."))
                 else:
-                    shutil.rmtree(dest, ignore_errors=True)
                     self.failed.emit(_("La narración no produjo audio. Puede faltar memoria en la GPU "
                                      "(cierra juegos u apps que la usen) o el modelo estar incompleto."))
                 return
+            self._drop_backup()
             self.done.emit(str(dest))
         except Exception as e:
+            if not self.resume and getattr(self, "_backup", None):
+                dest = LOCAL_BOOKS / self.name
+                if not (dest / "manifest.json").exists():
+                    shutil.rmtree(dest, ignore_errors=True)
+                    self._restore_backup(dest)
             self.failed.emit(_('Error inesperado: {0}').format(e))
         finally:
             ACTIVE_GEN.discard(str(LOCAL_BOOKS / self.name))
             if tmp_epub:
                 try: os.remove(tmp_epub)
                 except Exception: pass
+
+    def _restore_backup(self, dest):
+        """Devuelve a su sitio el libro apartado al regenerar (si lo hay)."""
+        if self._backup:
+            restore_book(self._backup, dest)
+            self._backup = None
+
+    def _drop_backup(self):
+        """La regeneración ya tiene lo suyo: el libro de antes sobra."""
+        if self._backup:
+            shutil.rmtree(self._backup, ignore_errors=True)
+            self._backup = None
 
     # ---- un solo proceso (camino clásico) --------------------------------
     def _service_line(self, line):
@@ -990,7 +1071,9 @@ class LocalGenWorker(QThread):
         p.wait()
         try: logf.close()
         except Exception: pass
-        if self.service and p.returncode and not self.error:   # se cayó sin llegar a contar por qué
+        # Se cayó sin llegar a contar por qué (motor local o servicio): no ha terminado, aunque lo
+        # parezca. Antes se daba por narrado y se borraban los WAV del capítulo a medias.
+        if p.returncode and self.mode == "run" and not self.error:
             self.error = _('Error inesperado: {0}').format(last)
 
     # ---- varios tramos en paralelo ---------------------------------------
@@ -1000,11 +1083,19 @@ class LocalGenWorker(QThread):
         try:
             i = base_cmd.index("--epub"); epub = base_cmd[i + 1]
             exe = base_cmd[0]; script = base_cmd[2]
-            p = subprocess.run([exe, "-I", script, "count", "--epub", epub],
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               text=True, encoding="utf-8", errors="replace",
-                               creationflags=NOWIN, timeout=180)
-            return parse_count(p.stdout)
+            # Como proceso propio (self.proc) para que Detener y Cancelar lo corten también aquí.
+            p = subprocess.Popen([exe, "-I", script, "count", "--epub", epub],
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                 text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
+            with self._plock:
+                self.proc = p
+            if self.mode != "run":                        # lo pararon justo antes de tener el proceso
+                p.terminate()
+            try:
+                out = p.communicate(timeout=180)[0]
+            except subprocess.TimeoutExpired:
+                p.kill(); out = p.communicate()[0]
+            return parse_count(out)
         except Exception:
             return 1, []
 
@@ -1038,8 +1129,10 @@ class LocalGenWorker(QThread):
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
             with self._plock: self.procs.append(p)
+            last = ""
             for line in p.stdout:
                 line = line.rstrip()
+                last = line or last
                 with self._lock:
                     try: logf.write(f"[t{idx}] {line}\n"); logf.flush()
                     except Exception: pass
@@ -1068,6 +1161,10 @@ class LocalGenWorker(QThread):
                         try: merge_stream_manifests(dest, streams, n, complete_ok=False)
                         except Exception: pass
             p.wait()
+            if p.returncode and self.mode == "run":       # el tramo se cayó: el libro no está terminado
+                with self._lock:
+                    if not self.error:
+                        self.error = _('Error inesperado: {0}').format(last)
 
         ths = [threading.Thread(target=worker, args=(i, r), daemon=True)
                for i, r in enumerate(ranges, 1)]
@@ -1419,16 +1516,18 @@ class ImportWorker(QThread):
 
     def _save(self, dest, title, cues, dur, covered, complete):
         """Vuelca cap01.json + manifest + gen_state de forma que el libro sea
-        reproducible y (si no está completo) reanudable."""
-        (dest / "cap01.json").write_text(json.dumps(
+        reproducible y (si no está completo) reanudable. Escritura atómica: se guarda cada pocos
+        segundos y un corte a mitad dejaba los subtítulos rotos (y al reanudar, vacíos)."""
+        _atomic_write(dest / "cap01.json", json.dumps(
             {"title": title, "duration": round(dur, 3), "cues": cues},
-            ensure_ascii=False, indent=1), "utf-8")
-        (dest / "manifest.json").write_text(json.dumps(
+            ensure_ascii=False, indent=1))
+        _atomic_write(dest / "manifest.json", json.dumps(
             [{"id": 1, "base": "cap01", "title": title, "n": len(cues),
-              "duration": round(dur, 3), "done": bool(complete)}], ensure_ascii=False, indent=2), "utf-8")
-        (dest / "gen_state.json").write_text(json.dumps(
+              "duration": round(dur, 3), "done": bool(complete)}], ensure_ascii=False, indent=2))
+        # El estado, el último: lo que dice que está cubierto ya está en los subtítulos.
+        _atomic_write(dest / "gen_state.json", json.dumps(
             {"total": 1, "complete": bool(complete), "kind": "import",
-             "covered": round(covered, 3), "dur": round(dur, 3)}, ensure_ascii=False), "utf-8")
+             "covered": round(covered, 3), "dur": round(dur, 3)}, ensure_ascii=False))
 
     def run(self):
         resume = bool(self.resume_dir)
@@ -1449,7 +1548,9 @@ class ImportWorker(QThread):
                 try:
                     cues = json.loads((dest / "cap01.json").read_text("utf-8")).get("cues", [])
                 except Exception:
-                    cues = []
+                    # Sin subtítulos legibles no se puede seguir desde «covered»: lo de antes quedaría
+                    # sin texto para siempre. Se transcribe otra vez desde el principio.
+                    cues = []; covered = 0.0
                 if dur <= 0: dur = self._duration(mp3)
             else:
                 src = self.src
@@ -1485,7 +1586,11 @@ class ImportWorker(QThread):
                 ok, msg, covered = self._transcribe_remote(dest, mp3, title, dur, cues, covered, lang)
 
             if self.mode == "cancel":
-                shutil.rmtree(dest, ignore_errors=True); self.canceled.emit(); return
+                if resume:                       # cancelar una reanudación conserva el libro y lo transcrito
+                    self._save(dest, title, cues, dur, covered, False)
+                else:
+                    shutil.rmtree(dest, ignore_errors=True)
+                self.canceled.emit(); return
             if not ok:
                 self._save(dest, title, cues, dur, covered, False)   # conservar lo hecho (reanudable)
                 self.failed.emit(msg); return
@@ -1585,6 +1690,11 @@ class ImportWorker(QThread):
             return (True, "", covered)
         if not done_seen and not got:
             return (False, _("No se pudo transcribir en local (¿modelo Whisper incompleto o falta memoria?)."), covered)
+        if not done_seen:
+            # Whisper se cayó a mitad: no ha terminado, aunque haya dado frases. Antes el libro quedaba
+            # «completo» con el final sin transcribir.
+            return (False, _("Whisper se cortó a mitad del audio (¿falta memoria?). Lo transcrito se ha "
+                             "guardado; puedes Reanudar."), covered)
         covered = dur                                        # terminó: cubre todo el audio
         self._save(dest, title, cues, dur, covered, False)
         return (True, "", covered)
@@ -2534,10 +2644,15 @@ class ModelsScreen(QWidget):
         """Guarda la voz: reencoda a WAV 24k mono + .txt (referencia) + .name."""
         vid = slug(name); VOICES_DIR.mkdir(parents=True, exist_ok=True)
         dest_wav = VOICES_DIR / f"{vid}.wav"
-        subprocess.run(["ffmpeg", "-y", "-i", str(audio), "-ar", "24000", "-ac", "1", str(dest_wav)],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=NOWIN)
-        if not dest_wav.exists():
+        # A un temporal y luego en su sitio: si ffmpeg falla, la voz que ya hubiera con ese nombre sigue entera.
+        tmp_wav = VOICES_DIR / f".{vid}.tmp.wav"
+        r = subprocess.run(["ffmpeg", "-y", "-i", str(audio), "-ar", "24000", "-ac", "1", str(tmp_wav)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=NOWIN)
+        if r.returncode != 0 or not tmp_wav.exists() or tmp_wav.stat().st_size == 0:
+            try: tmp_wav.unlink()
+            except OSError: pass
             raise RuntimeError(_("no se pudo convertir el audio (¿ffmpeg?)"))
+        os.replace(tmp_wav, dest_wav)
         (VOICES_DIR / f"{vid}.txt").write_text(text.strip(), encoding="utf-8")
         (VOICES_DIR / f"{vid}.name").write_text(name.strip(), encoding="utf-8")
         return vid
@@ -2551,6 +2666,10 @@ class ModelsScreen(QWidget):
             _("Texto que dice el audio (autodetectado; corrígelo si hace falta):"), guess)
         if ok and txt.strip():
             name, ok = QInputDialog.getText(self, _("Añadir voz"), _("Nombre para la voz:"), text=_("Mi voz"))
+            if ok and name.strip() and (VOICES_DIR / f"{slug(name)}.wav").exists():
+                ok = QMessageBox.question(self, _("Añadir voz"), _(
+                    "Ya hay una voz «{0}». ¿La sustituyo por esta? La de ahora se pierde.").format(name.strip())
+                ) == QMessageBox.StandardButton.Yes
             if ok and name.strip():
                 try:
                     vid = self._voice_save(audio, name, txt)
@@ -3597,6 +3716,8 @@ class Cuentacuentos(QMainWindow):
                 "antes de empezar otra."))
             return
         cfg = load_config()
+        if name is None and not resume:                   # libro nuevo: no pisar otro con el mismo nombre
+            name = free_book_name(LOCAL_BOOKS, slug(Path(path).stem))
         if cfg["engine"] == "local":
             m = model_by_id(cfg["model"], cfg)
             if not voice_engine_ready(m):
@@ -3813,7 +3934,7 @@ class Cuentacuentos(QMainWindow):
 
     def _restart(self):
         """Abre la versión nueva y cierra esta (el cierre guarda por dónde se iba escuchando)."""
-        args = [str(APP_DIR / "storyteller.py")]
+        args = [str(APP_DIR / "storyteller.py"), "--restarted"]   # la nueva espera a que esta suelte el candado
         if "--lang" in sys.argv:
             i = sys.argv.index("--lang"); args += sys.argv[i:i + 2]
         QProcess.startDetached(sys.executable, args, str(APP_DIR))
@@ -3936,13 +4057,35 @@ def install_translations(app):
     app._translators = [qt, StandardButtons(app)]        # vivos mientras dure la app
     app.installTranslator(app._translators[1])           # el último instalado es el primero que se mira
 
+def single_instance_lock(restarted=False, wait_ms=None):
+    """Candado de una sola ventana: con dos abiertas, las dos podían narrar o reparar el mismo libro y
+    pisarse. Al reiniciar tras actualizar, la nueva espera a que la vieja se cierre (puede estar
+    guardando una narración); una versión vieja relanza sin avisar, de ahí los segundos de espera.
+    Devuelve el candado (hay que guardarlo mientras dure la app) o None si ya hay otra abierta."""
+    HOME_CC.mkdir(parents=True, exist_ok=True)
+    lock = QLockFile(str(HOME_CC / ".storyteller.lock"))
+    lock.setStaleLockTime(0)             # solo caduca si su proceso ya no existe (cierre de golpe)
+    if wait_ms is None:
+        wait_ms = 120000 if restarted else 8000
+    return lock if lock.tryLock(wait_ms) else None
+
+
 def main():
     app = QApplication(sys.argv)
     install_translations(app)
+    lock = single_instance_lock("--restarted" in sys.argv)
+    if lock is None:
+        QMessageBox.information(None, "Storyteller", _("Storyteller ya está abierto en otra ventana. Usa esa: con "
+                                                       "dos a la vez, una podría estropear el libro que narra la otra."))
+        sys.exit(0)
     _ico = HOME_CC / "storyteller.ico"
     if _ico.exists(): app.setWindowIcon(QIcon(str(_ico)))
     win = Cuentacuentos(); win.show()
-    a = sys.argv[1:]
+    if CONFIG_UNREADABLE:
+        QTimer.singleShot(300, lambda: warn(win, _(
+            "No pude leer la configuración: estaba dañada. La he guardado aparte en {0} y sigo con la de "
+            "fábrica; tendrás que volver a elegir el motor, la voz y el servidor.").format(CONFIG_UNREADABLE[0])))
+    a = [x for x in sys.argv[1:] if x != "--restarted"]
     if "--lang" in a:                    # handled by st_lang; drop it and its value
         i = a.index("--lang"); del a[i:i + 2]
     if len(a) >= 2 and a[0] == "--book":

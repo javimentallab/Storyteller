@@ -405,3 +405,7 @@
 403|This copy is a git clone, but git cannot be found on this computer: it cannot be updated from here.
 404|Open the release page?
 405|This copy is a git clone: the {0} tag is downloaded from the official Storyteller repository and the copy moves forward to it without merging anything. Your settings, books, progress in each narration, voices, models and installed engines stay as they are and are not downloaded again.
+406|Storyteller is already open in another window. Use that one: with two open at once, one could damage the book the other is narrating.
+407|I couldn’t read the settings: the file was damaged. I’ve saved it separately as {0} and carried on with the defaults; you’ll need to choose the engine, voice and server again.
+408|There is already a voice called “{0}”. Replace it with this one? The current one will be lost.
+409|Whisper stopped partway through the audio (out of memory?). What was transcribed is saved; you can Resume.

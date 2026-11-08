@@ -58,10 +58,20 @@ TPL = ("You are a professional {sl} ({sc}) to {tl} ({tc}) translator. Your goal 
        "Please translate the following {sl} text into {tl}:\n\n\n{text}")
 
 
+MARK = "⟦{0}⟧"                                   # sitio de un trozo que no se traduce (código en línea…)
+MARK_RE = re.compile(r"⟦(\d+)⟧")
+MARK_NOTE = ("The text contains markers like ⟦0⟧ that stand for code or other untranslated pieces. "
+             "Keep every marker exactly as written, once each, where it belongs in the {tl} sentence.\n")
+
+
 def build_prompt(text, src, tgt):
     sl, sc = LANGS[src]
     tl, tc = LANGS[tgt]
-    return TPL.format(sl=sl, sc=sc, tl=tl, tc=tc, text=text)
+    p = TPL.format(sl=sl, sc=sc, tl=tl, tc=tc, text=text)
+    if MARK_RE.search(text):                     # solo entonces: el resto de prompts no cambia
+        i = p.index("Please translate")
+        p = p[:i] + MARK_NOTE.format(tl=tl) + p[i:]
+    return p
 
 
 LETTER = re.compile(r"[^\W\d_]", re.UNICODE)
@@ -417,6 +427,9 @@ BLOCK = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th", "dt", "dd", 
          "title", "summary", "label", "legend", "option"}
 SKIP = {"script", "style", "code", "pre", "math", "svg", "kbd", "samp", "var"}
 KEEP_INLINE = {"img", "image", "svg", "math", "object", "video", "audio", "iframe"}
+# Dentro de un párrafo que se traduce, se quedan tal cual y EN SU SITIO (con una marca ⟦n⟧ en el texto):
+# antes se perdían al reescribir el párrafo, p. ej. el <code> de «usa la orden <code>ls</code>».
+HOLD = SKIP - KEEP_INLINE
 NOTE_RE = re.compile(r"^\W*(\d{1,3}|[*†‡§]+|[ivxlc]{1,5})\W*$", re.I)
 
 
@@ -528,19 +541,27 @@ class EpubDoc:
         return f
 
     def _block_text(self, el):
-        out = []
-        for d in el.descendants:
-            if getattr(d, "name", None):
-                if _lname(d) == "br":
-                    out.append("\n")
-                continue
-            if type(d).__name__ != "NavigableString":
-                continue
-            par = d.parent
-            if par is not None and (_lname(par) in SKIP or self._is_note(par)):
-                continue
-            out.append(str(d))
-        return _ws("".join(out))
+        return self._block_parts(el)[0]
+
+    def _block_parts(self, el):
+        """(texto a traducir, piezas que se conservan). Cada pieza (código, <pre>…) va en el texto
+        como ⟦n⟧, en su sitio; las notas al pie y las imágenes no salen en el texto."""
+        out, held = [], []
+
+        def rec(node):
+            for d in node.children:
+                if getattr(d, "name", None):
+                    ln = _lname(d)
+                    if ln == "br":
+                        out.append("\n")
+                    elif ln in HOLD:
+                        out.append(MARK.format(len(held))); held.append(d)
+                    elif ln not in KEEP_INLINE and not self._is_note(d):
+                        rec(d)
+                elif type(d).__name__ == "NavigableString":
+                    out.append(str(d))
+        rec(el)
+        return _ws("".join(out)), held
 
     def _is_note(self, el):
         ln = _lname(el)
@@ -553,13 +574,15 @@ class EpubDoc:
             (ln == "a" and ("noteref" in (el.get("epub:type") or "") or "#" in (el.get("href") or "")))
 
     def _add_block(self, el):
-        text = self._block_text(el)
-        if not needs_translation(text):
+        text, held = self._block_parts(el)
+        if not needs_translation(MARK_RE.sub("", text)):
             return
-        self.units.append(Unit(text, lambda t, el=el: self._set_block(el, t)))
+        self.units.append(Unit(text, lambda t, el=el, held=held: self._set_block(el, t, held)))
 
-    def _set_block(self, el, t):
+    def _set_block(self, el, t, held=()):
         # notas al pie, imágenes y fórmulas se conservan; el resto del contenido se sustituye
+        for h in held:                                   # el código y lo demás vuelve en su marca
+            h.extract()
         keep_front, keep_end = [], []
         for d in list(el.find_all(True)):
             ln = _lname(d)
@@ -576,14 +599,33 @@ class EpubDoc:
                 target = kids[0]
             else:
                 break
+        # Los destinos de enlaces (<a id="nota3"/>, <span id="p12">) se pierden al vaciar: quedan vacíos,
+        # al principio, para que los enlaces del índice y de las notas sigan llevando a este párrafo.
+        anchors = []
+        for d in target.find_all(True):
+            if d.get("id"):
+                a = self._new_tag(el, d.name)
+                a["id"] = d["id"]
+                anchors.append(a)
         target.clear()
-        for k in keep_front:
+        for k in keep_front + anchors:
             target.append(k)
-        lines = t.split("\n")
-        for i, line in enumerate(lines):
-            if i:
-                target.append(self._new_tag(el, "br"))
-            target.append(line)
+        used = set()
+        for j, piece in enumerate(MARK_RE.split(t)):
+            if j % 2:                                    # una marca ⟦n⟧
+                n = int(piece)
+                if n < len(held) and n not in used:
+                    used.add(n); target.append(held[n])
+                continue
+            for i, line in enumerate(piece.split("\n")):
+                if i:
+                    target.append(self._new_tag(el, "br"))
+                if line:
+                    target.append(line)
+        rest = [h for n, h in enumerate(held) if n not in used]
+        for h in rest:                                   # el traductor se comió la marca: al final, no se pierde
+            target.append(" ")
+            target.append(h)
         for k in keep_end:
             target.append(k)
 
@@ -649,12 +691,15 @@ class DocxDoc:
                     el = etree.fromstring(p.blob)
                     self.xml_parts.append((p, el))
                 roots.append(el)
+        # Los propios elementos, no id(p): lxml crea y suelta un objeto Python por elemento al recorrer,
+        # Python reutiliza su id() y párrafos distintos parecían «ya vistos» (50 de 300 sin traducir).
+        # Guardándolos en el conjunto siguen vivos y lxml devuelve el mismo objeto para el mismo párrafo.
         seen = set()
         for root in roots:
             for p in root.iter(qn("w:p")):
-                if id(p) in seen:
+                if p in seen:
                     continue
-                seen.add(id(p))
+                seen.add(p)
                 self._add_par(p)
         # idioma del documento
         try:

@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Narrating an EPUB whose name matched a book already narrated deleted that book without asking. The new one now
+  gets its own name (`-2`, `-3`…), as importing an audiobook already did.
+- Regenerating a book deleted it before starting: if the narration then failed or was cancelled, nothing was left,
+  not even the EPUB. The book is now set aside and comes back if nothing gets narrated.
+- If the voice engine on this computer crashed, the book was taken as finished and the WAV of the chapter in
+  progress was deleted. It is now reported, and what was narrated stays, ready to resume.
+- If ffmpeg failed when closing a chapter, the WAV was deleted and the chapter marked as done. The chapter is now
+  left unfinished, with its WAV, and the error is reported.
+- Transcribing an audiobook: if Whisper on this computer crashed halfway, the book was marked as complete; now it
+  is left halfway, ready to resume. Cancelling a resumed transcription no longer deletes the whole book.
+- The subtitles of a transcription and `config.json` are now written atomically, so an interruption cannot leave
+  them broken. An unreadable `config.json` is set aside and reported, instead of being silently replaced by the
+  defaults.
+- Adding a voice with the name of an existing one replaced it without asking; it now asks. If the audio cannot be
+  converted, the existing voice is kept.
+- Stop and Cancel now work while the sentences of the book are being counted.
+- On your own server, a dropped network connection could leave the app waiting forever: ssh now notices in about
+  a minute.
+- Only one window of the app can be open: two could narrate or repair the same book at once.
+- Translating a DOCX skipped paragraphs: with empty paragraphs in between, it could miss all of them.
+- Translating an EPUB lost inline code and link targets (`<a id>`), so links from the contents and the notes no
+  longer worked. Both are now kept in place.
+- Codes such as ISBNs and telephone numbers are read digit by digit, and sentences are split by their length with
+  the numbers written out. Before, a 13-digit ISBN became about 140 characters of words and XTTS cut off the end
+  of the sentence.
+
 ## 1.3.2 (2026-11-07)
 
 ### Security

@@ -405,3 +405,7 @@
 403|Cette copie est un clone git, mais git est introuvable sur cet ordinateur : impossible de la mettre à jour d’ici.
 404|Ouvrir la page de la version ?
 405|Cette copie est un clone git : l’étiquette {0} est téléchargée depuis le dépôt officiel de Storyteller et la copie avance jusqu’à elle sans rien fusionner. Les réglages, les livres, l’avancement de chaque narration, les voix, les modèles et les moteurs installés restent tels quels et ne sont pas retéléchargés.
+406|Storyteller est déjà ouvert dans une autre fenêtre. Utilisez celle-là : avec deux à la fois, l’une pourrait abîmer le livre que l’autre narre.
+407|Impossible de lire les réglages : le fichier était endommagé. Il a été mis de côté dans {0} et l’application continue avec les réglages par défaut ; il faudra choisir à nouveau le moteur, la voix et le serveur.
+408|Une voix « {0} » existe déjà. La remplacer par celle-ci ? L’actuelle sera perdue.
+409|Whisper s’est arrêté au milieu de l’audio (mémoire insuffisante ?). Ce qui a été transcrit est enregistré ; vous pouvez Reprendre.

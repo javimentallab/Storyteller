@@ -13,6 +13,46 @@ def slug(name):
     return s or "libro"
 
 
+def free_book_name(books, name):
+    """name si no hay ya un libro con ese nombre en books; si no, name-2, name-3… (como Importar).
+    Narrar un EPUB cuyo nombre coincide con un libro ya narrado lo borraba sin preguntar."""
+    books = Path(books)
+    out, n = name, 1
+    while (books / out).exists():
+        n += 1
+        out = f"{name}-{n}"
+    return out
+
+
+def set_aside_book(dest):
+    """Aparta el libro de dest (al regenerarlo) a una carpeta oculta junto a la biblioteca y
+    devuelve dónde ha quedado. Si no se puede mover (un fichero abierto en Windows), se copia."""
+    dest = Path(dest)
+    backup = dest.parent.parent / f".regen-{dest.name}"
+    shutil.rmtree(backup, ignore_errors=True)             # restos de una regeneración cortada de golpe
+    try:
+        os.replace(dest, backup)
+    except OSError:
+        shutil.copytree(dest, backup)
+    return backup
+
+
+def restore_book(backup, dest):
+    """Devuelve a dest el libro apartado con set_aside_book."""
+    backup, dest = Path(backup), Path(dest)
+    if not backup.exists():
+        return
+    shutil.rmtree(dest, ignore_errors=True)
+    try:
+        os.replace(backup, dest)
+    except OSError:
+        try:
+            shutil.copytree(backup, dest, dirs_exist_ok=True)
+        except (OSError, shutil.Error):
+            return                                        # algo sigue abierto: la copia apartada se conserva
+        shutil.rmtree(backup, ignore_errors=True)
+
+
 def read_gen_state(d):
     try:
         return json.loads((Path(d) / "gen_state.json").read_text("utf-8"))
