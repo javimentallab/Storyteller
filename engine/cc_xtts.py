@@ -85,14 +85,12 @@ def cmd_generate(a):
         E.load_pron(a.pron)
     os.makedirs(a.out, exist_ok=True)
     chaps = E.chapters_from_epub(a.epub)
-    # Modo paralelo: este proceso narra SOLO [chap_start, chap_end] (1-based, 0=sin
-    # tope), escribe su propio manifest (--manifest-name) y no toca gen_state
-    # (--no-state); la app fusiona los tramos al terminar.
-    cs = getattr(a, "chap_start", 0) or 0
-    ce = getattr(a, "chap_end", 0) or 0
+    # Modo paralelo: este proceso narra SOLO sus capitulos, escribe su propio manifest
+    # (--manifest-name) y no toca gen_state (--no-state); la app fusiona los tramos al terminar.
+    wanted = E.stream_chapters(a, len(chaps))
     mani_name = getattr(a, "manifest_name", None) or "manifest.json"
     no_state = getattr(a, "no_state", False)
-    if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
+    if 1 in wanted:                                       # solo el tramo del cap. 1 escribe el titulo
         try:
             _t = E.epub_title(a.epub)
             if _t:
@@ -120,7 +118,7 @@ def cmd_generate(a):
     manifest = []
     def save_manifest():
         E.write_atomic(os.path.join(a.out, mani_name),
-                       json.dumps(E.with_unvisited(manifest, prev, cs, ce or len(chaps)), ensure_ascii=False, indent=2))
+                       json.dumps(E.with_unvisited(manifest, prev, wanted), ensure_ascii=False, indent=2))
 
     def infer(gen_text):
         # split_sentences=False: el trozo ya es una frase; coqui la volvería a partir (pysbd)
@@ -131,7 +129,7 @@ def cmd_generate(a):
         return E.cap_silences(w, 24000), 24000
 
     for ci, ch in enumerate(chaps, 1):
-        if (cs and ci < cs) or (ce and ci > ce):          # fuera de mi tramo
+        if ci not in wanted:                              # de otro tramo
             continue
         base = f"cap{ci:02d}"
         wav_path = os.path.join(a.out, base + ".wav")
@@ -264,6 +262,7 @@ def main():
     g.add_argument("--resume", action="store_true")
     g.add_argument("--chap-start", type=int, default=0)      # tramo paralelo: 1er cap (1-based, 0=sin tope)
     g.add_argument("--chap-end", type=int, default=0)        # tramo paralelo: ultimo cap (0=sin tope)
+    g.add_argument("--chaps", default="")                    # tramo paralelo: capitulos sueltos, «3,7,8»
     g.add_argument("--manifest-name", default="manifest.json")
     g.add_argument("--no-state", action="store_true")
     g.add_argument("--qc-url", default="")                   # endpoint Whisper HTTP (voz-server)

@@ -136,6 +136,14 @@ class MotorXtts(unittest.TestCase):
                         manifest_name="manifest.p1.json", no_state=True)
         self.assertEqual(sorted(self.manifest("manifest.p1.json")), [1, 2])
 
+    def test_un_tramo_narra_solo_sus_capitulos_sueltos(self):
+        calls = []
+        self.assertTrue(self.run_engine(calls, chaps="1,3", resume=False,
+                                        manifest_name="manifest.p1.json", no_state=True))
+        self.assertEqual(len(calls), 2 * FRASES)
+        self.assertEqual(sorted(self.manifest("manifest.p1.json")), [1, 3])
+        self.assertFalse((self.out / "cap02.mp3").exists())
+
 
 @unittest.skipUnless(HAS_AUDIO and importlib.util.find_spec("f5_tts") is None,
                      "se prueba con un F5 de mentira; con el de verdad instalado, sin GPU no compensa")
@@ -199,7 +207,7 @@ class PrepararReanudar(unittest.TestCase):
     def test_de_uno_a_dos_tramos_cada_tramo_recibe_lo_suyo(self):
         write(self.d, "manifest.json", [done_entry(i) for i in (1, 2, 3)])
         write(self.d, "gen_state.json", {"total": 4, "complete": False})
-        C.prepare_resume(self.d, 2, 4)
+        C.prepare_resume(self.d, [[1, 2], [3, 4]])
         self.assertEqual(self.ids("manifest.p1.json"), [1, 2])
         self.assertEqual(self.ids("manifest.p2.json"), [3])
         self.assertEqual(self.ids("manifest.json"), [1, 2, 3])
@@ -210,7 +218,7 @@ class PrepararReanudar(unittest.TestCase):
         write(self.d, "manifest.p2.json", [])
         write(self.d, "manifest.json", [done_entry(1), done_entry(2)])
         write(self.d, "gen_state.json", {"total": 2, "complete": False})
-        C.prepare_resume(self.d, 2, 2)
+        C.prepare_resume(self.d, [[1], [2]])
         self.assertTrue(read(self.d, "manifest.p1.json")[0]["done"])
         self.assertTrue(read(self.d, "manifest.p2.json")[0]["done"])
 
@@ -219,7 +227,7 @@ class PrepararReanudar(unittest.TestCase):
         write(self.d, "manifest.json", [dict(done_entry(1), done=False, n=9, frames=999)])
         write(self.d, "manifest.p1.json", [dict(done_entry(1), done=False, n=2, frames=20)])
         write(self.d, "gen_state.json", {"total": 2, "complete": False, "streams": 2})
-        C.prepare_resume(self.d, 2, 2)
+        C.prepare_resume(self.d, [[1], [2]])
         self.assertEqual(read(self.d, "manifest.p1.json")[0]["n"], 2)
         self.assertEqual(read(self.d, "manifest.json")[0]["n"], 2)
 
@@ -228,12 +236,12 @@ class PrepararReanudar(unittest.TestCase):
         write(self.d, "manifest.p1.json", [done_entry(1)])
         write(self.d, "manifest.p2.json", [done_entry(3), dict(done_entry(4), done=False, n=1)])
         write(self.d, "gen_state.json", {"total": 4, "complete": False, "streams": 2})
-        C.prepare_resume(self.d, 1, 4)
+        C.prepare_resume(self.d, [[1, 2, 3, 4]])
         self.assertEqual(self.ids("manifest.json"), [1, 3, 4])
         self.assertEqual(list(self.d.glob("manifest.p*.json")), [])
 
     def test_sin_nada_no_escribe(self):
-        C.prepare_resume(self.d, 2, 4)
+        C.prepare_resume(self.d, [[1, 2], [3, 4]])
         self.assertEqual(list(self.d.iterdir()), [])
 
 

@@ -28,7 +28,7 @@ from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chap
                      live_manifest, merge_stream_manifests, parse_count, prepare_resume, read_gen_state,
                      recover_interrupted, RemoteProgress, slug, free_book_name, set_aside_book, restore_book,
                      recover_regenerations,
-                     split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
+                     plan_streams, resume_index, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
 __version__ = "1.3.3"
@@ -658,7 +658,7 @@ class GenWorker(QThread):
             return
         # Todo lo de aquí en manifest.json y sin manifest.pN.json: allí los tramos mandan sobre el
         # índice, y unos pN viejos de otra tirada borrarían lo narrado después.
-        prepare_resume(dest, 1, 0)
+        prepare_resume(dest, [[]])
         try:
             here = self._narrated((dest / "manifest.json").read_text("utf-8"))
         except OSError:
@@ -941,9 +941,6 @@ class LocalGenWorker(QThread):
             # Nº de tramos en paralelo: reparte los capítulos entre N procesos en la
             # misma GPU (XTTS no la satura → varios a la vez suman). 1 = camino clásico.
             streams = int(load_config().get("parallel_streams", 1) or 1)
-            st0 = read_gen_state(dest) or {}
-            if self.resume and st0.get("streams"):            # reanudar con el mismo reparto
-                streams = int(st0["streams"] or 1)
             if self.service:                                  # un solo proceso con varias peticiones (--parallel)
                 streams = 1
             if self.mode == "run":
@@ -951,10 +948,11 @@ class LocalGenWorker(QThread):
                 n, sents = self._count_chapters(cmd)      # sents = frases por capítulo (estimación)
             # Detener o Cancelar mientras contaba: no se arranca la narración.
             if self.mode == "run":
-                if self.resume:                           # cada proceso, con todo lo narrado de su rango
-                    prepare_resume(dest, streams, n)
-                if streams > 1 and n > 1:
-                    self._run_parallel(cmd, dest, max(1, min(streams, n)), n, sents)
+                plan = plan_streams(n, streams, sents, resume_index(dest) if self.resume else ())
+                if self.resume:                           # cada proceso, con todo lo narrado de lo suyo
+                    prepare_resume(dest, plan)
+                if len(plan) > 1:
+                    self._run_parallel(cmd, dest, plan, n, sents)
                 else:
                     self._run_single(cmd, dest, sents)
             if self.mode == "cancel":
@@ -1033,7 +1031,7 @@ class LocalGenWorker(QThread):
         self.progress.emit(_("Reanudando con {0}…").format(self.model["name"]) if self.resume
                            else _('Conectando con {0}…').format(self.model["name"]) if self.service
                            else _("Cargando el modelo…"), -1)
-        eta = EtaTracker(sents, {1: (1, len(sents))}, dest if self.resume else None) if sents else None
+        eta = EtaTracker(sents, {1: range(1, len(sents) + 1)}, dest if self.resume else None) if sents else None
         # La clave, nunca en la línea de órdenes: se vería en la lista de procesos.
         env = dict(os.environ, ST_SERVICE_KEY=service_key(), ST_QC_KEY=service_key(SERVICE_QC_KEY)) if self.service else None
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
@@ -1101,32 +1099,24 @@ class LocalGenWorker(QThread):
         except Exception:
             return 1, []
 
-    @staticmethod
-    def _split_ranges(n, streams):
-        return split_ranges(n, streams)
-
-    def _run_parallel(self, base_cmd, dest, streams, n, sents=None):
-        ranges = self._split_ranges(n, streams)
-        streams = len(ranges)
-        eta = EtaTracker(sents, dict(enumerate(ranges, 1)), dest if self.resume else None) if sents else None
+    def _run_parallel(self, base_cmd, dest, plan, n, sents=None):
+        streams = len(plan)
+        eta = EtaTracker(sents, dict(enumerate(plan, 1)), dest if self.resume else None) if sents else None
         self._lock = threading.Lock()
         self._tot_fr = 0; self._done_fr = 0; self._caps_seen = set()
         self.procs = []
         # Guardar YA el reparto y el total: si el PC se cuelga, la biblioteca sabe
         # reconstruir el libro y reanudar con los mismos tramos (recover_interrupted).
-        st0 = read_gen_state(dest) or {}
-        if not st0.get("streams"):
-            try:
-                _atomic_write(dest / "gen_state.json", json.dumps(
-                    {"total": n, "complete": False, "streams": streams}, ensure_ascii=False))
-            except Exception: pass
+        try:
+            _atomic_write(dest / "gen_state.json", json.dumps(
+                {"total": n, "complete": False, "streams": streams}, ensure_ascii=False))
+        except Exception: pass
         self._last_merge = time.monotonic()
         logf = open(dest / "gen.log", "w", encoding="utf-8", errors="replace")
         self.progress.emit(_('Narrando en {0} tramos en paralelo — cargando modelos…').format(streams), -1)
 
-        def worker(idx, rng):
-            cs, ce = rng
-            cmd = list(base_cmd) + ["--chap-start", str(cs), "--chap-end", str(ce),
+        def worker(idx, chapters):
+            cmd = list(base_cmd) + ["--chaps", ",".join(map(str, chapters)),
                                     "--manifest-name", f"manifest.p{idx}.json", "--no-state"]
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  text=True, encoding="utf-8", errors="replace", creationflags=NOWIN)
@@ -1169,7 +1159,7 @@ class LocalGenWorker(QThread):
                         self.error = _('Error inesperado: {0}').format(last)
 
         ths = [threading.Thread(target=worker, args=(i, r), daemon=True)
-               for i, r in enumerate(ranges, 1)]
+               for i, r in enumerate(plan, 1)]
         for t in ths: t.start()
         for t in ths: t.join()
         try: logf.close()

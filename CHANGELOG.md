@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Parallel streams now share out only the chapters still to be narrated, balanced by sentences, and each chapter is
+  narrated whole by one stream. Before, chapters were split by number, so in a book well under way one stream had
+  nothing to do. The number of streams you choose now also applies when resuming on this computer.
+
+### Fixed
+- Resuming halfway through a chapter on this computer showed «chapter 0» until the next chapter started. Only the
+  label was wrong: the narration carried on from the right place.
+
 ## 1.3.3 (2026-11-08)
 
 ### Fixed

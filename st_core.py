@@ -284,9 +284,9 @@ def resume_index(d):
     return [best[k] for k in sorted(best)]
 
 
-def prepare_resume(d, streams, n):
-    """Antes de reanudar: todo lo narrado en manifest.json y, si se va a narrar en tramos, cada
-    manifest.pN.json con lo de su rango, que es lo único que lee cada tramo. Sin esto, pasar de un
+def prepare_resume(d, plan):
+    """Antes de reanudar: todo lo narrado en manifest.json y, si se va a narrar en tramos (plan, de
+    plan_streams), cada manifest.pN.json con lo suyo, que es lo único que lee cada tramo. Sin esto, pasar de un
     tramo a varios daba el libro por nuevo (se borraba y se volvía a narrar), y unos pN viejos de
     otra tirada pisaban lo narrado después. Devuelve el índice."""
     d = Path(d)
@@ -299,9 +299,9 @@ def prepare_resume(d, streams, n):
             p.unlink()
         except OSError:
             pass
-    if streams > 1 and n > 1:
-        for idx, (cs, ce) in enumerate(split_ranges(n, min(streams, n)), 1):
-            part = [e for e in entries if cs <= e["id"] <= ce]
+    if len(plan) > 1:
+        for idx, chapters in enumerate(plan, 1):
+            part = [e for e in entries if e["id"] in chapters]
             if part:
                 _atomic_write(d / f"manifest.p{idx}.json", json.dumps(part, ensure_ascii=False, indent=2))
     return entries
@@ -391,7 +391,7 @@ class EtaTracker:
         self.sents = list(sents)                          # frases por capítulo (1-based → [i-1])
         self.total = sum(self.sents)
         self.left = {i: n for i, n in enumerate(self.sents, 1)}
-        self.caps = {k: range(cs, ce + 1) for k, (cs, ce) in ranges.items()}
+        self.caps = {k: list(chapters) for k, chapters in ranges.items()}
         self.cur = {}
         self.ts = {k: [] for k in ranges}
         if dest:                                          # reanudar: descontar lo ya narrado
@@ -510,18 +510,28 @@ def parse_count(text):
     return n, (sents if len(sents) == n and sum(sents) else [])
 
 
-def split_ranges(n, streams):
-    """Reparte 1..n en `streams` tramos contiguos lo más equilibrados posible."""
-    base, extra = divmod(n, streams)
-    ranges = []
-    start = 1
-    for i in range(streams):
-        size = base + (1 if i < extra else 0)
-        if size <= 0:
-            continue
-        ranges.append((start, start + size - 1))
-        start += size
-    return ranges
+def plan_streams(n, streams, sents=None, entries=()):
+    """Reparte los capítulos 1..n entre tramos: [[capítulos del tramo 1], [los del 2], …].
+    Solo cuenta lo pendiente, equilibrado por frases y con cada capítulo entero en un solo tramo.
+    Nunca hay un tramo sin trabajo: si quedan menos capítulos que tramos, salen menos tramos.
+    Lo ya terminado va al primero, que solo lo conserva en su índice."""
+    state = {e["id"]: e for e in entries}
+    pending, finished = {}, []
+    for c in range(1, n + 1):
+        e = state.get(c) or {}
+        if e.get("done"):
+            finished.append(c)
+        else:
+            size = sents[c - 1] if sents and c <= len(sents) else 1
+            pending[c] = max(1, size - int(e.get("n") or 0))
+    plan = [[] for _ in range(max(1, min(streams, len(pending))))]
+    loads = [0] * len(plan)
+    for c in sorted(pending, key=lambda c: (-pending[c], c)):
+        i = loads.index(min(loads))
+        plan[i].append(c)
+        loads[i] += pending[c]
+    plan[0].extend(finished)
+    return [sorted(p) for p in plan]
 
 
 # Lo que tiene que haber en cada venv, con su nombre en pip. Los comandos, en install_commands() y en el README.

@@ -999,14 +999,20 @@ def load_prev_manifest(outdir, name="manifest.json"):
         pass
     return prev
 
-def with_unvisited(manifest, prev, chap_start=0, chap_end=0):
+def stream_chapters(a, total):
+    """Capítulos (1-based) que narra este proceso: los de --chaps o, sin él, los de --chap-start y
+    --chap-end (0 = sin límite), que es lo que manda una app abierta antes de actualizarse."""
+    if getattr(a, "chaps", ""):
+        return {int(c) for c in a.chaps.split(",")}
+    return set(range(getattr(a, "chap_start", 0) or 1, (getattr(a, "chap_end", 0) or total) + 1))
+
+def with_unvisited(manifest, prev, wanted=None):
     """El índice que se escribe al reanudar: lo recorrido en esta tirada más lo de la anterior a lo
     que aún no se ha llegado (solo de este tramo). Sin esto, un capítulo terminado más adelante
     (de una tirada en tramos, o narrado en el servidor) salía del índice al parar antes de
     alcanzarlo, y al reanudar se borraba su audio y se volvía a narrar."""
     seen = {e["id"] for e in manifest}
-    rest = [e for i, e in prev.items() if i not in seen
-            and (not chap_start or i >= chap_start) and (not chap_end or i <= chap_end)]
+    rest = [e for i, e in prev.items() if i not in seen and (wanted is None or i in wanted)]
     return sorted(manifest + rest, key=lambda e: e["id"])
 
 def write_state(outdir, total, complete):
@@ -1031,14 +1037,12 @@ def cmd_generate(a):
         load_pron(a.pron)                            # diccionario de pronunciación del usuario
     os.makedirs(a.out, exist_ok=True)
     chaps = chapters_from_epub(a.epub)
-    # Modo paralelo: este proceso narra SOLO los capitulos [chap_start, chap_end]
-    # (1-based, 0 = sin limite) y escribe en su propio manifest (--manifest-name)
-    # sin tocar gen_state (--no-state); la app fusiona todo al terminar.
-    cs = getattr(a, "chap_start", 0) or 0
-    ce = getattr(a, "chap_end", 0) or 0
+    # Modo paralelo: este proceso narra SOLO sus capitulos y escribe en su propio
+    # manifest (--manifest-name) sin tocar gen_state (--no-state); la app fusiona todo al terminar.
+    wanted = stream_chapters(a, len(chaps))
     mani_name = getattr(a, "manifest_name", None) or "manifest.json"
     no_state = getattr(a, "no_state", False)
-    if not cs or cs <= 1:                                 # solo el 1er tramo escribe el titulo
+    if 1 in wanted:                                       # solo el tramo del cap. 1 escribe el titulo
         try:
             _t = epub_title(a.epub)
             if _t: write_atomic(os.path.join(a.out, "title.txt"), _t)
@@ -1065,10 +1069,10 @@ def cmd_generate(a):
     manifest = []
     def save_manifest():
         write_atomic(os.path.join(a.out, mani_name),
-                     json.dumps(with_unvisited(manifest, prev, cs, ce or len(chaps)), ensure_ascii=False, indent=2))
+                     json.dumps(with_unvisited(manifest, prev, wanted), ensure_ascii=False, indent=2))
     import gc, soundfile as sf
     for ci, ch in enumerate(chaps, 1):
-        if (cs and ci < cs) or (ce and ci > ce):          # fuera de mi tramo
+        if ci not in wanted:                              # de otro tramo
             continue
         base = f"cap{ci:02d}"
         wav_path = os.path.join(a.out, base + ".wav")
@@ -1225,6 +1229,7 @@ def main():
     g.add_argument("--pron", default="")                     # JSON diccionario de pronunciación
     g.add_argument("--chap-start", type=int, default=0)      # tramo paralelo: 1er cap (1-based, 0=sin tope)
     g.add_argument("--chap-end", type=int, default=0)        # tramo paralelo: ultimo cap (0=sin tope)
+    g.add_argument("--chaps", default="")                    # tramo paralelo: capitulos sueltos, «3,7,8»
     g.add_argument("--manifest-name", default="manifest.json")  # manifest propio del tramo
     g.add_argument("--no-state", action="store_true")        # no escribir gen_state (lo hace la app)
     g.set_defaults(func=cmd_generate)
