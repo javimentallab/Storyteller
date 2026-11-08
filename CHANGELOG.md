@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.3 (2026-11-08)
 
 ### Fixed
 - Narrating an EPUB whose name matched a book already narrated deleted that book without asking. The new one now
