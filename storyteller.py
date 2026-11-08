@@ -1055,8 +1055,9 @@ class LocalGenWorker(QThread):
             last = line or last
             m = re.search(r"capitulos:\s*(\d+)", line)
             if m: cap_tot = int(m.group(1))
-            m = re.search(r"\[cap (\d+)\].*->\s*(\d+) frases", line)
-            if m: cap_cur = int(m.group(1)); total += int(m.group(2))
+            # Al reanudar a mitad de capítulo el motor no dice «N frases», sino «reanudo en frase X, quedan N».
+            m = re.search(r"\[cap (\d+)\].*->\s*(?:(\d+) frases|reanudo en frase \d+, quedan (\d+))", line)
+            if m: cap_cur = int(m.group(1)); total += int(m.group(2) or m.group(3))
             if eta: eta.line(1, line)
             if re.match(r"\s*frase \d+/\d+", line):
                 done += 1; pct = int(done / total * 100) if total else -1
