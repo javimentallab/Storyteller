@@ -27,6 +27,7 @@ import st_update  # «Buscar actualizaciones»
 from st_core import (ACTIVE_GEN, EtaTracker, _atomic_write, book_resumable, chapter_is_partial, install_incoming,
                      live_manifest, merge_stream_manifests, parse_count, prepare_resume, read_gen_state,
                      recover_interrupted, RemoteProgress, slug, free_book_name, set_aside_book, restore_book,
+                     recover_regenerations,
                      split_ranges, snapshot_chapter as core_snapshot_chapter, venv_has, BASE_PACKAGES, F5_PACKAGES,
                      XTTS_PACKAGES, install_commands, qc_can_run, whisper_target, whisper_venv, VENV_XTTS)
 
@@ -4078,6 +4079,8 @@ def main():
         QMessageBox.information(None, "Storyteller", _("Storyteller ya está abierto en otra ventana. Usa esa: con "
                                                        "dos a la vez, una podría estropear el libro que narra la otra."))
         sys.exit(0)
+    try: recover_regenerations(LOCAL_BOOKS)           # con el candado cogido: ninguna otra ventana está regenerando
+    except Exception: pass
     _ico = HOME_CC / "storyteller.ico"
     if _ico.exists(): app.setWindowIcon(QIcon(str(_ico)))
     win = Cuentacuentos(); win.show()

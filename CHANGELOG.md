@@ -6,7 +6,8 @@
 - Narrating an EPUB whose name matched a book already narrated deleted that book without asking. The new one now
   gets its own name (`-2`, `-3`…), as importing an audiobook already did.
 - Regenerating a book deleted it before starting: if the narration then failed or was cancelled, nothing was left,
-  not even the EPUB. The book is now set aside and comes back if nothing gets narrated.
+  not even the EPUB. The book is now set aside and comes back if nothing gets narrated, even if the app or the
+  computer stops abruptly: it is sorted out the next time the app starts.
 - If the voice engine on this computer crashed, the book was taken as finished and the WAV of the chapter in
   progress was deleted. It is now reported, and what was narrated stays, ready to resume.
 - If ffmpeg failed when closing a chapter, the WAV was deleted and the chapter marked as done. The chapter is now

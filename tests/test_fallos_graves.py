@@ -51,6 +51,32 @@ class Biblioteca(unittest.TestCase):
         self.assertFalse(backup.exists())
 
 
+class RegeneracionCortada(unittest.TestCase):
+    """La app se corta de golpe a mitad de regenerar: se resuelve al arrancar."""
+
+    def libro(self, d, audio, indice=None):
+        d.mkdir(parents=True)
+        (d / "cap01.mp3").write_text(audio, "utf-8")
+        if indice is not None:
+            (d / "manifest.json").write_text(indice, "utf-8")
+
+    def test_al_arrancar(self):
+        home = tmpdir(self)
+        books = home / "books"
+        viejo = '[{"id": 1, "n": 9, "done": true}]'
+        self.libro(home / ".regen-nada", "viejo", viejo)
+        self.libro(books / "nada", "nuevo")
+        self.libro(home / ".regen-vacio", "viejo", viejo)
+        self.libro(books / "vacio", "nuevo", '[{"id": 1, "n": 0}]')
+        self.libro(home / ".regen-medias", "viejo", viejo)
+        self.libro(books / "medias", "nuevo", '[{"id": 1, "n": 2, "done": false}]')
+        self.libro(home / ".regen-sin-carpeta", "viejo", viejo)
+        C.recover_regenerations(books)
+        for nombre, audio in (("nada", "viejo"), ("vacio", "viejo"), ("medias", "nuevo"), ("sin-carpeta", "viejo")):
+            self.assertEqual((books / nombre / "cap01.mp3").read_text("utf-8"), audio, nombre)
+            self.assertFalse((home / f".regen-{nombre}").exists(), nombre)
+
+
 @unittest.skipUnless(FFMPEG, "hace falta ffmpeg")
 class CerrarCapitulo(unittest.TestCase):
     def test_si_ffmpeg_falla_no_se_da_por_hecho(self):                  # fallo 4

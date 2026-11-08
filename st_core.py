@@ -53,6 +53,24 @@ def restore_book(backup, dest):
         shutil.rmtree(backup, ignore_errors=True)
 
 
+def recover_regenerations(books):
+    """Al arrancar, lo que dejó una regeneración cortada de golpe (cuelgue, apagón): con algo narrado se queda
+    lo nuevo, a medias y reanudable; sin nada, vuelve el libro de antes, que si no quedaba oculto para siempre."""
+    books = Path(books)
+    for backup in books.parent.glob(".regen-*"):
+        dest = books / backup.name[len(".regen-"):]
+        try:
+            recover_interrupted(dest)                     # los tramos pueden no haber llegado a fusionarse
+            man = json.loads((dest / "manifest.json").read_text("utf-8"))
+            narrated = any(isinstance(e, dict) and int(e.get("n") or 0) > 0 for e in man)
+        except (OSError, ValueError, TypeError):
+            narrated = False
+        if narrated:
+            shutil.rmtree(backup, ignore_errors=True)
+        else:
+            restore_book(backup, dest)
+
+
 def read_gen_state(d):
     try:
         return json.loads((Path(d) / "gen_state.json").read_text("utf-8"))
