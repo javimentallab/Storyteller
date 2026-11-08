@@ -16,8 +16,14 @@ models/
 books/
 # voces de referencia (clonadas o descargadas por el usuario)
 engine/voices/
-# configuración local (motor, servidor, voz…)
+# configuración local (motor, servidor, voz…), y la que no se pudo leer, apartada
 config.json
+config.unreadable-*.json
+# candado de una sola ventana
+.storyteller.lock
+# libro apartado mientras se regenera, y el que se trae del servidor antes de ponerlo en su sitio
+.regen-*/
+.incoming-*/
 # servidor de voz: su clave de acceso
 server.json
 # clave del servicio de voz por URL
