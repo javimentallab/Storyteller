@@ -10,6 +10,11 @@
 ### Fixed
 - Resuming halfway through a chapter on this computer showed «chapter 0» until the next chapter started. Only the
   label was wrong: the narration carried on from the right place.
+- In Spanish, Roman numerals were spelt out as letters («siglo XXI» came out as «siglo equis equis i»), and an entry
+  in the pronunciation dictionary could not fix it. They are now read as numbers after words such as siglo,
+  capítulo or tomo («siglo veintiuno»), as ordinals after a monarch or pope up to X («Felipe segundo», «Isabel
+  segunda», «Luis catorce») and before words such as Guerra or Reich («la segunda Guerra Mundial»). Labels such as
+  «Anexo C» and acronyms such as «CV» are left as they were. Chapters already narrated only change if regenerated.
 
 ## 1.3.3 (2026-11-08)
 

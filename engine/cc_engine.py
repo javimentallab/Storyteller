@@ -190,6 +190,103 @@ _ABBR = [(p.replace(r"\.(?=\s)", r"\.(?!\w)"), r) for p, r in _ABBR]
 # tras un nombre propio, Sr./Jr. es "sénior"/"júnior" (Dorothy Sr. = la madre), no "señor"
 _ABBR.insert(0, (r"\b(?!(?:El|EL|Al|AL|Del|DEL|Un|UN|Y|Pero|Que|Dijo|Con|Para|Por)\b)"
                  r"([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ']+) [Ss][Rr]\.?(?!\w)", r"\1 sénior"))
+
+# ---- Números romanos (solo en español). Sin esto, «XXI» era una sigla más y se deletreaba
+# («siglo equis equis i»), y el diccionario del usuario no llegaba a verlo. Solo se convierten
+# donde no hay duda: tras siglo, capítulo, tomo…; tras un nombre de rey o papa; delante de
+# Guerra, República, Reich… Las cantidades salen en cifras y normalize_numbers las escribe.
+_ROMAN_OK = re.compile(r"M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})")
+_ROMAN_VAL = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+_ORD_M = "primero segundo tercero cuarto quinto sexto séptimo octavo noveno décimo".split()
+_ORD_F = [w[:-1] + "a" for w in _ORD_M]
+_ORD_BEFORE_M = ["primer", "segundo", "tercer"] + _ORD_M[3:]          # el III Reich: «tercer»
+# Tras estas palabras va el número: siglo XXI, capítulos III y IV, tomo ii.
+_ROMAN_AFTER = (r"siglos?|cap[ií]tulos?|tomos?|vol[uú]men(?:es)?|partes?|libros?|actos?|escenas?|cantos?|"
+                r"secci[oó]n(?:es)?|lecci[oó]n(?:es)?|fases?|t[ií]tulos?|ap[eé]ndices?|anexos?|edici[oó]n(?:es)?")
+# Una letra sola solo si es I, V o X: «Anexo C» o «Sección D» son rótulos, no números. En minúsculas,
+# dos letras o más y nunca «vi» («el libro vi que…» es el verbo).
+_RN = r"(?:[IVX]|[IVXLCDM]{2,}|(?!vi(?!\w))[ivx]{2,})(?!\w)"
+_RSEP = r"(?:\s*[-–]\s*|\s*,\s*|\s+(?:y|e|o|u|al|a)\s+)"
+_ROMAN_TRIGGER = re.compile(rf"(?i:\b({_ROMAN_AFTER}))(\s+)({_RN}(?:{_RSEP}{_RN})*)")
+_ROMAN_TOKEN = re.compile(r"[IVXLCDMivx]+")
+_ROMAN_DASH = re.compile(r"\s*[-–]\s*")
+# Delante de estos nombres va un ordinal: la II Guerra Mundial, el III Reich, el I Congreso.
+_ROMAN_NOUN_F = ("guerra|rep[uú]blica|internacional|cruzada|jornadas?|edici[oó]n|asamblea|conferencia|"
+                 "cumbre|bienal|olimpiada")
+_ROMAN_NOUN_M = "reich|concilio|imperio|congreso|plan|festival|premio|encuentro|simposio|centenario|milenio"
+_ROMAN_BEFORE = re.compile(rf"(?<!\w)([IVXLCDM]+)\s+(?i:({_ROMAN_NOUN_F})|({_ROMAN_NOUN_M}))(?!\w)")
+# Reyes, reinas y papas: Felipe II = «Felipe segundo», Isabel II = «Isabel segunda», Luis XIV =
+# «Luis catorce» (del I al X, ordinal; después, cardinal). Con otro nombre, solo si son dos letras o
+# más de I, V y X (Mehmet II, Apolo XI): una I suelta tras mayúscula puede ser el «I» del inglés. Ahí
+# también va en ordinal hasta el X: en 60 libros de la biblioteca eran casi siempre reyes.
+_REGNAL_M = set("""felipe carlos fernando alfonso enrique juan pedro luis jaime sancho ramiro ordoño
+    bermudo fruela martín amadeo pío león gregorio benedicto pablo paulo inocencio clemente urbano
+    bonifacio alejandro sixto adriano julio calixto esteban benito nicolás eugenio marcelo celestino
+    napoleón jorge eduardo guillermo ricardo federico otón iván leopoldo francisco josé manuel miguel
+    constantino justiniano teodosio basilio gustavo cristián christian olaf haakon harald canuto carol
+    mehmed solimán selim murad abderramán hisham ptolomeo ramsés tutmosis amenofis darío jerjes
+    artajerjes ciro sebastián rodrigo ramón berenguer wifredo alberto rodolfo maximiliano segismundo
+    vladislao casimiro estanislao vaticano filipo mehmet mehmed antíoco seleuco antígono demetrio
+    pérdicas amintas herodes agripa atalo mitrídates vologeso cosroes sapor tolomeo nabucodonosor
+    sargón salmanasar senaquerib seti psamético nectanebo amenhotep hamid mahmud osmán bayaceto
+    mustafá ahmed abdul conrado lotario ludovico pipino clodoveo childerico dagoberto hugo roberto
+    jacobo cleón""".split())
+_REGNAL_F = set("""isabel maría juana catalina victoria ana leonor urraca berenguela cristina
+    margarita blanca guillermina beatriz cleopatra arsínoe berenice""".split())
+_ROMAN_NOT_NAME = set("""el la los las lo le les un una unos unas yo tú tu él ella mi su que de del en por
+    para con se no si al me te nos os ya pero como cuando donde""".split())
+_ROMAN_NAME = re.compile(r"(?<!\w)([A-ZÁÉÍÓÚÑ][a-záéíóúñü]+|[A-ZÁÉÍÓÚÑ]{2,})(\s+)([IVXLCDM]+)(?!\w)")
+
+def _roman(s):
+    """Valor de un número romano bien escrito (en mayúsculas o minúsculas), o None."""
+    up = s.upper()
+    if not up or not _ROMAN_OK.fullmatch(up):
+        return None
+    vals = [_ROMAN_VAL[c] for c in up]
+    return sum(-v if i + 1 < len(vals) and vals[i + 1] > v else v for i, v in enumerate(vals))
+
+def _roman_numerals(text):
+    def after(m):
+        century = m.group(1).lower().startswith("siglo")
+
+        def one(t):
+            n = _roman(t.group(0))
+            if n is None:
+                return t.group(0)
+            return "primero" if century and n == 1 else str(n)   # el siglo I = «el siglo primero»
+        seq = _ROMAN_DASH.sub(" a ", _ROMAN_TOKEN.sub(one, m.group(3)))   # capítulos III-V = «tres a cinco»
+        return m.group(1) + m.group(2) + seq
+
+    def before(m):
+        n = _roman(m.group(1))
+        if n is None:
+            return m.group(0)
+        noun = m.group(2) or m.group(3)
+        if n > 10:
+            word = str(n)
+        else:
+            word = (_ORD_F if m.group(2) else _ORD_BEFORE_M)[n - 1]
+        return f"{word} {noun}"
+
+    def name(m):
+        who, gap, rom = m.groups()
+        n = _roman(rom)
+        key = who.lower()
+        listed = key in _REGNAL_M or key in _REGNAL_F
+        # en mayúsculas («LO VI TODO») o tras una palabra corriente, solo los nombres de la lista
+        loose = re.fullmatch(r"[IVX]{2,}", rom) and not who.isupper() and key not in _ROMAN_NOT_NAME
+        if n is None or not (listed or loose):
+            return m.group(0)
+        if n <= 10 and key in _REGNAL_F:
+            return f"{who}{gap}{_ORD_F[n - 1]}"
+        if n <= 10:
+            return f"{who}{gap}{_ORD_M[n - 1]}"
+        return f"{who}{gap}{n}"
+
+    text = _ROMAN_TRIGGER.sub(after, text)
+    text = _ROMAN_BEFORE.sub(before, text)
+    return _ROMAN_NAME.sub(name, text)
+
 _V = "AEIOUÁÉÍÓÚÜ"
 
 def _pronounceable(w):
@@ -292,6 +389,7 @@ def normalize_text(text):
     if NUM_LANG == "es":                      # en otro idioma, sus abreviaturas las sabe el modelo
         for pat, rep in _ABBR:                # antes que la puntuación: el punto de "Sr." no es fin
             text = re.sub(pat, rep, text)
+        text = _roman_numerals(text)          # antes que _fix_caps, que deletrearía «XXI»
     text = re.sub(r"\b(\d{1,2}):(\d{2})\b", r"\1 \2", text)   # 10:30 -> "diez treinta"
     text = normalize_punct(text)
     text = " ".join(_fix_caps(t) for t in text.split(" "))
