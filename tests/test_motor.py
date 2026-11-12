@@ -353,7 +353,7 @@ class Textos(unittest.TestCase):
 
     def test_todos_los_idiomas_dicen_donde_mirar(self):
         langs = [l for l in L.available() if l != "es"]
-        self.assertEqual(len(langs), 14)
+        self.assertEqual(len(langs), 17)
         for lang in langs:
             table = L.load(lang)                          # comprueba además que estén todos y sus marcadores
             for n, path in FALTA_MOTOR.items():
@@ -374,11 +374,16 @@ class Textos(unittest.TestCase):
                     self.assertIn("cu130", table[L.SOURCE[n]])
                     self.assertIn("cpu", table[L.SOURCE[n]])
 
+    SAME_AS_SPANISH = {("en", "No"), ("it", "No"), ("pt", "Copiar"), ("ca", "Sí"), ("ca", "No"),
+                       ("gl", "Aceptar"), ("gl", "Copiar"), ("gl", "Whisper para revisar:"),
+                       ("gl", "Modelo de Whisper:"), ("gl", "Buscando…"), ("gl", "Actualizar Storyteller"),
+                       ("gl", "Comprobando e instalando…")}
+
     def test_ningun_texto_nuevo_sin_traducir(self):
         for lang in [l for l in L.available() if l != "es"]:
             table = L.load(lang)
             for n in range(342, len(L.SOURCE)):
-                if (lang, L.SOURCE[n]) in (("en", "No"), ("it", "No"), ("pt", "Copiar")):
+                if (lang, L.SOURCE[n]) in self.SAME_AS_SPANISH:
                     continue                                  # se escriben igual que en español
                 with self.subTest(lang=lang, n=n):
                     self.assertNotEqual(table[L.SOURCE[n]], L.SOURCE[n])

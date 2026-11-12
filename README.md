@@ -258,8 +258,8 @@ An installation from an earlier version, with everything in `engine/.venv` and `
 
 Arguments: `storyteller.py <book.epub>` generates, `--book <folder>` opens a finished one.
 
-**Interface languages (15):** English, Spanish, Portuguese, French, German, Italian,
-Dutch, Polish, Russian, Ukrainian, Chinese, Japanese, Korean, Thai and Hindi. It follows
+**Interface languages (18):** English, Spanish, Catalan, Galician, Basque, Portuguese, French,
+German, Italian, Dutch, Polish, Russian, Ukrainian, Chinese, Japanese, Korean, Thai and Hindi. It follows
 the system language (English if it is not in the list); to force one, use
 `--lang xx` (e.g. `--lang de`) or the `STORYTELLER_LANG` environment variable.
 

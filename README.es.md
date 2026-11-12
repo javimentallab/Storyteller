@@ -257,8 +257,8 @@ todo en `engine/.venv` y `engine/.venv-xtts`, sigue funcionando tal cual.
 
 Argumentos: `storyteller.py <libro.epub>` genera, `--book <carpeta>` abre uno hecho.
 
-**Idiomas de la interfaz (15):** inglés, español, portugués, francés, alemán, italiano,
-neerlandés, polaco, ruso, ucraniano, chino, japonés, coreano, tailandés e hindi. Sigue el
+**Idiomas de la interfaz (18):** inglés, español, catalán, gallego, euskera, portugués, francés,
+alemán, italiano, neerlandés, polaco, ruso, ucraniano, chino, japonés, coreano, tailandés e hindi. Sigue el
 idioma del sistema (inglés si no está en la lista); para forzar uno, `--lang xx`
 (p. ej. `--lang de`) o la variable de entorno `STORYTELLER_LANG`.
 

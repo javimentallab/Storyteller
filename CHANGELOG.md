@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- The interface is now also in Catalan, Galician and Basque (18 languages), like the Android app.
+
 ### Changed
 - Parallel streams now share out only the chapters still to be narrated, balanced by sentences, and each chapter is
   narrated whole by one stream. Before, chapters were split by number, so in a book well under way one stream had

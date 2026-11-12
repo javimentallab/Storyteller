@@ -1,0 +1,411 @@
+# Galego. NN|texto, NN = posición en st_lang.SOURCE; \n = salto de liña; mantén {0}, {1}…
+0|F5 Español
+1|Castelán peninsular, alta calidade.
+2|F5 Inglés (oficial)
+3|Inglés (modelo base oficial F5-TTS). Mellor cunha voz de referencia en inglés.
+4|XTTS v2 (multilingüe)
+5|Multilingüe: pronuncia ben os termos en inglés dentro do español. Clona a túa voz. Usa máis VRAM ca F5.
+6|Rápido; calidade suficiente para subtítulos de audiolibros.
+7|Mellor calidade, algo máis lento.
+8|Máxima calidade; o máis pesado e lento.
+9|Inglés — exemplo F5
+10|Español
+11|Detectar automaticamente
+12|Inglés
+13|Francés
+14|Alemán
+15|Italiano
+16|Portugués
+17|Catalán
+18|Galego
+19|Éuscaro
+20|QC activado pero non hai ningún modelo Whisper descargado. Descárgao en «Modelos» para que revise a calidade. Narro sen QC.
+21|Narrador — grave (F5 Español)
+22|calculando o tempo restante…
+23|menos de 1 min
+24|~{0} min
+25|~{0} h {1} min
+26|mañá {0}
+27|en {0} días, {1}
+28|quedan {0} (arredor das {1})
+29|quedan {0} ({1})
+30|Sección {0}
+31|Enviando o EPUB ao servidor…
+32|Non puiden enviar o EPUB ao servidor:\n
+33|Retomando o motor de voz…
+34|Arrincando o motor de voz…
+35|Narrando capítulo {0}/{1} — frase {2}
+36|Revisando a calidade (QC) e rexenerando unha frase…
+37|Capítulo {0} listo
+38|Liberando a GPU…
+39|Gardando o xerado…
+40|Traendo a gravación…
+41|Detíveno, pero aínda non había ningún capítulo rematado que gardar.
+42|A xeración rematou pero non puiden traer o audio:\n
+43|Erro inesperado: {0}
+44|Contando as frases do libro…
+45|A narración non produciu audio. Pode faltar memoria na GPU (pecha xogos ou aplicacións que a usen) ou o modelo estar incompleto.
+46|Retomando a narración…
+47|Cargando o modelo…
+48|A GPU estaba ocupada; xerando na CPU (máis lento)…
+49|Modelo cargado, narrando…
+50|Narrando en {0} tramos en paralelo — cargando modelos…
+51|Narrando en {0} tramos — capítulo {1}/{2} — frase {3}
+52|A GPU estaba ocupada; un tramo vai na CPU (máis lento)…
+53|A descarga non deixou o modelo completo.
+54|A descarga do modelo XTTS non se completou.
+55|Non atopo o audio deste libro, non podo retomalo.
+56|Convertendo audio…
+57|Non se puido converter o audio (formato compatible? ffmpeg instalado?).
+58|Non puiden ler a duración do audio.
+59|Erro inesperado ao importar: {0}
+60|Transcribindo (servidor)… {0}–{1} de {2}  ·  gardado {3}/{4} min
+61|Cortouse a transcrición (servidor de voz caído?). O transcrito está gardado; podes Retomar.
+62|Primeiro descarga un modelo de transcrición (Whisper) en «Modelos».
+63|Cargando o modelo de transcrición…
+64|Transcribindo con Whisper… {0} / {1}
+65|Transcribindo con Whisper…
+66|Non se puido transcribir en local (modelo Whisper incompleto ou falta memoria?).
+67| · ⏸ a medias
+68|{0} capítulos · {1} min{2}
+69|▸ Retomar
+70|Seguir narrando este libro desde onde se detivo
+71|Borrar este libro
+72|a túa biblioteca narrada
+73|↻ Actualizar
+74|Volver ler o cartafol de libros
+75|Modelos
+76|Importar audiolibro…
+77|Engadir un audiolibro/audio existente e transcribilo (Whisper) para subtítulos
+78|Abrir EPUB…
+79|Aínda non hai libros.\nPreme «Abrir EPUB…» e Storyteller narrarao.
+80|Deter e gardar
+81|Cancelar
+82|Borrar libro
+83|Borrar «{0}» e a súa gravación? Non se pode desfacer.
+84|‹ Biblioteca
+85|Modelos e voces
+86|Xerar en:
+87|Este equipo (local)
+88|Servidor propio
+89|Servidor:
+90|usuario@host do teu servidor (SSH)
+91|Revisar e rexenerar frases que soen mal (QC Whisper)
+92|Despois de narrar cada frase, transcríbea con Whisper e, se non coincide co texto, rexenéraa. Máis lento pero caza alucinacións. Usa o Whisper do sitio onde narras: en LOCAL, o modelo descargado en «Modelos»; no servidor, o do servidor. (En local cómpre un modelo Whisper descargado.)
+93|Velocidade / uso da GPU:
+94|Normal — 1 tramo (non satura a GPU, máis lento)
+95|Rápido — 2 tramos (≈1,8×)
+96|Máximo — 3 tramos (≈2,6×, espreme a GPU)
+97|Como narrar neste equipo:\n• Normal: un só proceso, coma sempre. Non satura a GPU (podes seguir usándoa), pero é o máis lento.\n• Rápido / Máximo: reparte os capítulos entre 2 ou 3 procesos á vez. Moito máis rápido, pero a GPU queda moi cargada (con 3, ao límite: non xogues mentres narra). Se dese erro de memoria da GPU, baixa de 3 a 2.
+98|Modelos de voz (narrar EPUB)
+99|+ Engadir modelo por URL / repo…
+100|Transcrición de audiolibros (Whisper)
+101|Idioma do audio:
+102|Voces de referencia
+103|+ Engadir voz (ficheiro)…
+104|+ Cargar voz por URL…
+105|Ao engadir unha voz, o texto de referencia transcríbese só (Whisper); podes corrixilo.
+106|Voces descargables
+107|Como le a voz certas palabras: termos estranxeiros, siglas e palabras concretas que soen mal. Non cambia os subtítulos.
+108|Editar dicionario de pronuncia…
+109|Falta instalar o motor F5/Whisper en engine/.venv: os comandos están no README. Mentres tanto podes xerar nun servidor propio.
+110|Xérase neste equipo coa GPU. Elixe modelo e voz; descarga o modelo se cómpre.
+111|Xérase por SSH no servidor que indiques. Con XTTS usa o motor e a voz deste equipo, e o servidor ten que ter XTTS instalado. Con F5, o motor e a voz son os do servidor.
+112|✓ Instalado
+113|Sen descargar · {0}
+114|{0}  · Idioma: {1}  ({2})
+115|Usar
+116|Borrar
+117|Descargar  ({0})
+118|Falta instalar o motor XTTS en engine/.venv-xtts: mira o README
+119|Falta instalar o motor F5/Whisper en engine/.venv: mira o README
+120|Quitar
+121|Dicionario de pronuncia
+122|pron: palabra → como se di · say_letters: siglas soletreadas · say_word: siglas como palabra
+123|O JSON non é válido; non se gardou.
+124|Dicionario de pronuncia gardado.
+125|Modelo «{0}» borrado (ficheiros).
+126|Descargando XTTS v2… (pode tardar, ~1,8 GB)
+127|XTTS v2 listo.
+128|Erro ao descargar XTTS:
+129|Modelo XTTS borrado (caché).
+130|Non había caché de XTTS.
+131|Engadir modelo
+132|Repo ou URL de Hugging Face\n(p. ex. usuario/modelo ou https://huggingface.co/usuario/modelo):
+133|Nome do checkpoint dentro do repo:
+134|Nome do vocabulario dentro do repo:
+135|Arquitectura (F5TTS_Base para a maioría; F5TTS_v1_Base para o oficial v1):
+136|Idioma do modelo (código: es, en, fr, de, it, pt…):
+137|Nome para amosar:
+138|Engadido por ti
+139|Modelo «{0}» engadido. Preme Descargar.
+140|Descargando «{0}»…
+141|Descarga completada.
+142|Erro na descarga:
+143|Modelo de transcrición «{0}» borrado.
+144|Modelo de transcrición listo.
+145|non se puido converter o audio (ffmpeg?)
+146|Transcribindo a voz con Whisper…
+147|Texto da voz
+148|Texto que di o audio (detectado automaticamente; corríxeo se cómpre):
+149|Engadir voz
+150|Nome para a voz:
+151|A miña voz
+152|Voz «{0}» engadida e activada.
+153|Non puiden engadir a voz:
+154|Audio da voz (5-12 s, limpo)
+155|Audio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Cargar voz por URL
+157|Ligazón ao audio da voz (http/https, wav/mp3, 5-15 s):
+158|A URL debe comezar por http:// ou https://
+159|Descargando a voz…
+160|Non se puido descargar a voz desde esa URL.
+161|URL de voz non válida.
+162|Non se puido descargar a voz.
+163|Voz «{0}» descargada.
+164|Erro ao gardar a voz:
+165|{0}  · Idioma: {1}
+166|✓ Descargada
+167|Descargar
+168|↻ Narrar de novo
+169|Volver narrar o libro enteiro desde o seu EPUB
+170|Seguir narrando desde onde se detivo
+171|⤓ Exportar
+172|Gardar o audio narrado como MP3
+173|Saída de audio
+174|Volume
+175|Velocidade
+176|▲ Páxina
+177|Páxina ▼
+178|Retroceder unha páxina do texto
+179|Avanzar unha páxina do texto
+180|⤓ Ir á posición…
+181|Saltar a un minuto:segundo do capítulo
+182|≡ Ir ao capítulo…
+183|Elixir un capítulo da lista
+184|Ir á posición
+185|Minuto:segundo (capítulo de {0}):
+186|Escribe o tempo como «minutos:segundos», p. ex. 3:40.
+187|Ir ao capítulo
+188|Este título ten un só capítulo.
+189|Capítulo:
+190|Narrar de novo
+191|Volver narrar o libro enteiro desde cero? Sobrescríbese o actual.
+192|Exportar
+193|Non hai audio xerado para exportar.
+194|Gardar narración como MP3
+195|Audio MP3 (*.mp3)
+196|ffmpeg fallou
+197|Non se atopou ffmpeg. Cómpre para unir os capítulos.
+198|Non se puido exportar:\n{0}
+199|Gardado:\n{0}\n\n{1} capítulo(s).
+200|Elixe un EPUB
+201|Libros EPUB (*.epub)
+202|Elixe un audiolibro para importar
+203|Audio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Todos (*.*)
+204|Retomando a transcrición…
+205|Preparando…
+206|Detendo e gardando o transcrito…
+207|Cancelando…
+208|Importar audiolibro
+209|Retomar
+210|Non atopo o EPUB orixinal deste libro, non podo retomalo.
+211|Xa hai unha narración en marcha. Agarda a que remate ou detena antes de comezar outra.
+212|Falta instalar o motor: os comandos están no README. Mentres tanto podes cambiar a «Servidor propio» en Modelos.
+213|Primeiro descarga o modelo «{0}» en Modelos.
+214|Retomando…
+215|Detendo e gardando o xerado…
+216|Gardando a narración en curso…
+217|Gardando a transcrición en curso…
+218|activo
+219|Pronuncia
+220|▶ Escoitar
+221|Escoitar o que xa está narrado mentres segue narrando
+222|Aínda non hai nada narrado. Agarda uns segundos a que se garden as primeiras frases.
+223| · ● narrándose agora
+224|● En directo: o novo vaise engadindo só
+225|Agardando a que se narre máis…
+226|Rápido. Cabe en tarxetas gráficas de 6 GB.
+227|Traduce mellor. Pide unha tarxeta gráfica de 10-12 GB.
+228|Neerlandés
+229|Polaco
+230|Coreano
+231|Xaponés
+232|Ruso
+233|Ucraíno
+234|Chinés
+235|Hindi
+236|Tailandés
+237|Cancelado.
+238|Preparando o motor de tradución (unha soa vez)…
+239|Descargando llama.cpp…
+240|Descargando {0} ({1})…
+241|Descargando o modelo no servidor… {0} %
+242|Traducindo… {0}/{1}
+243|quedan {0}
+244|Lendo o documento…
+245|Cargando o modelo (na CPU, irá lento)…
+246|Gardando o documento traducido…
+247|Conectando co servidor…
+248|Descargando o modelo no servidor…
+249|Traducir documentos
+250|Documento
+251|Elixir ficheiro…
+252|EPUB, PDF, Word, PowerPoint, Excel, subtítulos (SRT/VTT), TXT ou Markdown
+253|Idiomas
+254|Intercambiar idiomas
+255|A:
+256|De:
+257|Modelo
+258|Traducir en:
+259|Consérvanse parágrafos, títulos, táboas e listas; as cursivas ou negriñas soltas dentro dunha frase pérdense. Un PDF convértese nun EPUB traducido, sen a súa maquetación, listo para narrar.
+260|Traducir
+261|Abrir cartafol
+262|Narrar este libro
+263|Úsase {0} no servidor {1} (Ollama). Se non o ten, descárgao alí a primeira vez.
+264|Non hai servidor configurado. Indícao en «Modelos» (usuario@host).
+265|Instalar motor
+266|Descargado.
+267|Non descargado ({0}).
+268|Retomar tradución
+269|Documentos
+270|Elixe un documento para traducir
+271|Borrar modelo
+272|Borrar {0} ({1}) deste equipo?
+273|O idioma de orixe e o de destino son o mesmo.
+274|Gardar a tradución como
+275|Elixe outro nome: non vou sobrescribir o orixinal.
+276|Detendo e gardando o traducido…
+277|Detido. O traducido está gardado en:\n{0}\nO que falta segue no idioma orixinal. Preme «Retomar tradución» para seguir onde o deixaches.
+278|Detido. Aínda non había nada traducido.
+279|Traducións a medias
+280|{0} de {1} anacos ({2} %)
+281|{0} anacos
+282|Descartar o traducido ata agora
+283|Non atopo o ficheiro orixinal:\n{0}
+284|Descartar tradución
+285|Descartar o traducido de «{0}»? O ficheiro que xa se gardou non se borra.
+286|Seguir con:
+287|Primeiro descarga {0}: preme «Descargar» nesta pantalla.
+288|Seguir desde onde se detivo con {0}. Se cambias de modelo en «Modelos», o xa feito consérvase.
+289|Retomando con {0}…
+290|Retomando a transcrición con {0}…
+291|Este libro comezouse neste equipo e o servidor non ten o narrado: se seguise alí, perderíase. Cámbiao a este equipo en «Modelos» para retomalo.
+292|Listo:
+293|Traducir…
+294|Traducir un libro ou documento a outro idioma (EPUB, PDF, Word, subtítulos…)
+295|Gardando a tradución en curso…
+296|{0} de {1} GB ({2} %)
+297|{0} GB
+298|{0} MB/s
+299|Descargando…
+300|Xa hai unha descarga en marcha.
+301|Descarga cancelada. Se volves descargar, comezará de cero.
+302|A descarga do modelo de transcrición non se completou.
+303|Un servizo por URL
+304|URL:
+305|Chave de acceso:
+306|Baleira se o servizo non a pide
+307|Modelo:
+308|Voz:
+309|O que use por defecto
+310|Probar
+311|Probando…
+312|Funciona: a frase de proba durou {0} s.
+313|Cada frase pídeselle ao servizo desa URL: o teu (st_server.py) ou un público coa súa chave. Aquí non cómpre GPU nin modelo de voz. A transcrición de audiolibros segue neste equipo.
+314|Ese enderezo non é válido.
+315|Ese enderezo non vai cifrado: a chave e o texto do libro viaxarían á vista. Fóra da túa rede de casa, usa https.
+316|Primeiro indica a URL do servizo en Modelos.
+317|O servizo rexeitou a chave de acceso.
+318|O servizo non atopa ese enderezo ou ese modelo. Revisa a URL e o modelo.
+319|O servizo rexeitou a petición.
+320|O servizo segue ocupado tras varios intentos. Proba máis tarde.
+321|Non hai resposta do servizo. Comproba a URL e que estea acendido.
+322|O servizo non devolveu un audio que se poida ler.
+323|O servizo non responde; novo intento en {0} s…
+324|Conectando con {0}…
+325|O xa narrado está gardado; podes retomar o libro desde a biblioteca.
+326|Un tramo cortouse no servidor; pode faltar memoria na súa GPU. O narrado está gardado: baixa o número de tramos en «Modelos» e preme Retomar.
+327|O servidor non puido arrincar tantos tramos; pode faltar memoria na súa GPU. Baixa o número de tramos en «Modelos» e volve tentalo.
+328|1 tramo
+329|2 tramos
+330|3 tramos
+331|Cantos tramos narran á vez na GPU do servidor. Cada un ocupa uns 2 GB da súa memoria: se non caben, a narración avisa e hai que baixar o número. Máis tramos non sempre é máis rápido: con F5 nunha RTX 2060 tárdase o mesmo con 1 ca con 2.
+332|O servidor non ten instalado XTTS. Elixe outro modelo en «Modelos» ou instálao no servidor.
+333|Enviando o narrado ao servidor…
+334|Perdeuse a conexión co servidor. O narrado alí consérvase: preme Retomar para seguir.
+335|Peticións á vez:
+336|Cantas frases se lle piden ao servizo á vez. Máis é máis rápido se o servizo o permite: o teu (st_server.py) abre ata 3 XTTS se caben na tarxeta gráfica, e un público pode limitar as peticións por minuto.
+337|Idioma da narración:
+338|O idioma en que se le o libro. Elixe tamén unha voz que soe ben nel. Os modelos F5 só len o seu.
+339|Para narrar nese idioma falta instalar isto no contorno de XTTS:\n\n{0}
+340|Para outro idioma, dentro de "langs": {"en": {"pron": {"nginx": "engine x"}}}
+341|Xa hai un libro en marcha. Detéñoo e paso a «{0}»? O feito queda gardado e pódese retomar.
+342|QC activado, pero Whisper non está no contorno deste motor: esta narración non se revisará. Para instalalo aí, executa isto nun terminal:\n\n{0}
+343|XTTS non está instalado. Para instalalo, executa isto nun terminal (tarda e ocupa varios GB; sen GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\nTamén podes xerar nun servidor propio ou cun servizo por URL.
+344|F5 é opcional e non está instalado, así que non se pode narrar con este modelo. Para instalalo, executa isto nun terminal (tarda e ocupa varios GB; sen GPU NVIDIA, cambia cu130 por cpu):\n\n{0}\n\nTamén podes elixir outro modelo en «Modelos» ou un servizo por URL.
+345|Whisper é opcional e non está instalado. Cómpre para transcribir audiolibros e para revisar as frases (QC). Para instalalo, executa isto nun terminal:\n\n{0}
+346|Como instalalo
+347|Whisper é opcional e non está instalado. Cómpre para transcribir audiolibros e para revisar as frases (QC).
+348|Para narrar neste equipo falta un motor de voz: XTTS (engine/.venv-xtts) ou F5, que é opcional. Os comandos están na súa ficha e no README. Mentres tanto podes xerar nun servidor propio ou cun servizo por URL. Whisper (transcribir audiolibros e QC) é opcional e instálase á parte.
+349|O modelo activo necesita un motor que non está instalado. Elixe outro modelo ou instálao: os comandos están na súa ficha e no README.
+350|O QC necesita Whisper no contorno do motor que narra, e non está.
+351|O QC necesita un modelo Whisper: descárgao máis abaixo.
+352|Para revisar as frases (QC), Whisper ten que estar no contorno do motor que narra, e non está. Para instalalo aí, executa isto nun terminal:\n\n{0}
+353|Sen Whisper instalado, o texto de referencia dunha voz escríbelo ti.
+354|Motor sen instalar
+355|F5 é opcional e non está instalado: non se pode narrar con este modelo ata instalalo.
+356|Para narrar cun servizo só cómpre poder ler o EPUB. Para instalalo, executa isto nun terminal:\n\n{0}
+357|O QC non puido revisar {0} frases: quedan como saíron do modelo. O motivo está no gen.log do libro.
+358|sen revisar (QC)
+359|Si
+360|Non
+361|Aceptar
+362|Copiar
+363|Whisper para revisar:
+364|Baleiro: o Whisper deste equipo, na CPU
+365|Chave de Whisper:
+366|Modelo de Whisper:
+367|Cada frase que chega transcríbese e, se non coincide co texto, pídese outra vez, ata 2 veces máis: tarda máis e, nun servizo de pago, custa máis.
+368|Sen URL de Whisper, o QC necesita Whisper no contorno dun motor deste equipo, e non está.
+369|Con este contorno, o QC compara o que oe Whisper co texto, pero non mide a voz de máis ao final de cada frase, porque falta numpy.
+370|QC activado, pero non hai con que revisar: nin URL de Whisper nin Whisper neste equipo. Esta narración non se revisará.
+371|Ese enderezo non vai cifrado: a chave e o audio viaxarían á vista. Fóra da túa rede de casa, usa https.
+372|Páxina {0} de {1} · {2} % do libro
+373|Numeración de páxinas do libro impreso, tal como a trae o EPUB.
+374|Páxina {0} de {1} (aproximada) · {2} % do libro
+375|Páxina aproximada: este libro non trae a numeración da edición impresa, así que se conta unha páxina cada {0} letras.
+376|Non puiden falar con GitHub: non hai conexión ou non responde. Téntao máis tarde; non cambiei nada.
+377|GitHub respondeu cun erro ({0}). Téntao máis tarde; non cambiei nada.
+378|O ficheiro descargado non coincide coa súa pegada SHA-256: borreino e non cambiei nada.
+379|Non puiden instalar a actualización ({0}). Deixei o programa como estaba.
+380|Descarga cancelada; non cambiei nada.
+381|O que chegou de GitHub non é unha versión válida de Storyteller; non cambiei nada.
+382|Buscar actualizacións
+383|Mira en GitHub se hai unha versión nova. Só se comproba cando o premes.
+384|Buscando…
+385|Actualizar Storyteller
+386|Xa tes a última versión, a {0}.
+387|Hai unha versión nova: a {0}. Tes a {1}.
+388|Hai unha narración, unha transcrición, unha tradución ou unha descarga en marcha. Remátaa ou detena e volve buscar actualizacións: non se actualiza a medias.
+389|Esta copia é un clon de git con cambios sen confirmar: non a toco para non pisalos. Podes actualizala ti con git.
+390|O programa non está no cartafol dos seus datos ({0}): non o cambio desde aquí para non mesturar dúas instalacións.
+391|Non podo escribir no cartafol do programa ({0}).
+392|Gardarei o ficheiro en {0} e abrirei a páxina da versión para que a instales ti. Sigo?
+393|Antes de instalala compróbase a súa pegada SHA-256.
+394|Esta versión non publica a súa pegada SHA-256: compróbase que chega cifrada desde GitHub e que é a versión anunciada.
+395|Descárgase da páxina de versións de Storyteller en GitHub e só se cambian os ficheiros do programa. A configuración, os libros, o que levas de cada narración, as voces, os modelos e os motores instalados quedan como están e non se volven descargar.
+396|Actualizar agora?
+397|Descargando a versión {0}…
+398|Comprobando e instalando…
+399|Descargado en {0}. Abro a páxina da versión.
+400|Storyteller {0} xa está instalado. A aplicación reiníciase agora para usalo.
+401|Esta versión cambia os requisitos ({0}). O que xa tes instalado consérvase; se un motor deixa de arrincar, repite o seu paso de instalación do README.
+402|Esta copia é un clon de git con commits propios que non están na versión publicada: non a toco, porque non podería avanzar sen mesturar. Podes actualizala ti con git.
+403|Esta copia é un clon de git, pero non atopo git neste equipo: non podo actualizala desde aquí.
+404|Abro a páxina da versión?
+405|Esta copia é un clon de git: descárgase a etiqueta {0} do repositorio oficial de Storyteller e a copia avanza ata ela sen mesturar nada. A configuración, os libros, o que levas de cada narración, as voces, os modelos e os motores instalados quedan como están e non se volven descargar.
+406|Storyteller xa está aberto noutra xanela. Usa esa: con dúas á vez, unha podería estragar o libro que narra a outra.
+407|Non puiden ler a configuración: estaba danada. Gardeina á parte en {0} e sigo coa de fábrica; terás que volver elixir o motor, a voz e o servidor.
+408|Xa hai unha voz «{0}». Substitúoa por esta? A de agora pérdese.
+409|Whisper cortouse a metade do audio (falta memoria?). O transcrito está gardado; podes Retomar.

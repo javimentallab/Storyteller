@@ -1,0 +1,411 @@
+# Català. NN|text, NN = posició a st_lang.SOURCE; \n = salt de línia; conserveu {0}, {1}…
+0|F5 Espanyol
+1|Castellà peninsular, alta qualitat.
+2|F5 Anglès (oficial)
+3|Anglès (model base oficial F5-TTS). Millor amb una veu de referència en anglès.
+4|XTTS v2 (multilingüe)
+5|Multilingüe: pronuncia bé els termes en anglès dins del castellà. Clona la teva veu. Fa servir més VRAM que F5.
+6|Ràpid; qualitat suficient per als subtítols d'audiollibres.
+7|Més qualitat, una mica més lent.
+8|Màxima qualitat; el més pesat i lent.
+9|Anglès — exemple F5
+10|Espanyol
+11|Detecta automàticament
+12|Anglès
+13|Francès
+14|Alemany
+15|Italià
+16|Portuguès
+17|Català
+18|Gallec
+19|Basc
+20|QC activat però no hi ha cap model Whisper baixat. Baixa'n un a «Models» perquè revisi la qualitat. Narro sense QC.
+21|Narrador — greu (F5 Espanyol)
+22|calculant el temps restant…
+23|menys d'1 min
+24|~{0} min
+25|~{0} h {1} min
+26|demà {0}
+27|d'aquí a {0} dies, {1}
+28|queden {0} (cap a les {1})
+29|queden {0} ({1})
+30|Secció {0}
+31|Enviant l'EPUB al servidor…
+32|No he pogut enviar l'EPUB al servidor:\n
+33|Reprenent el motor de veu…
+34|Engegant el motor de veu…
+35|Narrant el capítol {0}/{1} — frase {2}
+36|Revisant la qualitat (QC) i regenerant una frase…
+37|Capítol {0} llest
+38|Alliberant la GPU…
+39|Desant el que s'ha generat…
+40|Portant la gravació…
+41|L'he aturat, però encara no hi havia cap capítol acabat per desar.
+42|La generació ha acabat però no he pogut portar l'àudio:\n
+43|Error inesperat: {0}
+44|Comptant les frases del llibre…
+45|La narració no ha produït àudio. Pot ser que falti memòria a la GPU (tanca jocs o aplicacions que la facin servir) o que el model estigui incomplet.
+46|Reprenent la narració…
+47|Carregant el model…
+48|La GPU estava ocupada; generant a la CPU (més lent)…
+49|Model carregat, narrant…
+50|Narrant en {0} trams en paral·lel — carregant models…
+51|Narrant en {0} trams — capítol {1}/{2} — frase {3}
+52|La GPU estava ocupada; un tram va a la CPU (més lent)…
+53|La baixada no ha deixat el model complet.
+54|La baixada del model XTTS no s'ha completat.
+55|No trobo l'àudio d'aquest llibre, no el puc reprendre.
+56|Convertint l'àudio…
+57|No s'ha pogut convertir l'àudio (format compatible? ffmpeg instal·lat?).
+58|No he pogut llegir la durada de l'àudio.
+59|Error inesperat en importar: {0}
+60|Transcrivint (servidor)… {0}–{1} de {2}  ·  desat {3}/{4} min
+61|S'ha tallat la transcripció (servidor de veu caigut?). El que s'ha transcrit està desat; pots reprendre-la.
+62|Primer baixa un model de transcripció (Whisper) a «Models».
+63|Carregant el model de transcripció…
+64|Transcrivint amb Whisper… {0} / {1}
+65|Transcrivint amb Whisper…
+66|No s'ha pogut transcriure en local (model Whisper incomplet o falta memòria?).
+67| · ⏸ a mitges
+68|{0} capítols · {1} min{2}
+69|▸ Reprèn
+70|Continua narrant aquest llibre des d'on es va aturar
+71|Esborra aquest llibre
+72|la teva biblioteca narrada
+73|↻ Actualitza
+74|Torna a llegir la carpeta de llibres
+75|Models
+76|Importa audiollibre…
+77|Afegeix un audiollibre/àudio existent i transcriu-lo (Whisper) per als subtítols
+78|Obre EPUB…
+79|Encara no hi ha llibres.\nPrem «Obre EPUB…» i Storyteller el narrarà.
+80|Atura i desa
+81|Cancel·la
+82|Esborra el llibre
+83|Vols esborrar «{0}» i la seva gravació? No es pot desfer.
+84|‹ Biblioteca
+85|Models i veus
+86|Genera a:
+87|Aquest ordinador (local)
+88|Servidor propi
+89|Servidor:
+90|usuari@host del teu servidor (SSH)
+91|Revisa i regenera les frases que sonin malament (QC Whisper)
+92|Després de narrar cada frase, la transcriu amb Whisper i, si no coincideix amb el text, la regenera. Més lent, però caça al·lucinacions. Fa servir el Whisper del lloc on narres: en LOCAL, el model baixat a «Models»; al servidor, el del servidor. (En local cal un model Whisper baixat.)
+93|Velocitat / ús de GPU:
+94|Normal — 1 tram (no satura la GPU, més lent)
+95|Ràpid — 2 trams (≈1,8×)
+96|Màxim — 3 trams (≈2,6×, esprem la GPU)
+97|Com narrar en aquest ordinador:\n• Normal: un sol procés, com sempre. No satura la GPU (pots continuar fent-la servir), però és el més lent.\n• Ràpid / Màxim: reparteix els capítols entre 2 o 3 processos alhora. Molt més ràpid, però la GPU queda molt carregada (amb 3, al límit: no juguis mentre narra). Si donés error de memòria de la GPU, baixa de 3 a 2.
+98|Models de veu (narrar EPUB)
+99|+ Afegeix model per URL / repo…
+100|Transcripció d'audiollibres (Whisper)
+101|Idioma de l'àudio:
+102|Veus de referència
+103|+ Afegeix veu (fitxer)…
+104|+ Carrega veu per URL…
+105|En afegir una veu, el text de referència es transcriu sol (Whisper); el pots corregir.
+106|Veus per baixar
+107|Com llegeix la veu certes paraules: termes estrangers, sigles i paraules concretes que sonin malament. No canvia els subtítols.
+108|Edita el diccionari de pronunciació…
+109|Falta instal·lar el motor F5/Whisper a engine/.venv: les ordres són al README. Mentrestant pots generar en un servidor propi.
+110|Es genera en aquest ordinador amb la GPU. Tria model i veu; baixa el model si cal.
+111|Es genera per SSH al servidor que indiquis. Amb XTTS fa servir el motor i la veu d'aquest ordinador, i el servidor ha de tenir XTTS instal·lat. Amb F5, el motor i la veu són els del servidor.
+112|✓ Instal·lat
+113|Sense baixar · {0}
+114|{0}  · Idioma: {1}  ({2})
+115|Usa
+116|Esborra
+117|Baixa  ({0})
+118|Falta instal·lar el motor XTTS a engine/.venv-xtts: mira el README
+119|Falta instal·lar el motor F5/Whisper a engine/.venv: mira el README
+120|Treu
+121|Diccionari de pronunciació
+122|pron: paraula → com es diu · say_letters: sigles lletrejades · say_word: sigles com a paraula
+123|El JSON no és vàlid; no s'ha desat.
+124|Diccionari de pronunciació desat.
+125|Model «{0}» esborrat (fitxers).
+126|Baixant XTTS v2… (pot trigar, ~1,8 GB)
+127|XTTS v2 llest.
+128|Error en baixar XTTS:
+129|Model XTTS esborrat (memòria cau).
+130|No hi havia memòria cau d'XTTS.
+131|Afegeix model
+132|Repo o URL de Hugging Face\n(p. ex. usuari/model o https://huggingface.co/usuari/model):
+133|Nom del checkpoint dins del repo:
+134|Nom del vocabulari dins del repo:
+135|Arquitectura (F5TTS_Base per a la majoria; F5TTS_v1_Base per a l'oficial v1):
+136|Idioma del model (codi: es, en, fr, de, it, pt…):
+137|Nom per mostrar:
+138|Afegit per tu
+139|Model «{0}» afegit. Prem Baixa.
+140|Baixant «{0}»…
+141|Baixada completada.
+142|Error en la baixada:
+143|Model de transcripció «{0}» esborrat.
+144|Model de transcripció llest.
+145|no s'ha pogut convertir l'àudio (ffmpeg?)
+146|Transcrivint la veu amb Whisper…
+147|Text de la veu
+148|Text que diu l'àudio (detectat automàticament; corregeix-lo si cal):
+149|Afegeix veu
+150|Nom per a la veu:
+151|La meva veu
+152|Veu «{0}» afegida i activada.
+153|No he pogut afegir la veu:
+154|Àudio de la veu (5-12 s, net)
+155|Àudio (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Carrega veu per URL
+157|Enllaç a l'àudio de la veu (http/https, wav/mp3, 5-15 s):
+158|L'URL ha de començar per http:// o https://
+159|Baixant la veu…
+160|No s'ha pogut baixar la veu des d'aquest URL.
+161|URL de veu no vàlid.
+162|No s'ha pogut baixar la veu.
+163|Veu «{0}» baixada.
+164|Error en desar la veu:
+165|{0}  · Idioma: {1}
+166|✓ Baixada
+167|Baixa
+168|↻ Torna a narrar
+169|Torna a narrar el llibre sencer des del seu EPUB
+170|Continua narrant des d'on es va aturar
+171|⤓ Exporta
+172|Desa l'àudio narrat com a MP3
+173|Sortida d'àudio
+174|Volum
+175|Velocitat
+176|▲ Pàgina
+177|Pàgina ▼
+178|Retrocedeix una pàgina del text
+179|Avança una pàgina del text
+180|⤓ Ves a la posició…
+181|Salta a un minut:segon del capítol
+182|≡ Ves al capítol…
+183|Tria un capítol de la llista
+184|Ves a la posició
+185|Minut:segon (capítol de {0}):
+186|Escriu el temps com a «minuts:segons», p. ex. 3:40.
+187|Ves al capítol
+188|Aquest títol només té un capítol.
+189|Capítol:
+190|Torna a narrar
+191|Vols tornar a narrar el llibre sencer des de zero? Se sobreescriu l'actual.
+192|Exporta
+193|No hi ha àudio generat per exportar.
+194|Desa la narració com a MP3
+195|Àudio MP3 (*.mp3)
+196|ffmpeg ha fallat
+197|No s'ha trobat ffmpeg. Cal per unir els capítols.
+198|No s'ha pogut exportar:\n{0}
+199|Desat:\n{0}\n\n{1} capítol(s).
+200|Tria un EPUB
+201|Llibres EPUB (*.epub)
+202|Tria un audiollibre per importar
+203|Àudio (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Tots (*.*)
+204|Reprenent la transcripció…
+205|Preparant…
+206|Aturant i desant el que s'ha transcrit…
+207|Cancel·lant…
+208|Importa audiollibre
+209|Reprèn
+210|No trobo l'EPUB original d'aquest llibre, no el puc reprendre.
+211|Ja hi ha una narració en marxa. Espera que acabi o atura-la abans de començar-ne una altra.
+212|Falta instal·lar el motor: les ordres són al README. Mentrestant pots canviar a «Servidor propi» a Models.
+213|Primer baixa el model «{0}» a Models.
+214|Reprenent…
+215|Aturant i desant el que s'ha generat…
+216|Desant la narració en curs…
+217|Desant la transcripció en curs…
+218|actiu
+219|Pronunciació
+220|▶ Escolta
+221|Escolta el que ja està narrat mentre continua narrant
+222|Encara no hi ha res narrat. Espera uns segons que es desin les primeres frases.
+223|· ● s'està narrant ara
+224|● En directe: el que és nou s'afegeix sol
+225|Esperant que se'n narri més…
+226|Ràpid. Cap en targetes gràfiques de 6 GB.
+227|Tradueix millor. Demana una targeta gràfica de 10-12 GB.
+228|Neerlandès
+229|Polonès
+230|Coreà
+231|Japonès
+232|Rus
+233|Ucraïnès
+234|Xinès
+235|Hindi
+236|Tai
+237|Cancel·lat.
+238|Preparant el motor de traducció (només un cop)…
+239|Baixant llama.cpp…
+240|Baixant {0} ({1})…
+241|Baixant el model al servidor… {0} %
+242|Traduint… {0}/{1}
+243|queden {0}
+244|Llegint el document…
+245|Carregant el model (a la CPU, anirà lent)…
+246|Desant el document traduït…
+247|Connectant amb el servidor…
+248|Baixant el model al servidor…
+249|Tradueix documents
+250|Document
+251|Tria un fitxer…
+252|EPUB, PDF, Word, PowerPoint, Excel, subtítols (SRT/VTT), TXT o Markdown
+253|Idiomes
+254|Intercanvia els idiomes
+255|A:
+256|De:
+257|Model
+258|Tradueix a:
+259|Es conserven els paràgrafs, els títols, les taules i les llistes; les cursives o negretes soltes dins d'una frase es perden. Un PDF es converteix en un EPUB traduït, sense la seva maquetació, llest per narrar.
+260|Tradueix
+261|Obre la carpeta
+262|Narra aquest llibre
+263|Es fa servir {0} al servidor {1} (Ollama). Si no el té, s'hi baixa la primera vegada.
+264|No hi ha cap servidor configurat. Posa'l a «Models» (usuari@host).
+265|Instal·la el motor
+266|Baixat.
+267|No baixat ({0}).
+268|Reprèn la traducció
+269|Documents
+270|Tria un document per traduir
+271|Esborra el model
+272|Vols esborrar {0} ({1}) d'aquest ordinador?
+273|L'idioma d'origen i el de destinació són el mateix.
+274|Desa la traducció com a
+275|Tria un altre nom: no sobreescriuré l'original.
+276|Aturant i desant el que s'ha traduït…
+277|Aturat. El que s'ha traduït està desat a:\n{0}\nEl que falta continua en l'idioma original. Prem «Reprèn la traducció» per continuar on ho vas deixar.
+278|Aturat. Encara no s'havia traduït res.
+279|Traduccions a mitges
+280|{0} de {1} trossos ({2} %)
+281|{0} trossos
+282|Descarta el que s'ha traduït fins ara
+283|No trobo el fitxer original:\n{0}
+284|Descarta la traducció
+285|Vols descartar el que s'ha traduït de «{0}»? El fitxer que ja s'ha desat no s'esborra.
+286|Continua amb:
+287|Primer baixa {0}: prem «Baixa» en aquesta pantalla.
+288|Continua des d'on es va aturar amb {0}. Si canvies de model a «Models», el que ja s'ha fet es conserva.
+289|Reprenent amb {0}…
+290|Reprenent la transcripció amb {0}…
+291|Aquest llibre es va començar en aquest ordinador i el servidor no té el que s'ha narrat: si continués allà, es perdria. Canvia'l a aquest ordinador a «Models» per reprendre'l.
+292|Fet:
+293|Tradueix…
+294|Tradueix un llibre o document a un altre idioma (EPUB, PDF, Word, subtítols…)
+295|Desant la traducció en curs…
+296|{0} de {1} GB ({2} %)
+297|{0} GB
+298|{0} MB/s
+299|Baixant…
+300|Ja hi ha una baixada en marxa.
+301|Baixada cancel·lada. Si tornes a baixar, començarà de zero.
+302|La baixada del model de transcripció no s'ha completat.
+303|Un servei per URL
+304|URL:
+305|Clau d'accés:
+306|Buida si el servei no la demana
+307|Model:
+308|Veu:
+309|Per defecte del servei
+310|Prova
+311|Provant…
+312|Funciona: la frase de prova ha durat {0} s.
+313|Cada frase es demana al servei d'aquest URL: el teu (st_server.py) o un de públic amb la seva clau. Aquí no cal GPU ni model de veu. La transcripció d'audiollibres continua en aquest ordinador.
+314|Aquesta adreça no és vàlida.
+315|Aquesta adreça no va xifrada: la clau i el text del llibre viatjarien a la vista. Fora de la teva xarxa de casa, fes servir https.
+316|Primer indica l'URL del servei a Models.
+317|El servei ha rebutjat la clau d'accés.
+318|El servei no troba aquesta adreça o aquest model. Revisa l'URL i el model.
+319|El servei ha rebutjat la petició.
+320|El servei continua ocupat després de diversos intents. Prova-ho més tard.
+321|No hi ha resposta del servei. Comprova l'URL i que estigui engegat.
+322|El servei no ha retornat un àudio que es pugui llegir.
+323|El servei no respon; torno a provar d'aquí a {0} s…
+324|Connectant amb {0}…
+325|El que ja s'ha narrat està desat; pots reprendre el llibre des de la biblioteca.
+326|Un tram s'ha tallat al servidor; pot ser que falti memòria a la seva GPU. El que s'ha narrat està desat: abaixa el nombre de trams a «Models» i prem Reprèn.
+327|El servidor no ha pogut engegar tants trams; pot ser que falti memòria a la seva GPU. Abaixa el nombre de trams a «Models» i torna-ho a provar.
+328|1 tram
+329|2 trams
+330|3 trams
+331|Quants trams narren alhora a la GPU del servidor. Cadascun ocupa uns 2 GB de la seva memòria: si no hi caben, la narració avisa i cal abaixar el nombre. Més trams no sempre és més ràpid: amb F5 en una RTX 2060 es triga el mateix amb 1 que amb 2.
+332|El servidor no té XTTS instal·lat. Tria un altre model a «Models» o instal·la'l al servidor.
+333|Enviant el que s'ha narrat al servidor…
+334|S'ha perdut la connexió amb el servidor. El que s'hi ha narrat es conserva: prem Reprèn per continuar.
+335|Peticions alhora:
+336|Quantes frases es demanen al servei alhora. Més és més ràpid si el servei ho permet: el teu (st_server.py) obre fins a 3 XTTS si caben a la targeta gràfica, i un de públic pot limitar les peticions per minut.
+337|Idioma de la narració:
+338|L'idioma en què es llegeix el llibre. Tria també una veu que hi soni bé. Els models F5 només llegeixen el seu.
+339|Per narrar en aquest idioma cal instal·lar això a l'entorn d'XTTS:\n\n{0}
+340|Per a un altre idioma, dins de "langs": {"en": {"pron": {"nginx": "engine x"}}}
+341|Ja hi ha un llibre en marxa. L'aturo i passo a «{0}»? El que s'ha fet queda desat i es pot reprendre.
+342|QC activat, però Whisper no és a l'entorn d'aquest motor: aquesta narració no es revisarà. Per instal·lar-l'hi, executa això en un terminal:\n\n{0}
+343|XTTS no està instal·lat. Per instal·lar-lo, executa això en un terminal (triga i ocupa diversos GB; sense GPU NVIDIA, canvia cu130 per cpu):\n\n{0}\n\nTambé pots generar en un servidor propi o amb un servei per URL.
+344|F5 és opcional i no està instal·lat, així que no es pot narrar amb aquest model. Per instal·lar-lo, executa això en un terminal (triga i ocupa diversos GB; sense GPU NVIDIA, canvia cu130 per cpu):\n\n{0}\n\nTambé pots triar un altre model a «Models» o un servei per URL.
+345|Whisper és opcional i no està instal·lat. Cal per transcriure audiollibres i per revisar les frases (QC). Per instal·lar-lo, executa això en un terminal:\n\n{0}
+346|Com instal·lar-lo
+347|Whisper és opcional i no està instal·lat. Cal per transcriure audiollibres i per revisar les frases (QC).
+348|Per narrar en aquest ordinador falta un motor de veu: XTTS (engine/.venv-xtts) o F5, que és opcional. Les ordres són a la seva fitxa i al README. Mentrestant pots generar en un servidor propi o amb un servei per URL. Whisper (transcriure audiollibres i QC) és opcional i s'instal·la a part.
+349|El model actiu necessita un motor que no està instal·lat. Tria un altre model o instal·la'l: les ordres són a la seva fitxa i al README.
+350|El QC necessita Whisper a l'entorn del motor que narra, i no hi és.
+351|El QC necessita un model Whisper: baixa'l més avall.
+352|Per revisar les frases (QC), Whisper ha de ser a l'entorn del motor que narra, i no hi és. Per instal·lar-l'hi, executa això en un terminal:\n\n{0}
+353|Sense Whisper instal·lat, el text de referència d'una veu l'escrius tu.
+354|Motor sense instal·lar
+355|F5 és opcional i no està instal·lat: no es pot narrar amb aquest model fins que no s'instal·li.
+356|Per narrar amb un servei només cal poder llegir l'EPUB. Per instal·lar-ho, executa això en un terminal:\n\n{0}
+357|El QC no ha pogut revisar {0} frases: es queden com han sortit del model. El motiu és al gen.log del llibre.
+358|sense revisar (QC)
+359|Sí
+360|No
+361|D'acord
+362|Copia
+363|Whisper per revisar:
+364|Buit: el Whisper d'aquest ordinador, a la CPU
+365|Clau de Whisper:
+366|Model de Whisper:
+367|Cada frase que arriba es transcriu i, si no coincideix amb el text, es torna a demanar, fins a 2 vegades més: triga més i, en un servei de pagament, costa més.
+368|Sense URL de Whisper, el QC necessita Whisper a l'entorn d'un motor d'aquest ordinador, i no hi és.
+369|Amb aquest entorn, el QC compara el que sent Whisper amb el text, però no mesura la veu de més al final de cada frase, perquè falta numpy.
+370|QC activat, però no hi ha amb què revisar: ni URL de Whisper ni Whisper en aquest ordinador. Aquesta narració no es revisarà.
+371|Aquesta adreça no va xifrada: la clau i l'àudio viatjarien a la vista. Fora de la teva xarxa de casa, fes servir https.
+372|Pàgina {0} de {1} · {2} % del llibre
+373|Numeració de pàgines del llibre imprès, tal com la porta l'EPUB.
+374|Pàgina {0} de {1} (aproximada) · {2} % del llibre
+375|Pàgina aproximada: aquest llibre no porta la numeració de l'edició impresa, així que es compta una pàgina cada {0} lletres.
+376|No he pogut parlar amb GitHub: no hi ha connexió o no respon. Torna-ho a provar més tard; no he canviat res.
+377|GitHub ha respost amb un error ({0}). Torna-ho a provar més tard; no he canviat res.
+378|El fitxer baixat no coincideix amb la seva empremta SHA-256: l'he esborrat i no he canviat res.
+379|No he pogut instal·lar l'actualització ({0}). He deixat el programa com estava.
+380|Baixada cancel·lada; no he canviat res.
+381|El que ha arribat de GitHub no és una versió vàlida d'Storyteller; no he canviat res.
+382|Cerca actualitzacions
+383|Mira a GitHub si hi ha una versió nova. Només es comprova quan el prems.
+384|Cercant…
+385|Actualitza Storyteller
+386|Ja tens l'última versió, la {0}.
+387|Hi ha una versió nova: la {0}. Tens la {1}.
+388|Hi ha una narració, una transcripció, una traducció o una baixada en marxa. Acaba-la o atura-la i torna a cercar actualitzacions: no s'actualitza a mitges.
+389|Aquesta còpia és un clon de git amb canvis sense confirmar: no la toco per no trepitjar-los. La pots actualitzar tu amb git.
+390|El programa no és a la carpeta de les seves dades ({0}): no el canvio des d'aquí per no barrejar dues instal·lacions.
+391|No puc escriure a la carpeta del programa ({0}).
+392|Desaré el fitxer a {0} i obriré la pàgina de la versió perquè la instal·lis tu. Continuo?
+393|Abans d'instal·lar-la es comprova la seva empremta SHA-256.
+394|Aquesta versió no publica la seva empremta SHA-256: es comprova que arriba xifrada des de GitHub i que és la versió anunciada.
+395|Es baixa de la pàgina de versions d'Storyteller a GitHub i només es canvien els fitxers del programa. La configuració, els llibres, el que portes de cada narració, les veus, els models i els motors instal·lats es queden com estan i no es tornen a baixar.
+396|Vols actualitzar ara?
+397|Baixant la versió {0}…
+398|Comprovant i instal·lant…
+399|Baixat a {0}. Obro la pàgina de la versió.
+400|Storyteller {0} ja està instal·lat. L'aplicació es reinicia ara per fer-lo servir.
+401|Aquesta versió canvia els requisits ({0}). El que ja tens instal·lat es conserva; si un motor deixa d'engegar-se, repeteix el seu pas d'instal·lació del README.
+402|Aquesta còpia és un clon de git amb commits propis que no són a la versió publicada: no la toco, perquè no podria avançar sense barrejar. La pots actualitzar tu amb git.
+403|Aquesta còpia és un clon de git, però no trobo git en aquest ordinador: no la puc actualitzar des d'aquí.
+404|Obro la pàgina de la versió?
+405|Aquesta còpia és un clon de git: es baixa l'etiqueta {0} del repositori oficial d'Storyteller i la còpia avança fins a ella sense barrejar res. La configuració, els llibres, el que portes de cada narració, les veus, els models i els motors instal·lats es queden com estan i no es tornen a baixar.
+406|Storyteller ja està obert en una altra finestra. Fes servir aquella: amb dues alhora, una podria fer malbé el llibre que narra l'altra.
+407|No he pogut llegir la configuració: estava malmesa. L'he desada a part a {0} i continuo amb la de fàbrica; hauràs de tornar a triar el motor, la veu i el servidor.
+408|Ja hi ha una veu «{0}». La substitueixo per aquesta? La d'ara es perd.
+409|Whisper s'ha tallat a la meitat de l'àudio (falta memòria?). El que s'ha transcrit està desat; pots reprendre-la.

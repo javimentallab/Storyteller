@@ -1,0 +1,411 @@
+# Euskara (Basque). NN|text, NN = position in st_lang.SOURCE; \n = line break; keep {0}, {1}…
+0|F5 Gaztelania
+1|Penintsulako gaztelania, kalitate handikoa.
+2|F5 Ingelesa (ofiziala)
+3|Ingelesa (F5-TTS oinarrizko eredu ofiziala). Hobeto ingelesezko erreferentzia-ahots batekin.
+4|XTTS v2 (eleaniztuna)
+5|Eleaniztuna: gaztelaniazko testuko termino ingelesak ondo ahoskatzen ditu. Zure ahotsa klonatzen du. F5ek baino VRAM gehiago erabiltzen du.
+6|Azkarra; kalitate nahikoa audioliburuen azpitituluetarako.
+7|Kalitate hobea, apur bat motelagoa.
+8|Kalitaterik onena; astunena eta motelena.
+9|Ingelesa — F5 adibidea
+10|Gaztelania
+11|Detektatu automatikoki
+12|Ingelesa
+13|Frantsesa
+14|Alemana
+15|Italiera
+16|Portugesa
+17|Katalana
+18|Galegoa
+19|Euskara
+20|QC aktibatuta dago, baina ez dago Whisper eredurik deskargatuta. Deskargatu bat «Ereduak» atalean kalitatea berrikusteko. QC gabe narratuko dut.
+21|Narratzailea — sakona (F5 Gaztelania)
+22|geratzen den denbora kalkulatzen…
+23|min 1 baino gutxiago
+24|~{0} min
+25|~{0} h {1} min
+26|bihar {0}
+27|{0} egun barru, {1}
+28|falta: {0} ({1} aldera)
+29|falta: {0} ({1})
+30|{0}. atala
+31|EPUBa zerbitzarira bidaltzen…
+32|Ezin izan dut EPUBa zerbitzarira bidali:\n
+33|Ahots-motorra berrekiten…
+34|Ahots-motorra abiarazten…
+35|{0}/{1} kapitulua narratzen — {2}. esaldia
+36|Kalitatea berrikusten (QC) eta esaldi bat birsortzen…
+37|{0}. kapitulua prest
+38|GPUa askatzen…
+39|Sortutakoa gordetzen…
+40|Grabazioa ekartzen…
+41|Gelditu dut, baina oraindik ez zegoen gordetzeko kapitulu amaiturik.
+42|Sorkuntza amaitu da, baina ezin izan dut audioa ekarri:\n
+43|Ustekabeko errorea: {0}
+44|Liburuaren esaldiak zenbatzen…
+45|Narrazioak ez du audiorik sortu. Baliteke GPUak memoria nahikorik ez izatea (itxi hura erabiltzen duten jokoak edo aplikazioak) edo eredua osatu gabe egotea.
+46|Narrazioa berrekiten…
+47|Eredua kargatzen…
+48|GPUa lanpetuta zegoen; CPUan sortzen (motelago)…
+49|Eredua kargatuta, narratzen…
+50|{0} zatitan paraleloan narratzen — ereduak kargatzen…
+51|{0} zatitan narratzen — {1}/{2} kapitulua — {3}. esaldia
+52|GPUa lanpetuta zegoen; zati bat CPUan doa (motelago)…
+53|Deskargak ez du eredua osorik utzi.
+54|XTTS ereduaren deskarga ez da osatu.
+55|Ez dut liburu honen audioa aurkitzen; ezin dut berrekin.
+56|Audioa bihurtzen…
+57|Ezin izan da audioa bihurtu (formatu onartua al da? ffmpeg instalatuta al dago?).
+58|Ezin izan dut audioaren iraupena irakurri.
+59|Ustekabeko errorea inportatzean: {0}
+60|Transkribatzen (zerbitzaria)… {0}–{1} / {2}  ·  gordeta {3}/{4} min
+61|Transkripzioa eten egin da (ahots-zerbitzaria erori da?). Transkribatutakoa gorde da; Berrekin dezakezu.
+62|Lehenik, deskargatu transkripzio-eredu bat (Whisper) «Ereduak» atalean.
+63|Transkripzio-eredua kargatzen…
+64|Whisperrekin transkribatzen… {0} / {1}
+65|Whisperrekin transkribatzen…
+66|Ezin izan da lokalean transkribatu (Whisper eredua osatu gabe edo memoria falta?).
+67|· ⏸ erdizka
+68|{0} kapitulu · {1} min{2}
+69|▸ Berrekin
+70|Jarraitu liburu hau narratzen gelditu zen tokitik
+71|Ezabatu liburu hau
+72|zure liburutegi narratua
+73|↻ Eguneratu
+74|Irakurri berriro liburuen karpeta
+75|Ereduak
+76|Inportatu audioliburua…
+77|Gehitu lehendik dagoen audioliburu/audio bat eta transkribatu (Whisper) azpitituluetarako
+78|Ireki EPUBa…
+79|Oraindik ez dago libururik.\nSakatu «Ireki EPUBa…» eta Storytellerrek narratuko du.
+80|Gelditu eta gorde
+81|Utzi
+82|Ezabatu liburua
+83|«{0}» eta haren grabazioa ezabatu? Ezin da desegin.
+84|‹ Liburutegia
+85|Ereduak eta ahotsak
+86|Non sortu:
+87|Ordenagailu hau (lokala)
+88|Zerbitzari propioa
+89|Zerbitzaria:
+90|zure zerbitzariaren erabiltzailea@ostalaria (SSH)
+91|Berrikusi eta birsortu gaizki entzuten diren esaldiak (QC Whisper)
+92|Esaldi bakoitza narratu ondoren, Whisperrekin transkribatzen du eta, testuarekin bat ez badator, berriro sortzen du. Motelagoa, baina haluzinazioak harrapatzen ditu. Narratzen duzun tokiko Whisper erabiltzen du: LOKALEAN, «Ereduak» atalean deskargatutako eredua; zerbitzarian, zerbitzarikoa. (Lokalean Whisper eredu bat deskargatuta egon behar da.)
+93|Abiadura / GPU erabilera:
+94|Normala — zati 1 (ez du GPUa saturatzen, motelagoa)
+95|Azkarra — 2 zati (≈1,8×)
+96|Maximoa — 3 zati (≈2,6×, GPUa estutzen du)
+97|Nola narratu ordenagailu honetan:\n• Normala: prozesu bakarra, beti bezala. Ez du GPUa saturatzen (erabiltzen jarrai dezakezu), baina motelena da.\n• Azkarra / Maximoa: kapituluak 2 edo 3 prozesuren artean banatzen ditu aldi berean. Askoz azkarragoa, baina GPUa oso kargatuta geratzen da (3rekin, mugan: ez jokatu narratzen ari den bitartean). GPUaren memoria-errorea ematen badu, jaitsi 3tik 2ra.
+98|Ahots-ereduak (narratu EPUBa)
+99|+ Gehitu eredua URL / repo bidez…
+100|Audioliburuen transkripzioa (Whisper)
+101|Audioaren hizkuntza:
+102|Erreferentzia-ahotsak
+103|+ Gehitu ahotsa (fitxategia)…
+104|+ Kargatu ahotsa URL bidez…
+105|Ahots bat gehitzean, erreferentzia-testua automatikoki transkribatzen da (Whisper); zuzendu dezakezu.
+106|Ahots deskargagarriak
+107|Nola irakurtzen dituen ahotsak hitz batzuk: atzerriko terminoak, siglak eta gaizki entzuten diren hitz jakinak. Ez ditu azpitituluak aldatzen.
+108|Editatu ahoskera-hiztegia…
+109|F5/Whisper motorra ez dago engine/.venv-en instalatuta: komandoak README fitxategian daude. Bitartean, zerbitzari propio batean sor dezakezu.
+110|Ordenagailu honetan sortzen da, GPUarekin. Aukeratu eredua eta ahotsa; deskargatu eredua behar bada.
+111|Adierazten duzun zerbitzarian sortzen da, SSH bidez. XTTSrekin, ordenagailu honetako motorra eta ahotsa erabiltzen ditu, eta zerbitzariak XTTS instalatuta izan behar du. F5ekin, motorra eta ahotsa zerbitzarikoak dira.
+112|✓ Instalatuta
+113|Deskargatu gabe · {0}
+114|{0}  · Hizkuntza: {1}  ({2})
+115|Erabili
+116|Ezabatu
+117|Deskargatu  ({0})
+118|XTTS motorra ez dago engine/.venv-xtts-en instalatuta: ikus README
+119|F5/Whisper motorra ez dago engine/.venv-en instalatuta: ikus README
+120|Kendu
+121|Ahoskera-hiztegia
+122|pron: hitza → nola esaten den · say_letters: letraz letra irakurtzen diren siglak · say_word: hitz gisa irakurtzen diren siglak
+123|JSONa ez da baliozkoa; ez da gorde.
+124|Ahoskera-hiztegia gordeta.
+125|«{0}» eredua ezabatuta (fitxategiak).
+126|XTTS v2 deskargatzen… (luze jo dezake, ~1,8 GB)
+127|XTTS v2 prest.
+128|Errorea XTTS deskargatzean:
+129|XTTS eredua ezabatuta (cachea).
+130|Ez zegoen XTTS cacherik.
+131|Gehitu eredua
+132|Hugging Faceko repoa edo URLa\n(adib. erabiltzailea/eredua edo https://huggingface.co/erabiltzailea/eredua):
+133|Checkpointaren izena repoaren barruan:
+134|Bokabularioaren izena repoaren barruan:
+135|Arkitektura (F5TTS_Base gehienetarako; F5TTS_v1_Base v1 ofizialerako):
+136|Ereduaren hizkuntza (kodea: es, en, fr, de, it, pt…):
+137|Bistaratzeko izena:
+138|Zuk gehitua
+139|«{0}» eredua gehituta. Sakatu Deskargatu.
+140|«{0}» deskargatzen…
+141|Deskarga osatuta.
+142|Errorea deskargan:
+143|«{0}» transkripzio-eredua ezabatuta.
+144|Transkripzio-eredua prest.
+145|ezin izan da audioa bihurtu (ffmpeg?)
+146|Ahotsa Whisperrekin transkribatzen…
+147|Ahotsaren testua
+148|Audioak esaten duen testua (automatikoki detektatua; zuzendu behar bada):
+149|Gehitu ahotsa
+150|Ahotsaren izena:
+151|Nire ahotsa
+152|«{0}» ahotsa gehituta eta aktibatuta.
+153|Ezin izan dut ahotsa gehitu:
+154|Ahotsaren audioa (5-12 s, garbia)
+155|Audioa (*.wav *.mp3 *.flac *.m4a *.ogg *.opus)
+156|Kargatu ahotsa URL bidez
+157|Ahotsaren audiorako esteka (http/https, wav/mp3, 5-15 s):
+158|URLak http:// edo https:// aurrizkiarekin hasi behar du
+159|Ahotsa deskargatzen…
+160|Ezin izan da ahotsa URL horretatik deskargatu.
+161|Ahotsaren URLa ez da baliozkoa.
+162|Ezin izan da ahotsa deskargatu.
+163|«{0}» ahotsa deskargatuta.
+164|Errorea ahotsa gordetzean:
+165|{0}  · Hizkuntza: {1}
+166|✓ Deskargatuta
+167|Deskargatu
+168|↻ Narratu berriro
+169|Narratu berriro liburu osoa bere EPUBetik
+170|Jarraitu narratzen gelditu zen tokitik
+171|⤓ Esportatu
+172|Gorde narratutako audioa MP3 gisa
+173|Audio-irteera
+174|Bolumena
+175|Abiadura
+176|▲ Orria
+177|Orria ▼
+178|Joan testuaren aurreko orrira
+179|Joan testuaren hurrengo orrira
+180|⤓ Joan posiziora…
+181|Jauzi kapituluaren minutu:segundo batera
+182|≡ Joan kapitulura…
+183|Aukeratu kapitulu bat zerrendatik
+184|Joan posiziora
+185|Minutua:segundoa (kapituluaren iraupena: {0}):
+186|Idatzi denbora «minutuak:segundoak» gisa, adib. 3:40.
+187|Joan kapitulura
+188|Titulu honek kapitulu bakarra du.
+189|Kapitulua:
+190|Narratu berriro
+191|Liburu osoa hasieratik narratu berriro? Oraingoa gainidatzi egingo da.
+192|Esportatu
+193|Ez dago esportatzeko audio sorturik.
+194|Gorde narrazioa MP3 gisa
+195|MP3 audioa (*.mp3)
+196|ffmpegek huts egin du
+197|Ez da ffmpeg aurkitu. Kapituluak elkartzeko behar da.
+198|Ezin izan da esportatu:\n{0}
+199|Gordeta:\n{0}\n\n{1} kapitulu.
+200|Aukeratu EPUB bat
+201|EPUB liburuak (*.epub)
+202|Aukeratu audioliburu bat inportatzeko
+203|Audioa (*.mp3 *.m4a *.aac *.ogg *.opus *.flac *.wav *.wma);;Guztiak (*.*)
+204|Transkripzioa berrekiten…
+205|Prestatzen…
+206|Gelditzen eta transkribatutakoa gordetzen…
+207|Bertan behera uzten…
+208|Inportatu audioliburua
+209|Berrekin
+210|Ez dut liburu honen jatorrizko EPUBa aurkitzen; ezin dut berrekin.
+211|Narrazio bat abian da jada. Itxaron amaitu arte edo gelditu beste bat hasi aurretik.
+212|Motorra instalatu gabe dago: komandoak README fitxategian daude. Bitartean, «Zerbitzari propioa» aukerara alda zaitezke Ereduak atalean.
+213|Lehenik, deskargatu «{0}» eredua Ereduak atalean.
+214|Berrekiten…
+215|Gelditzen eta sortutakoa gordetzen…
+216|Abian den narrazioa gordetzen…
+217|Abian den transkripzioa gordetzen…
+218|aktibo
+219|Ahoskera
+220|▶ Entzun
+221|Entzun narratutakoa narratzen jarraitzen duen bitartean
+222|Oraindik ez dago ezer narratuta. Itxaron segundo batzuk lehen esaldiak gorde arte.
+223|· ● orain narratzen
+224|● Zuzenean: berria bere kabuz gehitzen da
+225|Narrazio gehiagoren zain…
+226|Azkarra. 6 GBko txartel grafikoetan sartzen da.
+227|Hobeto itzultzen du. 10-12 GBko txartel grafikoa behar du.
+228|Nederlandera
+229|Poloniera
+230|Koreera
+231|Japoniera
+232|Errusiera
+233|Ukrainera
+234|Txinera
+235|Hindia
+236|Thailandiera
+237|Bertan behera utzita.
+238|Itzulpen-motorra prestatzen (behin bakarrik)…
+239|llama.cpp deskargatzen…
+240|{0} deskargatzen ({1})…
+241|Eredua zerbitzarian deskargatzen… % {0}
+242|Itzultzen… {0}/{1}
+243|falta: {0}
+244|Dokumentua irakurtzen…
+245|Eredua kargatzen (CPUan, motel joango da)…
+246|Itzulitako dokumentua gordetzen…
+247|Zerbitzariarekin konektatzen…
+248|Eredua zerbitzarian deskargatzen…
+249|Itzuli dokumentuak
+250|Dokumentua
+251|Aukeratu fitxategia…
+252|EPUB, PDF, Word, PowerPoint, Excel, azpitituluak (SRT/VTT), TXT edo Markdown
+253|Hizkuntzak
+254|Trukatu hizkuntzak
+255|Nora:
+256|Nondik:
+257|Eredua
+258|Non itzuli:
+259|Paragrafoak, izenburuak, taulak eta zerrendak gordetzen dira; esaldi baten barruko letra etzanak edo lodiak galdu egiten dira. PDF bat EPUB itzuli bihurtzen da, bere maketaziorik gabe, narratzeko prest.
+260|Itzuli
+261|Ireki karpeta
+262|Narratu liburu hau
+263|{0} erabiltzen da {1} zerbitzarian (Ollama). Ez badu, lehen aldian bertan deskargatzen da.
+264|Ez dago zerbitzaririk konfiguratuta. Jarri «Ereduak» atalean (erabiltzailea@ostalaria).
+265|Instalatu motorra
+266|Deskargatuta.
+267|Deskargatu gabe ({0}).
+268|Berrekin itzulpena
+269|Dokumentuak
+270|Aukeratu itzultzeko dokumentu bat
+271|Ezabatu eredua
+272|{0} ({1}) ordenagailu honetatik ezabatu?
+273|Jatorrizko hizkuntza eta helburukoa berdinak dira.
+274|Gorde itzulpena honela
+275|Aukeratu beste izen bat: ez dut jatorrizkoa gainidatziko.
+276|Gelditzen eta itzulitakoa gordetzen…
+277|Geldituta. Itzulitakoa hemen gordeta dago:\n{0}\nFalta dena jatorrizko hizkuntzan dago oraindik. Sakatu «Berrekin itzulpena» utzi zenuen tokitik jarraitzeko.
+278|Geldituta. Oraindik ez zegoen ezer itzulita.
+279|Erdizkako itzulpenak
+280|{0} / {1} zati (% {2})
+281|{0} zati
+282|Baztertu orain arte itzulitakoa
+283|Ez dut jatorrizko fitxategia aurkitzen:\n{0}
+284|Baztertu itzulpena
+285|«{0}» dokumentutik itzulitakoa baztertu? Gordeta dagoen fitxategia ez da ezabatzen.
+286|Jarraitu honekin:
+287|Lehenik, deskargatu {0}: sakatu «Deskargatu» pantaila honetan.
+288|Jarraitu gelditu zen tokitik, {0} erabiliz. «Ereduak» atalean eredua aldatzen baduzu, egindakoa gorde egiten da.
+289|Berrekiten, {0} erabiliz…
+290|Transkripzioa berrekiten, {0} erabiliz…
+291|Liburu hau ordenagailu honetan hasi zen, eta zerbitzariak ez du narratutakoa: han jarraituko balu, galdu egingo litzateke. Aldatu ordenagailu honetara «Ereduak» atalean berrekiteko.
+292|Prest:
+293|Itzuli…
+294|Itzuli liburu edo dokumentu bat beste hizkuntza batera (EPUB, PDF, Word, azpitituluak…)
+295|Abian den itzulpena gordetzen…
+296|{0} / {1} GB (% {2})
+297|{0} GB
+298|{0} MB/s
+299|Deskargatzen…
+300|Deskarga bat abian da jada.
+301|Deskarga bertan behera utzita. Berriro deskargatzen baduzu, hasieratik hasiko da.
+302|Transkripzio-ereduaren deskarga ez da osatu.
+303|URL bidezko zerbitzu bat
+304|URLa:
+305|Sarbide-gakoa:
+306|Hutsik, zerbitzuak eskatzen ez badu
+307|Eredua:
+308|Ahotsa:
+309|Zerbitzuaren lehenetsia
+310|Probatu
+311|Probatzen…
+312|Funtzionatzen du: proba-esaldiak {0} s iraun du.
+313|Esaldi bakoitza URL horretako zerbitzuari eskatzen zaio: zureari (st_server.py) edo publiko bati, bere gakoarekin. Hemen ez da GPUrik ez ahots-eredurik behar. Audioliburuen transkripzioa ordenagailu honetan egiten da oraindik.
+314|Helbide hori ez da baliozkoa.
+315|Helbide hori ez dago zifratuta: gakoa eta liburuaren testua zifratu gabe bidaiatuko lirateke. Zure etxeko saretik kanpo, erabili https.
+316|Lehenik, adierazi zerbitzuaren URLa Ereduak atalean.
+317|Zerbitzuak sarbide-gakoa baztertu du.
+318|Zerbitzuak ez du helbide hori edo eredu hori aurkitzen. Egiaztatu URLa eta eredua.
+319|Zerbitzuak eskaera baztertu du.
+320|Zerbitzua lanpetuta dago oraindik hainbat saiakeraren ondoren. Saiatu geroago.
+321|Zerbitzuak ez du erantzuten. Egiaztatu URLa eta piztuta dagoela.
+322|Zerbitzuak ez du irakur daitekeen audiorik itzuli.
+323|Zerbitzuak ez du erantzuten; {0} s barru saiatuko naiz berriro…
+324|Konektatzen: {0}…
+325|Narratutakoa gordeta dago; liburua liburutegitik berrekin dezakezu.
+326|Zati bat eten egin da zerbitzarian; baliteke haren GPUak memoria nahikorik ez izatea. Narratutakoa gordeta dago: jaitsi zati kopurua «Ereduak» atalean eta sakatu Berrekin.
+327|Zerbitzariak ezin izan ditu hainbeste zati abiarazi; baliteke haren GPUak memoria nahikorik ez izatea. Jaitsi zati kopurua «Ereduak» atalean eta saiatu berriro.
+328|zati 1
+329|2 zati
+330|3 zati
+331|Zenbat zatik narratzen duten aldi berean zerbitzariaren GPUan. Bakoitzak bere memoriako 2 GB inguru hartzen ditu: sartzen ez badira, narrazioak abisatu egiten du eta kopurua jaitsi behar da. Zati gehiagorekin ez da beti azkarrago joaten: F5ekin RTX 2060 batean, denbora bera behar da 1ekin zein 2rekin.
+332|Zerbitzariak ez du XTTS instalatuta. Aukeratu beste eredu bat «Ereduak» atalean edo instalatu zerbitzarian.
+333|Narratutakoa zerbitzarira bidaltzen…
+334|Zerbitzariarekiko konexioa galdu da. Han narratutakoa gorde egiten da: sakatu Berrekin jarraitzeko.
+335|Aldi bereko eskaerak:
+336|Zenbat esaldi eskatzen zaizkion zerbitzuari aldi berean. Zenbat eta gehiago, orduan eta azkarrago, zerbitzuak uzten badu: zureak (st_server.py) 3 XTTS arte irekitzen ditu txartel grafikoan sartzen badira, eta publiko batek minutuko eskaerak muga ditzake.
+337|Narrazioaren hizkuntza:
+338|Liburua irakurtzeko hizkuntza. Aukeratu hizkuntza horretan ondo entzuten den ahotsa ere. F5 ereduek berena bakarrik irakurtzen dute.
+339|Hizkuntza horretan narratzeko, hau instalatu behar da XTTSren ingurunean:\n\n{0}
+340|Beste hizkuntza baterako, "langs" barruan: {"en": {"pron": {"nginx": "engine x"}}}
+341|Liburu bat abian da jada. Gelditu eta «{0}» liburura aldatu? Egindakoa gordeta geratzen da eta berrekin daiteke.
+342|QC aktibatuta dago, baina Whisper ez dago motor honen ingurunean: narrazio hau ez da berrikusiko. Bertan instalatzeko, exekutatu hau terminal batean:\n\n{0}
+343|XTTS ez dago instalatuta. Instalatzeko, exekutatu hau terminal batean (denbora behar du eta hainbat GB hartzen ditu; NVIDIA GPUrik gabe, jarri cpu cu130 ordez):\n\n{0}\n\nZerbitzari propio batean edo URL bidezko zerbitzu batekin ere sor dezakezu.
+344|F5 aukerakoa da eta ez dago instalatuta; beraz, ezin da eredu honekin narratu. Instalatzeko, exekutatu hau terminal batean (denbora behar du eta hainbat GB hartzen ditu; NVIDIA GPUrik gabe, jarri cpu cu130 ordez):\n\n{0}\n\nBeste eredu bat ere aukera dezakezu «Ereduak» atalean, edo URL bidezko zerbitzu bat.
+345|Whisper aukerakoa da eta ez dago instalatuta. Audioliburuak transkribatzeko eta esaldiak berrikusteko (QC) behar da. Instalatzeko, exekutatu hau terminal batean:\n\n{0}
+346|Nola instalatu
+347|Whisper aukerakoa da eta ez dago instalatuta. Audioliburuak transkribatzeko eta esaldiak berrikusteko (QC) behar da.
+348|Ordenagailu honetan narratzeko, ahots-motor bat falta da: XTTS (engine/.venv-xtts) edo F5, aukerakoa dena. Komandoak haren fitxan eta README fitxategian daude. Bitartean, zerbitzari propio batean edo URL bidezko zerbitzu batekin sor dezakezu. Whisper (audioliburuak transkribatzeko eta QC) aukerakoa da eta aparte instalatzen da.
+349|Eredu aktiboak instalatuta ez dagoen motor bat behar du. Aukeratu beste eredu bat edo instalatu motorra: komandoak haren fitxan eta README fitxategian daude.
+350|QCak Whisper behar du narratzen duen motorraren ingurunean, eta ez dago.
+351|QCak Whisper eredu bat behar du: deskargatu beherago.
+352|Esaldiak berrikusteko (QC), Whisperrek narratzen duen motorraren ingurunean egon behar du, eta ez dago. Bertan instalatzeko, exekutatu hau terminal batean:\n\n{0}
+353|Whisper instalatu gabe, ahots baten erreferentzia-testua zuk idatzi behar duzu.
+354|Motorra instalatu gabe
+355|F5 aukerakoa da eta ez dago instalatuta: ezin da eredu honekin narratu instalatu arte.
+356|Zerbitzu batekin narratzeko, EPUBa irakurtzeko gai izatea bakarrik behar da. Hori instalatzeko, exekutatu hau terminal batean:\n\n{0}
+357|QCak ezin izan ditu {0} esaldi berrikusi: eredutik atera ziren bezala geratzen dira. Arrazoia liburuaren gen.log fitxategian dago.
+358|berrikusi gabe (QC)
+359|Bai
+360|Ez
+361|Ados
+362|Kopiatu
+363|Berrikusteko Whisper:
+364|Hutsik: ordenagailu honetako Whisper, CPUan
+365|Whisper gakoa:
+366|Whisper eredua:
+367|Iristen den esaldi bakoitza transkribatu egiten da eta, testuarekin bat ez badator, berriro eskatzen da, gehienez 2 aldiz gehiago: denbora gehiago behar du eta, ordainpeko zerbitzu batean, gehiago kostatzen da.
+368|Whisper URLrik gabe, QCak Whisper behar du ordenagailu honetako motor baten ingurunean, eta ez dago.
+369|Ingurune honekin, QCak Whisperrek entzuten duena testuarekin alderatzen du, baina ez du neurtzen esaldi bakoitzaren amaieran soberan dagoen ahotsa, numpy falta delako.
+370|QC aktibatuta dago, baina ez dago zerekin berrikusi: ez Whisper URLrik, ez Whisper ordenagailu honetan. Narrazio hau ez da berrikusiko.
+371|Helbide hori ez dago zifratuta: gakoa eta audioa zifratu gabe bidaiatuko lirateke. Zure etxeko saretik kanpo, erabili https.
+372|{0}/{1} orria · liburuaren % {2}
+373|Liburu inprimatuaren orrialde-zenbaketa, EPUBak dakarren bezala.
+374|{0}/{1} orria (gutxi gorabehera) · liburuaren % {2}
+375|Gutxi gorabeherako orria: liburu honek ez dakar edizio inprimatuaren zenbaketa; beraz, {0} letrako orri bat zenbatzen da.
+376|Ezin izan dut GitHubekin hitz egin: ez dago konexiorik edo ez du erantzuten. Saiatu geroago; ez dut ezer aldatu.
+377|GitHubek errore bat itzuli du ({0}). Saiatu geroago; ez dut ezer aldatu.
+378|Deskargatutako fitxategia ez dator bat bere SHA-256 aztarnarekin: ezabatu egin dut eta ez dut ezer aldatu.
+379|Ezin izan dut eguneratzea instalatu ({0}). Programa zegoen bezala utzi dut.
+380|Deskarga bertan behera utzita; ez dut ezer aldatu.
+381|GitHubetik iritsi dena ez da Storytellerren bertsio baliozkoa; ez dut ezer aldatu.
+382|Bilatu eguneratzeak
+383|GitHuben begiratzen du bertsio berririk dagoen. Sakatzen duzunean bakarrik egiaztatzen da.
+384|Bilatzen…
+385|Eguneratu Storyteller
+386|Azken bertsioa duzu jada: {0}.
+387|Bertsio berri bat dago: {0}. Zuk {1} duzu.
+388|Narrazio, transkripzio, itzulpen edo deskarga bat abian da. Amaitu edo gelditu, eta bilatu berriro eguneratzeak: ez da erdizka eguneratzen.
+389|Kopia hau git klon bat da, berretsi gabeko aldaketekin: ez dut ukitzen, haiek ez zapaltzeko. Zuk zeuk egunera dezakezu gitekin.
+390|Programa ez dago bere datuen karpetan ({0}): ez dut hemendik aldatzen, bi instalazio ez nahasteko.
+391|Ezin dut programaren karpetan idatzi ({0}).
+392|Fitxategia hemen gordeko dut: {0}. Gero bertsioaren orria irekiko dut, zuk instala dezazun. Jarraitu?
+393|Instalatu aurretik, haren SHA-256 aztarna egiaztatzen da.
+394|Bertsio honek ez du bere SHA-256 aztarna argitaratzen: GitHubetik zifratuta iristen dela eta iragarritako bertsioa dela egiaztatzen da.
+395|Storytellerren GitHubeko bertsioen orritik deskargatzen da, eta programaren fitxategiak bakarrik aldatzen dira. Konfigurazioa, liburuak, narrazio bakoitzean egindakoa, ahotsak, ereduak eta instalatutako motorrak dauden bezala geratzen dira, eta ez dira berriro deskargatzen.
+396|Eguneratu orain?
+397|{0} bertsioa deskargatzen…
+398|Egiaztatzen eta instalatzen…
+399|Hemen deskargatuta: {0}. Bertsioaren orria irekitzen dut.
+400|Storyteller {0} instalatuta dago. Aplikazioa orain berrabiaraziko da hura erabiltzeko.
+401|Bertsio honek eskakizunak aldatzen ditu ({0}). Instalatuta duzuna gorde egiten da; motorren bat abiarazten ez bada, errepikatu README fitxategiko haren instalazio-urratsa.
+402|Kopia hau git klon bat da, argitaratutako bertsioan ez dauden commit propioekin: ez dut ukitzen, ezin bainuke aurrera egin nahastu gabe. Zuk zeuk egunera dezakezu gitekin.
+403|Kopia hau git klon bat da, baina ez dut git aurkitzen ordenagailu honetan: ezin dut hemendik eguneratu.
+404|Bertsioaren orria ireki?
+405|Kopia hau git klon bat da: {0} etiketa Storytellerren biltegi ofizialetik deskargatzen da eta kopia hartaraino aurreratzen da, ezer nahastu gabe. Konfigurazioa, liburuak, narrazio bakoitzean egindakoa, ahotsak, ereduak eta instalatutako motorrak dauden bezala geratzen dira, eta ez dira berriro deskargatzen.
+406|Storyteller beste leiho batean irekita dago jada. Erabili hura: bi aldi berean irekita, batek besteak narratzen duen liburua honda lezake.
+407|Ezin izan dut konfigurazioa irakurri: hondatuta zegoen. Aparte gorde dut hemen: {0}, eta fabrikako konfigurazioarekin jarraitzen dut; motorra, ahotsa eta zerbitzaria berriro aukeratu beharko dituzu.
+408|Badago «{0}» izeneko ahots bat. Honekin ordeztu? Oraingoa galdu egingo da.
+409|Whisper audioaren erdian eten da (memoria falta?). Transkribatutakoa gorde da; Berrekin dezakezu.
