@@ -12,6 +12,6 @@ pycparser==3.0; implementation_name != 'PyPy' and platform_python_implementation
 python-docx==1.2.0
 python-pptx==1.0.2
 setuptools==84.1.0
-soupsieve==2.10
+soupsieve==4.0.1
 typing-extensions==4.16.0
 xlsxwriter==3.2.9

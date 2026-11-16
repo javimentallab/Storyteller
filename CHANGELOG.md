@@ -19,6 +19,13 @@
   segunda», «Luis catorce») and before words such as Guerra or Reich («la segunda Guerra Mundial»). Labels such as
   «Anexo C» and acronyms such as «CV» are left as they were. Chapters already narrated only change if regenerated.
 
+### Security
+- soupsieve updated from 2.10 to 4.0.1 in the base and translation dependencies: CVE-2026-126190,
+  CVE-2026-126191 and CVE-2026-126193. Storyteller does not use CSS selectors, so nothing changes in use.
+  soupsieve 4 needs Python 3.11.5 or later.
+- OpenTelemetry updated from 1.45.1 to 1.45.2 (0.66b1 to 0.66b2 for its beta packages) in the F5 dependencies:
+  CVE-2026-126360.
+
 ## 1.3.3 (2026-11-08)
 
 ### Fixed
